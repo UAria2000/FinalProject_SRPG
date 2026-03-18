@@ -10,6 +10,10 @@ public class BattleUnitView : MonoBehaviour
     [SerializeField] private TMP_Text labelText;
     [SerializeField] private Image hpFillImage;
 
+    [Header("Markers")]
+    [SerializeField] private GameObject currentTurnMarker;
+    [SerializeField] private GameObject targetMarker;
+
     private RectTransform rectTransform;
 
     public BattleUnit Unit { get; private set; }
@@ -39,9 +43,31 @@ public class BattleUnitView : MonoBehaviour
         if (labelText != null)
             labelText.text = label;
 
+        SetCurrentTurnMarker(false);
+        SetTargetMarker(false);
         RefreshHPInstant();
 
         gameObject.name = $"View_{label}_{unit.Name}";
+    }
+
+    public void SetHighlighted(bool highlighted)
+    {
+        if (unitBodyImage == null)
+            return;
+
+        unitBodyImage.transform.localScale = highlighted ? Vector3.one * 1.08f : Vector3.one;
+    }
+
+    public void SetCurrentTurnMarker(bool visible)
+    {
+        if (currentTurnMarker != null)
+            currentTurnMarker.SetActive(visible);
+    }
+
+    public void SetTargetMarker(bool visible)
+    {
+        if (targetMarker != null)
+            targetMarker.SetActive(visible);
     }
 
     public void SetPositionInstant(Vector3 worldPosition)

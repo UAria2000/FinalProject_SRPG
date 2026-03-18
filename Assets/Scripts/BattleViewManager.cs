@@ -16,7 +16,7 @@ public class BattleViewManager : MonoBehaviour
 
     private Dictionary<BattleUnit, BattleUnitView> unitViews = new Dictionary<BattleUnit, BattleUnitView>();
 
-    public void CreateView(BattleUnit unit)
+    public void CreateView(BattleUnit unit, BattleManager battleManager)
     {
         if (unit == null || unitViewPrefab == null || viewRoot == null)
             return;
@@ -27,6 +27,12 @@ public class BattleViewManager : MonoBehaviour
         BattleUnitView view = Instantiate(unitViewPrefab, viewRoot);
         view.Initialize(unit, label, color);
         view.SetPositionInstant(GetAnchorPosition(unit.Team, unit.SlotIndex));
+
+        BattleClickable clickable = view.gameObject.GetComponent<BattleClickable>();
+        if (clickable == null)
+            clickable = view.gameObject.AddComponent<BattleClickable>();
+
+        clickable.Initialize(view, battleManager);
 
         unitViews[unit] = view;
     }

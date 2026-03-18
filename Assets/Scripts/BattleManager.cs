@@ -1,7 +1,8 @@
 using System.Collections;
-using TMPro;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class BattleManager : MonoBehaviour
 {
@@ -14,28 +15,46 @@ public class BattleManager : MonoBehaviour
     [Header("View")]
     [SerializeField] private BattleViewManager viewManager;
 
+    [Header("Buttons")]
+    [SerializeField] private Button attackButton;
+    [SerializeField] private Button moveButton;
+
+    [Header("Round UI")]
+    [SerializeField] private TMP_Text turnStartText;
+    [SerializeField] private float turnStartTextShowTime = 1.0f;
+
     [Header("Timings")]
-    [SerializeField] private float turnDelay = 0.6f;
-    [SerializeField] private float moveAnimationDuration = 0.55f;
+    [SerializeField] private float turnDelay = 0.4f;
+    [SerializeField] private float moveAnimationDuration = 0.4f;
 
     [Header("Attack Move")]
     [SerializeField] private float attackMoveRatio = 0.45f;
     [SerializeField] private float attackMoveMaxDistance = 260f;
     [SerializeField] private float attackMoveDuration = 0.6f;
 
-    [Header("Round UI")]
-    [SerializeField] private TMP_Text turnStartText;
-    [SerializeField] private float turnStartTextShowTime = 1.0f;
-
     private BattleFormation allyFormation;
     private BattleFormation enemyFormation;
     private TurnManager turnManager;
-    private int currentRound = 0;
+
     private TurnState currentState = TurnState.Waiting;
     private BattleResultType battleResult = BattleResultType.None;
+    private BattleInputMode inputMode = BattleInputMode.None;
+
+    private int currentRound = 0;
+
+    private BattleUnit currentActingUnit;
+    private bool playerActionSubmitted = false;
+    private BattleUnit selectedAttackTarget;
+    private BattleUnit selectedMoveTarget;
 
     private void Start()
     {
+        if (attackButton != null)
+            attackButton.onClick.AddListener(OnAttackButtonClicked);
+
+        if (moveButton != null)
+            moveButton.onClick.AddListener(OnMoveButtonClicked);
+
         StartBattle();
     }
 
@@ -44,10 +63,20 @@ public class BattleManager : MonoBehaviour
         allyFormation = new BattleFormation();
         enemyFormation = new BattleFormation();
         turnManager = new TurnManager();
+
         currentRound = 0;
+        inputMode = BattleInputMode.None;
+        currentActingUnit = null;
+        playerActionSubmitted = false;
+        selectedAttackTarget = null;
+        selectedMoveTarget = null;
+        battleResult = BattleResultType.None;
+        currentState = TurnState.Waiting;
 
         if (turnStartText != null)
             turnStartText.gameObject.SetActive(false);
+
+        SetActionButtonsInteractable(false);
 
         for (int i = 0; i < 4; i++)
         {
@@ -57,7 +86,7 @@ public class BattleManager : MonoBehaviour
                 allyFormation.SetUnit(i, ally);
 
                 if (viewManager != null)
-                    viewManager.CreateView(ally);
+                    viewManager.CreateView(ally, this);
             }
 
             if (enemyDefinitions[i] != null)
@@ -66,15 +95,14 @@ public class BattleManager : MonoBehaviour
                 enemyFormation.SetUnit(i, enemy);
 
                 if (viewManager != null)
-                    viewManager.CreateView(enemy);
+                    viewManager.CreateView(enemy, this);
             }
         }
 
         if (viewManager != null)
             viewManager.RefreshAllPositionsInstant(allyFormation, enemyFormation);
 
-        Debug.Log("=== BATTLE START ===");
-        PrintFormations();
+        ClearAllMarkersAndHighlights();
 
         StartCoroutine(BattleLoop());
     }
@@ -84,7 +112,6 @@ public class BattleManager : MonoBehaviour
         while (battleResult == BattleResultType.None)
         {
             currentRound++;
-
             yield return StartCoroutine(ShowTurnStartText(currentRound));
 
             List<BattleUnit> allAlive = new List<BattleUnit>();
@@ -111,7 +138,8 @@ public class BattleManager : MonoBehaviour
         }
 
         currentState = TurnState.BattleEnded;
-        Debug.Log($"=== BATTLE ENDED : {battleResult} ===");
+        SetActionButtonsInteractable(false);
+        ClearAllMarkersAndHighlights();
     }
 
     private IEnumerator ExecuteTurn(BattleUnit unit)
@@ -119,42 +147,20 @@ public class BattleManager : MonoBehaviour
         if (unit == null || unit.IsDead)
             yield break;
 
-        Debug.Log($"\n-- TURN START: {unit}");
+        currentActingUnit = unit;
 
-        currentState = unit.Team == TeamType.Ally ? TurnState.PlayerInput : TurnState.EnemyThinking;
+        ClearAllMarkersAndHighlights();
 
-        BattleFormation myFormation = unit.Team == TeamType.Ally ? allyFormation : enemyFormation;
-        BattleFormation enemyFormationRef = unit.Team == TeamType.Ally ? enemyFormation : allyFormation;
+        if (unit.Team == TeamType.Ally)
+            ShowCurrentTurnMarker(unit, true);
 
-        List<BattleUnit> targets = BattleTargeting.GetBasicAttackTargets(unit, enemyFormationRef);
-
-        if (targets.Count > 0)
-        {
-            BattleUnit target = ChooseBestTarget(unit, targets);
-            yield return StartCoroutine(ExecuteBasicAttack(unit, target));
-        }
+        if (unit.Team == TeamType.Ally)
+            yield return StartCoroutine(ExecutePlayerTurn(unit));
         else
-        {
-            bool moved = TryAutoMove(unit, myFormation);
+            yield return StartCoroutine(ExecuteEnemyTurn(unit));
 
-            if (moved)
-            {
-                if (viewManager != null)
-                {
-                    yield return StartCoroutine(
-                        viewManager.AnimateRefreshAllPositions(
-                            allyFormation,
-                            enemyFormation,
-                            moveAnimationDuration
-                        )
-                    );
-                }
-            }
-            else
-            {
-                Debug.Log($"{unit.Name} cannot attack or move.");
-            }
-        }
+        if (unit.Team == TeamType.Ally)
+            ShowCurrentTurnMarker(unit, false);
 
         allyFormation.RemoveDeadAndCompress();
         enemyFormation.RemoveDeadAndCompress();
@@ -170,9 +176,317 @@ public class BattleManager : MonoBehaviour
             );
         }
 
-        PrintFormations();
-
+        currentActingUnit = null;
         currentState = TurnState.TurnEnding;
+    }
+
+    private IEnumerator ExecutePlayerTurn(BattleUnit unit)
+    {
+        currentState = TurnState.PlayerInput;
+        inputMode = BattleInputMode.WaitingForAction;
+        playerActionSubmitted = false;
+        selectedAttackTarget = null;
+        selectedMoveTarget = null;
+
+        SetActionButtonsInteractable(true);
+
+        while (!playerActionSubmitted)
+            yield return null;
+
+        SetActionButtonsInteractable(false);
+        ClearAllTargetMarkersAndHighlights();
+        inputMode = BattleInputMode.None;
+    }
+
+    private IEnumerator ExecuteEnemyTurn(BattleUnit unit)
+    {
+        currentState = TurnState.EnemyThinking;
+
+        BattleFormation myFormation = enemyFormation;
+        BattleFormation enemyFormationRef = allyFormation;
+
+        List<BattleUnit> targets = BattleTargeting.GetBasicAttackTargets(unit, enemyFormationRef);
+
+        if (targets.Count > 0)
+        {
+            BattleUnit target = ChooseBestTarget(unit, targets);
+            yield return StartCoroutine(ExecuteBasicAttack(unit, target));
+        }
+        else
+        {
+            bool moved = TryAutoMove(unit, myFormation);
+
+            if (moved && viewManager != null)
+            {
+                yield return StartCoroutine(
+                    viewManager.AnimateRefreshAllPositions(
+                        allyFormation,
+                        enemyFormation,
+                        moveAnimationDuration
+                    )
+                );
+            }
+        }
+    }
+
+    public void OnAttackButtonClicked()
+    {
+        if (currentState != TurnState.PlayerInput)
+            return;
+
+        if (currentActingUnit == null || currentActingUnit.IsDead)
+            return;
+
+        inputMode = BattleInputMode.WaitingForAttackTarget;
+        HighlightAttackableTargets(currentActingUnit);
+    }
+
+    public void OnMoveButtonClicked()
+    {
+        if (currentState != TurnState.PlayerInput)
+            return;
+
+        if (currentActingUnit == null || currentActingUnit.IsDead)
+            return;
+
+        inputMode = BattleInputMode.WaitingForMoveTarget;
+        HighlightMoveableTargets(currentActingUnit);
+    }
+
+    public void OnUnitViewClicked(BattleUnitView clickedView)
+    {
+        if (clickedView == null || clickedView.Unit == null)
+            return;
+
+        if (currentState != TurnState.PlayerInput)
+            return;
+
+        BattleUnit clickedUnit = clickedView.Unit;
+
+        if (inputMode == BattleInputMode.WaitingForAttackTarget)
+        {
+            if (clickedUnit.Team != TeamType.Enemy)
+                return;
+
+            List<BattleUnit> validTargets = BattleTargeting.GetBasicAttackTargets(currentActingUnit, enemyFormation);
+            if (!validTargets.Contains(clickedUnit))
+                return;
+
+            selectedAttackTarget = clickedUnit;
+            StartCoroutine(ResolvePlayerAttack());
+        }
+        else if (inputMode == BattleInputMode.WaitingForMoveTarget)
+        {
+            if (clickedUnit.Team != TeamType.Ally)
+                return;
+
+            List<BattleUnit> validTargets = GetMoveableTargets(currentActingUnit, allyFormation);
+            if (!validTargets.Contains(clickedUnit))
+                return;
+
+            selectedMoveTarget = clickedUnit;
+            StartCoroutine(ResolvePlayerMove());
+        }
+    }
+
+    private IEnumerator ResolvePlayerAttack()
+    {
+        if (currentActingUnit == null || selectedAttackTarget == null)
+            yield break;
+
+        inputMode = BattleInputMode.None;
+        ClearAllTargetMarkersAndHighlights();
+        SetActionButtonsInteractable(false);
+
+        yield return StartCoroutine(ExecuteBasicAttack(currentActingUnit, selectedAttackTarget));
+
+        playerActionSubmitted = true;
+    }
+
+    private IEnumerator ResolvePlayerMove()
+    {
+        if (currentActingUnit == null || selectedMoveTarget == null)
+            yield break;
+
+        inputMode = BattleInputMode.None;
+        ClearAllTargetMarkersAndHighlights();
+        SetActionButtonsInteractable(false);
+
+        bool moved = TrySwapUnits(currentActingUnit, selectedMoveTarget, allyFormation);
+
+        if (moved && viewManager != null)
+        {
+            yield return StartCoroutine(
+                viewManager.AnimateRefreshAllPositions(
+                    allyFormation,
+                    enemyFormation,
+                    moveAnimationDuration
+                )
+            );
+        }
+
+        playerActionSubmitted = true;
+    }
+
+    private void HighlightAttackableTargets(BattleUnit attacker)
+    {
+        ClearAllTargetMarkersAndHighlights();
+
+        List<BattleUnit> validTargets = BattleTargeting.GetBasicAttackTargets(attacker, enemyFormation);
+
+        foreach (BattleUnit target in validTargets)
+        {
+            BattleUnitView view = viewManager != null ? viewManager.GetView(target) : null;
+            if (view != null)
+            {
+                view.SetHighlighted(true);
+                view.SetTargetMarker(true);
+            }
+        }
+
+        if (attacker != null)
+            ShowCurrentTurnMarker(attacker, true);
+    }
+
+    private void HighlightMoveableTargets(BattleUnit mover)
+    {
+        ClearAllTargetMarkersAndHighlights();
+
+        List<BattleUnit> validTargets = GetMoveableTargets(mover, allyFormation);
+
+        foreach (BattleUnit target in validTargets)
+        {
+            BattleUnitView view = viewManager != null ? viewManager.GetView(target) : null;
+            if (view != null)
+            {
+                view.SetHighlighted(true);
+                view.SetTargetMarker(true);
+            }
+        }
+
+        if (mover != null)
+            ShowCurrentTurnMarker(mover, true);
+    }
+
+    private List<BattleUnit> GetMoveableTargets(BattleUnit mover, BattleFormation formation)
+    {
+        List<BattleUnit> result = new List<BattleUnit>();
+
+        if (mover == null || mover.IsDead || formation == null)
+            return result;
+
+        int slot = mover.SlotIndex;
+
+        int forwardIndex = slot - 1;
+        int backwardIndex = slot + 1;
+
+        if (forwardIndex >= 0)
+        {
+            BattleUnit forwardUnit = formation.GetUnit(forwardIndex);
+            if (forwardUnit != null && !forwardUnit.IsDead && forwardUnit.Team == mover.Team)
+                result.Add(forwardUnit);
+        }
+
+        if (backwardIndex < 4)
+        {
+            BattleUnit backwardUnit = formation.GetUnit(backwardIndex);
+            if (backwardUnit != null && !backwardUnit.IsDead && backwardUnit.Team == mover.Team)
+                result.Add(backwardUnit);
+        }
+
+        return result;
+    }
+
+    private bool TrySwapUnits(BattleUnit a, BattleUnit b, BattleFormation formation)
+    {
+        if (a == null || b == null || formation == null)
+            return false;
+
+        if (a.IsDead || b.IsDead)
+            return false;
+
+        if (a.Team != b.Team)
+            return false;
+
+        int diff = Mathf.Abs(a.SlotIndex - b.SlotIndex);
+        if (diff != 1)
+            return false;
+
+        int direction = b.SlotIndex > a.SlotIndex ? 1 : -1;
+        return formation.TrySwapAdjacent(a.SlotIndex, direction);
+    }
+
+    private void ShowCurrentTurnMarker(BattleUnit unit, bool visible)
+    {
+        if (viewManager == null || unit == null)
+            return;
+
+        BattleUnitView view = viewManager.GetView(unit);
+        if (view != null)
+            view.SetCurrentTurnMarker(visible);
+    }
+
+    private void ClearAllTargetMarkersAndHighlights()
+    {
+        if (viewManager == null)
+            return;
+
+        foreach (BattleUnit unit in allyFormation.GetAliveUnits())
+        {
+            BattleUnitView view = viewManager.GetView(unit);
+            if (view != null)
+            {
+                view.SetHighlighted(false);
+                view.SetTargetMarker(false);
+            }
+        }
+
+        foreach (BattleUnit unit in enemyFormation.GetAliveUnits())
+        {
+            BattleUnitView view = viewManager.GetView(unit);
+            if (view != null)
+            {
+                view.SetHighlighted(false);
+                view.SetTargetMarker(false);
+            }
+        }
+    }
+
+    private void ClearAllMarkersAndHighlights()
+    {
+        if (viewManager == null)
+            return;
+
+        foreach (BattleUnit unit in allyFormation.GetAliveUnits())
+        {
+            BattleUnitView view = viewManager.GetView(unit);
+            if (view != null)
+            {
+                view.SetHighlighted(false);
+                view.SetTargetMarker(false);
+                view.SetCurrentTurnMarker(false);
+            }
+        }
+
+        foreach (BattleUnit unit in enemyFormation.GetAliveUnits())
+        {
+            BattleUnitView view = viewManager.GetView(unit);
+            if (view != null)
+            {
+                view.SetHighlighted(false);
+                view.SetTargetMarker(false);
+                view.SetCurrentTurnMarker(false);
+            }
+        }
+    }
+
+    private void SetActionButtonsInteractable(bool interactable)
+    {
+        if (attackButton != null)
+            attackButton.interactable = interactable;
+
+        if (moveButton != null)
+            moveButton.interactable = interactable;
     }
 
     private BattleUnit ChooseBestTarget(BattleUnit attacker, List<BattleUnit> targets)
@@ -183,7 +497,6 @@ public class BattleManager : MonoBehaviour
         foreach (BattleUnit target in targets)
         {
             int expectedDamage = Mathf.Max(1, attacker.GetAtk() - target.GetDef());
-
             if (expectedDamage > bestExpectedDamage)
             {
                 bestExpectedDamage = expectedDamage;
@@ -216,14 +529,9 @@ public class BattleManager : MonoBehaviour
             );
         }
 
-        Debug.Log($"{attacker.Name} attacks {target.Name}");
-
         bool hit = BattleCalculator.RollHit(attacker, target, 100);
         if (!hit)
-        {
-            Debug.Log("-> Miss!");
             yield break;
-        }
 
         bool isCritical = BattleCalculator.RollCritical(attacker);
         int damage = BattleCalculator.CalculateDamage(attacker, target, isCritical);
@@ -233,15 +541,8 @@ public class BattleManager : MonoBehaviour
         if (targetView != null)
             yield return StartCoroutine(targetView.AnimateHPChange(0.25f));
 
-        if (isCritical)
-            Debug.Log($"-> Critical! {damage} damage");
-        else
-            Debug.Log($"-> {damage} damage");
-
         if (target.IsDead)
         {
-            Debug.Log($"-> {target.Name} died");
-
             if (viewManager != null)
                 viewManager.RemoveView(target);
         }
@@ -258,30 +559,21 @@ public class BattleManager : MonoBehaviour
         {
             bool moved = formation.TrySwapAdjacent(unit.SlotIndex, direction);
             if (moved)
-            {
-                Debug.Log($"{unit.Name} moved to slot {unit.SlotIndex + 1}");
                 return true;
-            }
         }
 
         if (direction != -1)
         {
             bool movedForward = formation.TrySwapAdjacent(unit.SlotIndex, -1);
             if (movedForward)
-            {
-                Debug.Log($"{unit.Name} moved forward to slot {unit.SlotIndex + 1}");
                 return true;
-            }
         }
 
         if (direction != 1)
         {
             bool movedBackward = formation.TrySwapAdjacent(unit.SlotIndex, 1);
             if (movedBackward)
-            {
-                Debug.Log($"{unit.Name} moved backward to slot {unit.SlotIndex + 1}");
                 return true;
-            }
         }
 
         return false;
@@ -320,31 +612,12 @@ public class BattleManager : MonoBehaviour
             battleResult = BattleResultType.Defeat;
     }
 
-    private void PrintFormations()
-    {
-        Debug.Log("=== ALLY FORMATION ===");
-        PrintFormation(allyFormation);
-
-        Debug.Log("=== ENEMY FORMATION ===");
-        PrintFormation(enemyFormation);
-    }
-
-    private void PrintFormation(BattleFormation formation)
-    {
-        for (int i = 0; i < 4; i++)
-        {
-            BattleUnit unit = formation.GetUnit(i);
-            string text = unit == null ? "[Empty]" : unit.ToString();
-            Debug.Log($"Slot {i + 1}: {text}");
-        }
-    }
-
     private IEnumerator ShowTurnStartText(int roundNumber)
     {
         if (turnStartText == null)
             yield break;
 
-        turnStartText.text = $"Turn {roundNumber}";
+        turnStartText.text = $"Turn {roundNumber} Start";
         turnStartText.gameObject.SetActive(true);
 
         yield return new WaitForSeconds(turnStartTextShowTime);
