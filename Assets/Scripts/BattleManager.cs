@@ -18,6 +18,9 @@ public class BattleManager : MonoBehaviour
     [Header("Buttons")]
     [SerializeField] private Button attackButton;
     [SerializeField] private Button moveButton;
+    [SerializeField] private Button skillButton;
+    [SerializeField] private Button itemButton;
+    [SerializeField] private Button cancelButton;
 
     [Header("Round UI")]
     [SerializeField] private TMP_Text turnStartText;
@@ -31,6 +34,13 @@ public class BattleManager : MonoBehaviour
     [SerializeField] private float attackMoveRatio = 0.45f;
     [SerializeField] private float attackMoveMaxDistance = 260f;
     [SerializeField] private float attackMoveDuration = 0.6f;
+
+    [Header("Cancel Button Colors")]
+    [SerializeField] private Color cancelNormalColor = Color.white;
+    [SerializeField] private Color cancelEnabledColor = new Color(0.9f, 0.25f, 0.25f, 1f);
+
+    [Header("Prototype Item")]
+    [SerializeField] private int potionHealAmount = 8;
 
     private BattleFormation allyFormation;
     private BattleFormation enemyFormation;
@@ -46,6 +56,10 @@ public class BattleManager : MonoBehaviour
     private bool playerActionSubmitted = false;
     private BattleUnit selectedAttackTarget;
     private BattleUnit selectedMoveTarget;
+    private BattleUnit selectedItemTarget;
+
+    private Image cancelButtonImage;
+    private ColorBlock cancelButtonColors;
 
     private void Start()
     {
@@ -54,6 +68,19 @@ public class BattleManager : MonoBehaviour
 
         if (moveButton != null)
             moveButton.onClick.AddListener(OnMoveButtonClicked);
+
+        if (skillButton != null)
+            skillButton.onClick.AddListener(OnSkillButtonClicked);
+
+        if (itemButton != null)
+            itemButton.onClick.AddListener(OnItemButtonClicked);
+
+        if (cancelButton != null)
+        {
+            cancelButton.onClick.AddListener(OnCancelButtonClicked);
+            cancelButtonImage = cancelButton.GetComponent<Image>();
+            cancelButtonColors = cancelButton.colors;
+        }
 
         StartBattle();
     }
@@ -70,6 +97,7 @@ public class BattleManager : MonoBehaviour
         playerActionSubmitted = false;
         selectedAttackTarget = null;
         selectedMoveTarget = null;
+        selectedItemTarget = null;
         battleResult = BattleResultType.None;
         currentState = TurnState.Waiting;
 
@@ -77,6 +105,7 @@ public class BattleManager : MonoBehaviour
             turnStartText.gameObject.SetActive(false);
 
         SetActionButtonsInteractable(false);
+        RefreshCancelButtonState();
 
         for (int i = 0; i < 4; i++)
         {
@@ -139,6 +168,7 @@ public class BattleManager : MonoBehaviour
 
         currentState = TurnState.BattleEnded;
         SetActionButtonsInteractable(false);
+        RefreshCancelButtonState();
         ClearAllMarkersAndHighlights();
     }
 
@@ -178,6 +208,7 @@ public class BattleManager : MonoBehaviour
 
         currentActingUnit = null;
         currentState = TurnState.TurnEnding;
+        RefreshCancelButtonState();
     }
 
     private IEnumerator ExecutePlayerTurn(BattleUnit unit)
@@ -187,8 +218,10 @@ public class BattleManager : MonoBehaviour
         playerActionSubmitted = false;
         selectedAttackTarget = null;
         selectedMoveTarget = null;
+        selectedItemTarget = null;
 
         SetActionButtonsInteractable(true);
+        RefreshCancelButtonState();
 
         while (!playerActionSubmitted)
             yield return null;
@@ -196,11 +229,13 @@ public class BattleManager : MonoBehaviour
         SetActionButtonsInteractable(false);
         ClearAllTargetMarkersAndHighlights();
         inputMode = BattleInputMode.None;
+        RefreshCancelButtonState();
     }
 
     private IEnumerator ExecuteEnemyTurn(BattleUnit unit)
     {
         currentState = TurnState.EnemyThinking;
+        RefreshCancelButtonState();
 
         BattleFormation myFormation = enemyFormation;
         BattleFormation enemyFormationRef = allyFormation;
@@ -231,26 +266,57 @@ public class BattleManager : MonoBehaviour
 
     public void OnAttackButtonClicked()
     {
-        if (currentState != TurnState.PlayerInput)
-            return;
-
-        if (currentActingUnit == null || currentActingUnit.IsDead)
-            return;
+        if (currentState != TurnState.PlayerInput) return;
+        if (currentActingUnit == null || currentActingUnit.IsDead) return;
 
         inputMode = BattleInputMode.WaitingForAttackTarget;
         HighlightAttackableTargets(currentActingUnit);
+        RefreshCancelButtonState();
     }
 
     public void OnMoveButtonClicked()
     {
-        if (currentState != TurnState.PlayerInput)
-            return;
-
-        if (currentActingUnit == null || currentActingUnit.IsDead)
-            return;
+        if (currentState != TurnState.PlayerInput) return;
+        if (currentActingUnit == null || currentActingUnit.IsDead) return;
 
         inputMode = BattleInputMode.WaitingForMoveTarget;
         HighlightMoveableTargets(currentActingUnit);
+        RefreshCancelButtonState();
+    }
+
+    public void OnSkillButtonClicked()
+    {
+        if (currentState != TurnState.PlayerInput) return;
+        if (currentActingUnit == null || currentActingUnit.IsDead) return;
+
+        inputMode = BattleInputMode.WaitingForSkillTarget;
+        ClearAllTargetMarkersAndHighlights();
+
+        if (currentActingUnit != null)
+            ShowCurrentTurnMarker(currentActingUnit, true);
+
+        RefreshCancelButtonState();
+    }
+
+    public void OnItemButtonClicked()
+    {
+        if (currentState != TurnState.PlayerInput) return;
+        if (currentActingUnit == null || currentActingUnit.IsDead) return;
+
+        inputMode = BattleInputMode.WaitingForItemTarget;
+        HighlightItemTargets(currentActingUnit);
+        RefreshCancelButtonState();
+    }
+
+    public void OnCancelButtonClicked()
+    {
+        if (currentState != TurnState.PlayerInput)
+            return;
+
+        if (!CanCancelCurrentSelection())
+            return;
+
+        CancelCurrentSelection();
     }
 
     public void OnUnitViewClicked(BattleUnitView clickedView)
@@ -287,6 +353,22 @@ public class BattleManager : MonoBehaviour
             selectedMoveTarget = clickedUnit;
             StartCoroutine(ResolvePlayerMove());
         }
+        else if (inputMode == BattleInputMode.WaitingForItemTarget)
+        {
+            if (clickedUnit.Team != TeamType.Ally)
+                return;
+
+            List<BattleUnit> validTargets = GetItemTargets(currentActingUnit, allyFormation);
+            if (!validTargets.Contains(clickedUnit))
+                return;
+
+            selectedItemTarget = clickedUnit;
+            StartCoroutine(ResolvePlayerItemUse());
+        }
+        else if (inputMode == BattleInputMode.WaitingForSkillTarget)
+        {
+            // 스킬 미구현
+        }
     }
 
     private IEnumerator ResolvePlayerAttack()
@@ -295,6 +377,7 @@ public class BattleManager : MonoBehaviour
             yield break;
 
         inputMode = BattleInputMode.None;
+        RefreshCancelButtonState();
         ClearAllTargetMarkersAndHighlights();
         SetActionButtonsInteractable(false);
 
@@ -309,6 +392,7 @@ public class BattleManager : MonoBehaviour
             yield break;
 
         inputMode = BattleInputMode.None;
+        RefreshCancelButtonState();
         ClearAllTargetMarkersAndHighlights();
         SetActionButtonsInteractable(false);
 
@@ -326,6 +410,58 @@ public class BattleManager : MonoBehaviour
         }
 
         playerActionSubmitted = true;
+    }
+
+    private IEnumerator ResolvePlayerItemUse()
+    {
+        if (currentActingUnit == null || selectedItemTarget == null)
+            yield break;
+
+        inputMode = BattleInputMode.None;
+        RefreshCancelButtonState();
+        ClearAllTargetMarkersAndHighlights();
+        SetActionButtonsInteractable(false);
+
+        yield return StartCoroutine(ExecutePrototypePotionUse(currentActingUnit, selectedItemTarget));
+
+        playerActionSubmitted = true;
+    }
+
+    private IEnumerator ExecutePrototypePotionUse(BattleUnit user, BattleUnit target)
+    {
+        if (user == null || target == null || user.IsDead || target.IsDead)
+            yield break;
+
+        BattleUnitView targetView = viewManager != null ? viewManager.GetView(target) : null;
+
+        target.Heal(potionHealAmount);
+
+        if (targetView != null)
+            yield return StartCoroutine(targetView.AnimateHPChange(0.25f));
+    }
+
+    private bool CanCancelCurrentSelection()
+    {
+        return inputMode == BattleInputMode.WaitingForAttackTarget
+            || inputMode == BattleInputMode.WaitingForMoveTarget
+            || inputMode == BattleInputMode.WaitingForSkillTarget
+            || inputMode == BattleInputMode.WaitingForItemTarget;
+    }
+
+    private void CancelCurrentSelection()
+    {
+        inputMode = BattleInputMode.WaitingForAction;
+        selectedAttackTarget = null;
+        selectedMoveTarget = null;
+        selectedItemTarget = null;
+
+        ClearAllTargetMarkersAndHighlights();
+
+        if (currentActingUnit != null)
+            ShowCurrentTurnMarker(currentActingUnit, true);
+
+        SetActionButtonsInteractable(true);
+        RefreshCancelButtonState();
     }
 
     private void HighlightAttackableTargets(BattleUnit attacker)
@@ -368,6 +504,26 @@ public class BattleManager : MonoBehaviour
             ShowCurrentTurnMarker(mover, true);
     }
 
+    private void HighlightItemTargets(BattleUnit user)
+    {
+        ClearAllTargetMarkersAndHighlights();
+
+        List<BattleUnit> validTargets = GetItemTargets(user, allyFormation);
+
+        foreach (BattleUnit target in validTargets)
+        {
+            BattleUnitView view = viewManager != null ? viewManager.GetView(target) : null;
+            if (view != null)
+            {
+                view.SetHighlighted(true);
+                view.SetTargetMarker(true);
+            }
+        }
+
+        if (user != null)
+            ShowCurrentTurnMarker(user, true);
+    }
+
     private List<BattleUnit> GetMoveableTargets(BattleUnit mover, BattleFormation formation)
     {
         List<BattleUnit> result = new List<BattleUnit>();
@@ -376,7 +532,6 @@ public class BattleManager : MonoBehaviour
             return result;
 
         int slot = mover.SlotIndex;
-
         int forwardIndex = slot - 1;
         int backwardIndex = slot + 1;
 
@@ -397,20 +552,27 @@ public class BattleManager : MonoBehaviour
         return result;
     }
 
+    private List<BattleUnit> GetItemTargets(BattleUnit user, BattleFormation formation)
+    {
+        List<BattleUnit> result = new List<BattleUnit>();
+
+        if (user == null || formation == null)
+            return result;
+
+        foreach (BattleUnit unit in formation.GetAliveUnits())
+            result.Add(unit);
+
+        return result;
+    }
+
     private bool TrySwapUnits(BattleUnit a, BattleUnit b, BattleFormation formation)
     {
-        if (a == null || b == null || formation == null)
-            return false;
-
-        if (a.IsDead || b.IsDead)
-            return false;
-
-        if (a.Team != b.Team)
-            return false;
+        if (a == null || b == null || formation == null) return false;
+        if (a.IsDead || b.IsDead) return false;
+        if (a.Team != b.Team) return false;
 
         int diff = Mathf.Abs(a.SlotIndex - b.SlotIndex);
-        if (diff != 1)
-            return false;
+        if (diff != 1) return false;
 
         int direction = b.SlotIndex > a.SlotIndex ? 1 : -1;
         return formation.TrySwapAdjacent(a.SlotIndex, direction);
@@ -482,11 +644,31 @@ public class BattleManager : MonoBehaviour
 
     private void SetActionButtonsInteractable(bool interactable)
     {
-        if (attackButton != null)
-            attackButton.interactable = interactable;
+        if (attackButton != null) attackButton.interactable = interactable;
+        if (moveButton != null) moveButton.interactable = interactable;
+        if (skillButton != null) skillButton.interactable = interactable;
+        if (itemButton != null) itemButton.interactable = interactable;
+    }
 
-        if (moveButton != null)
-            moveButton.interactable = interactable;
+    private void RefreshCancelButtonState()
+    {
+        bool canCancel = CanCancelCurrentSelection();
+
+        if (cancelButton != null)
+            cancelButton.interactable = canCancel;
+
+        if (cancelButtonImage != null)
+            cancelButtonImage.color = canCancel ? cancelEnabledColor : cancelNormalColor;
+
+        if (cancelButton != null)
+        {
+            ColorBlock cb = cancelButtonColors;
+            cb.normalColor = canCancel ? cancelEnabledColor : cancelNormalColor;
+            cb.highlightedColor = canCancel ? cancelEnabledColor * 1.05f : cancelNormalColor * 1.05f;
+            cb.selectedColor = cb.highlightedColor;
+            cb.pressedColor = canCancel ? cancelEnabledColor * 0.9f : cancelNormalColor * 0.9f;
+            cancelButton.colors = cb;
+        }
     }
 
     private BattleUnit ChooseBestTarget(BattleUnit attacker, List<BattleUnit> targets)
@@ -510,6 +692,7 @@ public class BattleManager : MonoBehaviour
     private IEnumerator ExecuteBasicAttack(BattleUnit attacker, BattleUnit target)
     {
         currentState = TurnState.ExecutingAction;
+        RefreshCancelButtonState();
 
         if (attacker == null || target == null || attacker.IsDead || target.IsDead)
             yield break;
@@ -558,22 +741,19 @@ public class BattleManager : MonoBehaviour
         if (direction != 0)
         {
             bool moved = formation.TrySwapAdjacent(unit.SlotIndex, direction);
-            if (moved)
-                return true;
+            if (moved) return true;
         }
 
         if (direction != -1)
         {
             bool movedForward = formation.TrySwapAdjacent(unit.SlotIndex, -1);
-            if (movedForward)
-                return true;
+            if (movedForward) return true;
         }
 
         if (direction != 1)
         {
             bool movedBackward = formation.TrySwapAdjacent(unit.SlotIndex, 1);
-            if (movedBackward)
-                return true;
+            if (movedBackward) return true;
         }
 
         return false;
