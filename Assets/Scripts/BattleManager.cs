@@ -21,10 +21,19 @@ public class BattleManager : MonoBehaviour
     [SerializeField] private Button skillButton;
     [SerializeField] private Button itemButton;
     [SerializeField] private Button cancelButton;
+    [SerializeField] private Button popupLogButton;
 
     [Header("Round UI")]
     [SerializeField] private TMP_Text turnStartText;
     [SerializeField] private float turnStartTextShowTime = 1.0f;
+
+    [Header("Battle Log UI")]
+    [SerializeField] private TMP_Text battleLogText;
+
+    [Header("Popup Log UI")]
+    [SerializeField] private GameObject popupLogPanel;
+    [SerializeField] private TMP_Text popupLogText;
+    [SerializeField] private ScrollRect popupLogScrollRect;
 
     [Header("Timings")]
     [SerializeField] private float turnDelay = 0.4f;
@@ -61,6 +70,14 @@ public class BattleManager : MonoBehaviour
     private Image cancelButtonImage;
     private ColorBlock cancelButtonColors;
 
+    private string latestBattleLog = "";
+    private readonly List<string> fullBattleLogs = new List<string>();
+
+    private const string DAMAGE_COLOR = "#FF4D4D";
+    private const string HEAL_COLOR = "#4DFF88";
+    private const string SHIELD_COLOR = "#A0A0A0";
+    private const string TURN_COLOR = "#FFD966";
+
     private void Start()
     {
         if (attackButton != null)
@@ -81,6 +98,9 @@ public class BattleManager : MonoBehaviour
             cancelButtonImage = cancelButton.GetComponent<Image>();
             cancelButtonColors = cancelButton.colors;
         }
+
+        if (popupLogButton != null)
+            popupLogButton.onClick.AddListener(OnPopupLogButtonClicked);
 
         StartBattle();
     }
@@ -104,6 +124,10 @@ public class BattleManager : MonoBehaviour
         if (turnStartText != null)
             turnStartText.gameObject.SetActive(false);
 
+        if (popupLogPanel != null)
+            popupLogPanel.SetActive(false);
+
+        ClearBattleLog();
         SetActionButtonsInteractable(false);
         RefreshCancelButtonState();
 
@@ -133,6 +157,8 @@ public class BattleManager : MonoBehaviour
 
         ClearAllMarkersAndHighlights();
 
+        AppendBattleLog("전투 시작");
+
         StartCoroutine(BattleLoop());
     }
 
@@ -141,6 +167,8 @@ public class BattleManager : MonoBehaviour
         while (battleResult == BattleResultType.None)
         {
             currentRound++;
+
+            AppendBattleLog(FormatTurnLog(currentRound));
             yield return StartCoroutine(ShowTurnStartText(currentRound));
 
             List<BattleUnit> allAlive = new List<BattleUnit>();
@@ -170,6 +198,11 @@ public class BattleManager : MonoBehaviour
         SetActionButtonsInteractable(false);
         RefreshCancelButtonState();
         ClearAllMarkersAndHighlights();
+
+        if (battleResult == BattleResultType.Victory)
+            AppendBattleLog("전투 승리");
+        else if (battleResult == BattleResultType.Defeat)
+            AppendBattleLog("전투 패배");
     }
 
     private IEnumerator ExecuteTurn(BattleUnit unit)
@@ -319,6 +352,18 @@ public class BattleManager : MonoBehaviour
         CancelCurrentSelection();
     }
 
+    public void OnPopupLogButtonClicked()
+    {
+        if (popupLogPanel == null)
+            return;
+
+        bool nextState = !popupLogPanel.activeSelf;
+        popupLogPanel.SetActive(nextState);
+
+        if (nextState)
+            RefreshPopupBattleLogUI();
+    }
+
     public void OnUnitViewClicked(BattleUnitView clickedView)
     {
         if (clickedView == null || clickedView.Unit == null)
@@ -398,6 +443,11 @@ public class BattleManager : MonoBehaviour
 
         bool moved = TrySwapUnits(currentActingUnit, selectedMoveTarget, allyFormation);
 
+        if (moved)
+        {
+            AppendBattleLog($"{currentActingUnit.Name}가 {selectedMoveTarget.Name}와 이동");
+        }
+
         if (moved && viewManager != null)
         {
             yield return StartCoroutine(
@@ -434,10 +484,14 @@ public class BattleManager : MonoBehaviour
 
         BattleUnitView targetView = viewManager != null ? viewManager.GetView(target) : null;
 
+        int beforeHP = target.CurrentHP;
         target.Heal(potionHealAmount);
+        int healedAmount = target.CurrentHP - beforeHP;
 
         if (targetView != null)
             yield return StartCoroutine(targetView.AnimateHPChange(0.25f));
+
+        AppendBattleLog($"{user.Name}가 {target.Name}에게 포션, {FormatHealValue(healedAmount)}");
     }
 
     private bool CanCancelCurrentSelection()
@@ -714,7 +768,10 @@ public class BattleManager : MonoBehaviour
 
         bool hit = BattleCalculator.RollHit(attacker, target, 100);
         if (!hit)
+        {
+            AppendBattleLog($"{attacker.Name}가 {target.Name}에게 공격, 빗나감");
             yield break;
+        }
 
         bool isCritical = BattleCalculator.RollCritical(attacker);
         int damage = BattleCalculator.CalculateDamage(attacker, target, isCritical);
@@ -724,8 +781,15 @@ public class BattleManager : MonoBehaviour
         if (targetView != null)
             yield return StartCoroutine(targetView.AnimateHPChange(0.25f));
 
+        if (isCritical)
+            AppendBattleLog($"{attacker.Name}가 {target.Name}에게 공격, 치명타 {FormatDamageValue(damage)}");
+        else
+            AppendBattleLog($"{attacker.Name}가 {target.Name}에게 공격, {FormatDamageValue(damage)}");
+
         if (target.IsDead)
         {
+            AppendBattleLog($"{target.Name} 사망");
+
             if (viewManager != null)
                 viewManager.RemoveView(target);
         }
@@ -803,5 +867,65 @@ public class BattleManager : MonoBehaviour
         yield return new WaitForSeconds(turnStartTextShowTime);
 
         turnStartText.gameObject.SetActive(false);
+    }
+
+    private void AppendBattleLog(string message)
+    {
+        if (string.IsNullOrEmpty(message))
+            return;
+
+        latestBattleLog = message;
+        fullBattleLogs.Add(message);
+
+        RefreshBattleLogUI();
+        RefreshPopupBattleLogUI();
+    }
+
+    private void RefreshBattleLogUI()
+    {
+        if (battleLogText == null)
+            return;
+
+        battleLogText.text = latestBattleLog;
+    }
+
+    private void RefreshPopupBattleLogUI()
+    {
+        if (popupLogText == null)
+            return;
+
+        popupLogText.text = string.Join("\n", fullBattleLogs);
+
+        Canvas.ForceUpdateCanvases();
+        if (popupLogScrollRect != null)
+            popupLogScrollRect.verticalNormalizedPosition = 0f;
+    }
+
+    private void ClearBattleLog()
+    {
+        latestBattleLog = "";
+        fullBattleLogs.Clear();
+        RefreshBattleLogUI();
+        RefreshPopupBattleLogUI();
+    }
+
+    private string FormatTurnLog(int round)
+    {
+        return $"<color={TURN_COLOR}>Turn{round}</color>";
+    }
+
+    private string FormatDamageValue(int value)
+    {
+        return $"<color={DAMAGE_COLOR}>{value}</color>";
+    }
+
+    private string FormatHealValue(int value)
+    {
+        return $"<color={HEAL_COLOR}>{value} 회복</color>";
+    }
+
+    private string FormatShieldValue(int value)
+    {
+        return $"<color={SHIELD_COLOR}>{value} 실드</color>";
     }
 }
