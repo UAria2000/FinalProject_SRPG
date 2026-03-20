@@ -26,3 +26,6 @@ MonoBehaviour:
   poisonResist: 5
   bleedResist: 10
   stunResist: 5
+  defaultSkills:
+  - {fileID: 11400000, guid: 9641dfd4c6fd99d4987dc90dee7184e6, type: 2}
+  - {fileID: 11400000, guid: a84a7361bb11ca34d9d00d40ff6bdcaf, type: 2}

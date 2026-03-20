@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 [CreateAssetMenu(menuName = "Battle/Unit Definition")]
@@ -28,4 +29,7 @@ public class UnitDefinition : ScriptableObject
     [Range(0f, 100f)] public float poisonResist = 0f;
     [Range(0f, 100f)] public float bleedResist = 0f;
     [Range(0f, 100f)] public float stunResist = 0f;
+
+    [Header("Default Skills")]
+    public List<SkillDefinition> defaultSkills = new List<SkillDefinition>();
 }
