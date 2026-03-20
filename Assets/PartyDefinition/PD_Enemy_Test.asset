@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8af626abda79b6544ab9c5c5fcc17370, type: 3}
+  m_Name: PD_Enemy_Test
+  m_EditorClassIdentifier: Assembly-CSharp::PartyDefinition
+  partyName: PD_Enemy_Party
+  members:
+  - unitDefinition: {fileID: 11400000, guid: 0191383d5bb90ee4fa0ede830a9c3f3a, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: 736ab746e0437e945a2523f73eeba5fa, type: 2}
+    startSlotIndex: 0
+  - unitDefinition: {fileID: 11400000, guid: 0191383d5bb90ee4fa0ede830a9c3f3a, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: 736ab746e0437e945a2523f73eeba5fa, type: 2}
+    startSlotIndex: 1
+  - unitDefinition: {fileID: 11400000, guid: 0191383d5bb90ee4fa0ede830a9c3f3a, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: 736ab746e0437e945a2523f73eeba5fa, type: 2}
+    startSlotIndex: 2
+  - unitDefinition: {fileID: 11400000, guid: 0191383d5bb90ee4fa0ede830a9c3f3a, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: 736ab746e0437e945a2523f73eeba5fa, type: 2}
+    startSlotIndex: 3

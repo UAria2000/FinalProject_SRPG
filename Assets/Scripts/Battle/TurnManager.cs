@@ -11,7 +11,7 @@ public class TurnManager
 
         sorted.Sort((a, b) =>
         {
-            int speedCompare = b.GetSpd().CompareTo(a.GetSpd());
+            int speedCompare = b.SPD.CompareTo(a.SPD);
             if (speedCompare != 0)
                 return speedCompare;
 

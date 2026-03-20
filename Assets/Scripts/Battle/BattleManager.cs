@@ -6,14 +6,15 @@ using UnityEngine.UI;
 
 public class BattleManager : MonoBehaviour
 {
-    [Header("Ally Team")]
-    public UnitDefinition[] allyDefinitions = new UnitDefinition[4];
-
-    [Header("Enemy Team")]
-    public UnitDefinition[] enemyDefinitions = new UnitDefinition[4];
+    [Header("Party Data")]
+    [SerializeField] private PartyDefinition allyPartyDefinition;
+    [SerializeField] private PartyDefinition enemyPartyDefinition;
 
     [Header("View")]
     [SerializeField] private BattleViewManager viewManager;
+
+    [Header("Current Unit Info UI")]
+    [SerializeField] private CurrentUnitInfoPanel currentUnitInfoPanel;
 
     [Header("Buttons")]
     [SerializeField] private Button attackButton;
@@ -62,6 +63,8 @@ public class BattleManager : MonoBehaviour
     private int currentRound = 0;
 
     private BattleUnit currentActingUnit;
+    private BattleUnit lastShownAllyUnit;
+
     private bool playerActionSubmitted = false;
     private BattleUnit selectedAttackTarget;
     private BattleUnit selectedMoveTarget;
@@ -73,9 +76,11 @@ public class BattleManager : MonoBehaviour
     private string latestBattleLog = "";
     private readonly List<string> fullBattleLogs = new List<string>();
 
-    private const string DAMAGE_COLOR = "#FF4D4D";
-    private const string HEAL_COLOR = "#4DFF88";
-    private const string SHIELD_COLOR = "#A0A0A0";
+    private const string UNIT_NAME_COLOR = "#817F7F";
+    private const string DEFAULT_TEXT_COLOR = "#FFFFFF";
+    private const string DAMAGE_COLOR = "#DA7332";
+    private const string HEAL_COLOR = "#0EE01C";
+    private const string BUFF_COLOR = "#4D4D4D";
     private const string TURN_COLOR = "#FFD966";
 
     private void Start()
@@ -114,6 +119,7 @@ public class BattleManager : MonoBehaviour
         currentRound = 0;
         inputMode = BattleInputMode.None;
         currentActingUnit = null;
+        lastShownAllyUnit = null;
         playerActionSubmitted = false;
         selectedAttackTarget = null;
         selectedMoveTarget = null;
@@ -131,35 +137,67 @@ public class BattleManager : MonoBehaviour
         SetActionButtonsInteractable(false);
         RefreshCancelButtonState();
 
-        for (int i = 0; i < 4; i++)
-        {
-            if (allyDefinitions[i] != null)
-            {
-                BattleUnit ally = new BattleUnit(allyDefinitions[i], TeamType.Ally, i);
-                allyFormation.SetUnit(i, ally);
-
-                if (viewManager != null)
-                    viewManager.CreateView(ally, this);
-            }
-
-            if (enemyDefinitions[i] != null)
-            {
-                BattleUnit enemy = new BattleUnit(enemyDefinitions[i], TeamType.Enemy, i);
-                enemyFormation.SetUnit(i, enemy);
-
-                if (viewManager != null)
-                    viewManager.CreateView(enemy, this);
-            }
-        }
+        SpawnPartyIntoFormation(allyPartyDefinition, TeamType.Ally, allyFormation);
+        SpawnPartyIntoFormation(enemyPartyDefinition, TeamType.Enemy, enemyFormation);
 
         if (viewManager != null)
             viewManager.RefreshAllPositionsInstant(allyFormation, enemyFormation);
 
         ClearAllMarkersAndHighlights();
 
-        AppendBattleLog("전투 시작");
+        lastShownAllyUnit = GetDefaultDisplayedAllyUnit();
+        if (currentUnitInfoPanel != null && lastShownAllyUnit != null)
+            currentUnitInfoPanel.Show(lastShownAllyUnit);
+
+        AppendBattleLog(FormatDefaultText("전투가 시작되었습니다"));
 
         StartCoroutine(BattleLoop());
+    }
+
+    private void SpawnPartyIntoFormation(PartyDefinition partyDefinition, TeamType team, BattleFormation formation)
+    {
+        if (partyDefinition == null)
+        {
+            Debug.LogWarning($"[BattleManager] {team} PartyDefinition is null.");
+            return;
+        }
+
+        if (!partyDefinition.IsValidMemberCount())
+        {
+            Debug.LogWarning($"[BattleManager] {team} party member count must be between 1 and 4.");
+            return;
+        }
+
+        if (partyDefinition.HasDuplicateSlotIndex())
+        {
+            Debug.LogWarning($"[BattleManager] {team} party has duplicate startSlotIndex values.");
+            return;
+        }
+
+        if (partyDefinition.HasNullDefinitions())
+        {
+            Debug.LogWarning($"[BattleManager] {team} party has null UnitDefinition or UnitViewDefinition.");
+            return;
+        }
+
+        for (int i = 0; i < partyDefinition.members.Count; i++)
+        {
+            PartyMemberData member = partyDefinition.members[i];
+            if (member == null)
+                continue;
+
+            BattleUnit unit = new BattleUnit(
+                member.unitDefinition,
+                member.unitViewDefinition,
+                team,
+                member.startSlotIndex
+            );
+
+            formation.SetUnit(member.startSlotIndex, unit);
+
+            if (viewManager != null)
+                viewManager.CreateView(unit, this);
+        }
     }
 
     private IEnumerator BattleLoop()
@@ -200,9 +238,9 @@ public class BattleManager : MonoBehaviour
         ClearAllMarkersAndHighlights();
 
         if (battleResult == BattleResultType.Victory)
-            AppendBattleLog("전투 승리");
+            AppendBattleLog(FormatDefaultText("전투에서 승리했습니다"));
         else if (battleResult == BattleResultType.Defeat)
-            AppendBattleLog("전투 패배");
+            AppendBattleLog(FormatDefaultText("전투에서 패배했습니다"));
     }
 
     private IEnumerator ExecuteTurn(BattleUnit unit)
@@ -211,6 +249,19 @@ public class BattleManager : MonoBehaviour
             yield break;
 
         currentActingUnit = unit;
+
+        if (unit.Team == TeamType.Ally)
+        {
+            lastShownAllyUnit = unit;
+
+            if (currentUnitInfoPanel != null)
+                currentUnitInfoPanel.Show(lastShownAllyUnit);
+        }
+        else
+        {
+            if (currentUnitInfoPanel != null && lastShownAllyUnit != null)
+                currentUnitInfoPanel.Show(lastShownAllyUnit);
+        }
 
         ClearAllMarkersAndHighlights();
 
@@ -254,6 +305,7 @@ public class BattleManager : MonoBehaviour
         selectedItemTarget = null;
 
         SetActionButtonsInteractable(true);
+        RefreshActionButtonAvailability(unit);
         RefreshCancelButtonState();
 
         while (!playerActionSubmitted)
@@ -278,11 +330,18 @@ public class BattleManager : MonoBehaviour
         if (targets.Count > 0)
         {
             BattleUnit target = ChooseBestTarget(unit, targets);
-            yield return StartCoroutine(ExecuteBasicAttack(unit, target));
+            yield return StartCoroutine(ExecuteBasicAttack(unit, target, null));
         }
         else
         {
             bool moved = TryAutoMove(unit, myFormation);
+
+            if (moved)
+            {
+                AppendBattleLog(
+                    $"{FormatUnitName(unit.Name)}이 {FormatDefaultText("위치를 이동했습니다")}"
+                );
+            }
 
             if (moved && viewManager != null)
             {
@@ -412,7 +471,7 @@ public class BattleManager : MonoBehaviour
         }
         else if (inputMode == BattleInputMode.WaitingForSkillTarget)
         {
-            // 스킬 미구현
+            // 스킬 시스템 추후 구현
         }
     }
 
@@ -426,7 +485,7 @@ public class BattleManager : MonoBehaviour
         ClearAllTargetMarkersAndHighlights();
         SetActionButtonsInteractable(false);
 
-        yield return StartCoroutine(ExecuteBasicAttack(currentActingUnit, selectedAttackTarget));
+        yield return StartCoroutine(ExecuteBasicAttack(currentActingUnit, selectedAttackTarget, null));
 
         playerActionSubmitted = true;
     }
@@ -445,7 +504,9 @@ public class BattleManager : MonoBehaviour
 
         if (moved)
         {
-            AppendBattleLog($"{currentActingUnit.Name}가 {selectedMoveTarget.Name}와 이동");
+            AppendBattleLog(
+                $"{FormatUnitName(currentActingUnit.Name)}이 {FormatUnitName(selectedMoveTarget.Name)}과 {FormatDefaultText("위치를 교체했습니다")}"
+            );
         }
 
         if (moved && viewManager != null)
@@ -491,7 +552,9 @@ public class BattleManager : MonoBehaviour
         if (targetView != null)
             yield return StartCoroutine(targetView.AnimateHPChange(0.25f));
 
-        AppendBattleLog($"{user.Name}가 {target.Name}에게 포션, {FormatHealValue(healedAmount)}");
+        AppendBattleLog(
+            BuildItemHealLog(user, target, "포션을 사용하여", healedAmount, "회복")
+        );
     }
 
     private bool CanCancelCurrentSelection()
@@ -515,6 +578,7 @@ public class BattleManager : MonoBehaviour
             ShowCurrentTurnMarker(currentActingUnit, true);
 
         SetActionButtonsInteractable(true);
+        RefreshActionButtonAvailability(currentActingUnit);
         RefreshCancelButtonState();
     }
 
@@ -704,6 +768,24 @@ public class BattleManager : MonoBehaviour
         if (itemButton != null) itemButton.interactable = interactable;
     }
 
+    private void RefreshActionButtonAvailability(BattleUnit actingUnit)
+    {
+        if (currentState != TurnState.PlayerInput || actingUnit == null || actingUnit.IsDead)
+            return;
+
+        if (attackButton != null)
+            attackButton.interactable = BattleTargeting.GetBasicAttackTargets(actingUnit, enemyFormation).Count > 0;
+
+        if (moveButton != null)
+            moveButton.interactable = GetMoveableTargets(actingUnit, allyFormation).Count > 0;
+
+        if (skillButton != null)
+            skillButton.interactable = true;
+
+        if (itemButton != null)
+            itemButton.interactable = GetItemTargets(actingUnit, allyFormation).Count > 0;
+    }
+
     private void RefreshCancelButtonState()
     {
         bool canCancel = CanCancelCurrentSelection();
@@ -728,14 +810,26 @@ public class BattleManager : MonoBehaviour
     private BattleUnit ChooseBestTarget(BattleUnit attacker, List<BattleUnit> targets)
     {
         BattleUnit bestTarget = targets[0];
-        int bestExpectedDamage = -1;
+        float bestScore = float.MinValue;
 
         foreach (BattleUnit target in targets)
         {
-            int expectedDamage = Mathf.Max(1, attacker.GetAtk() - target.GetDef());
-            if (expectedDamage > bestExpectedDamage)
+            float totalHitChance = BattleCalculator.CalculateTotalHitChance(attacker.HIT, target.AC);
+            float missRatio = BattleCalculator.CalculateMissRatio(attacker.HIT, target.AC);
+
+            float failChance = 100f - totalHitChance;
+            float grazeChance = failChance * (1f - missRatio);
+            float critChance = totalHitChance * (attacker.CRI / 100f);
+            float normalHitChance = totalHitChance - critChance;
+
+            float expectedDamage =
+                (critChance / 100f) * BattleCalculator.CalculateCritDamage(attacker.DMG, attacker.CRD) +
+                (normalHitChance / 100f) * BattleCalculator.CalculateHitDamage(attacker.DMG) +
+                (grazeChance / 100f) * BattleCalculator.CalculateGrazeDamage(attacker.DMG);
+
+            if (expectedDamage > bestScore)
             {
-                bestExpectedDamage = expectedDamage;
+                bestScore = expectedDamage;
                 bestTarget = target;
             }
         }
@@ -743,7 +837,7 @@ public class BattleManager : MonoBehaviour
         return bestTarget;
     }
 
-    private IEnumerator ExecuteBasicAttack(BattleUnit attacker, BattleUnit target)
+    private IEnumerator ExecuteBasicAttack(BattleUnit attacker, BattleUnit target, string skillName)
     {
         currentState = TurnState.ExecutingAction;
         RefreshCancelButtonState();
@@ -766,32 +860,30 @@ public class BattleManager : MonoBehaviour
             );
         }
 
-        bool hit = BattleCalculator.RollHit(attacker, target, 100);
-        if (!hit)
+        AttackResult result = BattleCalculator.RollAttack(attacker, target);
+
+        if (result.Damage > 0)
         {
-            AppendBattleLog($"{attacker.Name}가 {target.Name}에게 공격, 빗나감");
-            yield break;
+            target.TakeDamage(result.Damage);
+
+            if (targetView != null)
+                yield return StartCoroutine(targetView.AnimateHPChange(0.25f));
         }
 
-        bool isCritical = BattleCalculator.RollCritical(attacker);
-        int damage = BattleCalculator.CalculateDamage(attacker, target, isCritical);
-
-        target.TakeDamage(damage);
-
-        if (targetView != null)
-            yield return StartCoroutine(targetView.AnimateHPChange(0.25f));
-
-        if (isCritical)
-            AppendBattleLog($"{attacker.Name}가 {target.Name}에게 공격, 치명타 {FormatDamageValue(damage)}");
-        else
-            AppendBattleLog($"{attacker.Name}가 {target.Name}에게 공격, {FormatDamageValue(damage)}");
+        AppendBattleLog(BuildAttackLog(attacker, target, skillName, result));
 
         if (target.IsDead)
         {
-            AppendBattleLog($"{target.Name} 사망");
+            AppendBattleLog($"{FormatUnitName(target.Name)}이 {FormatDefaultText("사망했습니다")}");
 
             if (viewManager != null)
                 viewManager.RemoveView(target);
+
+            if (lastShownAllyUnit == target)
+                lastShownAllyUnit = GetDefaultDisplayedAllyUnit();
+
+            if (currentUnitInfoPanel != null && lastShownAllyUnit != null)
+                currentUnitInfoPanel.Show(lastShownAllyUnit);
         }
     }
 
@@ -856,6 +948,25 @@ public class BattleManager : MonoBehaviour
             battleResult = BattleResultType.Defeat;
     }
 
+    private BattleUnit GetDefaultDisplayedAllyUnit()
+    {
+        if (allyFormation == null)
+            return null;
+
+        BattleUnit slot0Unit = allyFormation.GetUnit(0);
+        if (slot0Unit != null && !slot0Unit.IsDead)
+            return slot0Unit;
+
+        for (int i = 1; i < 4; i++)
+        {
+            BattleUnit unit = allyFormation.GetUnit(i);
+            if (unit != null && !unit.IsDead)
+                return unit;
+        }
+
+        return null;
+    }
+
     private IEnumerator ShowTurnStartText(int roundNumber)
     {
         if (turnStartText == null)
@@ -914,18 +1025,90 @@ public class BattleManager : MonoBehaviour
         return $"<color={TURN_COLOR}>Turn{round}</color>";
     }
 
-    private string FormatDamageValue(int value)
+    private string FormatUnitName(string unitName)
+    {
+        return $"<color={UNIT_NAME_COLOR}>{unitName}</color>";
+    }
+
+    private string FormatDefaultText(string text)
+    {
+        return $"<color={DEFAULT_TEXT_COLOR}>{text}</color>";
+    }
+
+    private string FormatDamageValueOnlyNumber(int value)
     {
         return $"<color={DAMAGE_COLOR}>{value}</color>";
     }
 
-    private string FormatHealValue(int value)
+    private string FormatHealValueOnlyNumber(int value)
     {
-        return $"<color={HEAL_COLOR}>{value} 회복</color>";
+        return $"<color={HEAL_COLOR}>{value}</color>";
     }
 
-    private string FormatShieldValue(int value)
+    private string FormatBuffValueOnlyNumber(int value)
     {
-        return $"<color={SHIELD_COLOR}>{value} 실드</color>";
+        return $"<color={BUFF_COLOR}>{value}</color>";
+    }
+
+    private string FormatDamageKeyword()
+    {
+        return $"<color={DAMAGE_COLOR}>데미지</color>";
+    }
+
+    private string FormatHealKeyword()
+    {
+        return $"<color={HEAL_COLOR}>회복</color>";
+    }
+
+    private string FormatShieldKeyword()
+    {
+        return $"<color={BUFF_COLOR}>보호막</color>";
+    }
+
+    private string FormatBuffKeyword(string buffName)
+    {
+        return $"<color={BUFF_COLOR}>{buffName}</color>";
+    }
+
+    private string BuildAttackLog(BattleUnit attacker, BattleUnit target, string skillName, AttackResult result)
+    {
+        string attackerName = FormatUnitName(attacker.Name);
+        string targetName = FormatUnitName(target.Name);
+
+        string actionText = string.IsNullOrEmpty(skillName)
+            ? ""
+            : $"{FormatDefaultText(skillName)} ";
+
+        switch (result.ResultType)
+        {
+            case AttackResultType.Crit:
+                return $"{attackerName}이 {targetName}에게 {actionText}{FormatDefaultText("치명타로")} {FormatDamageValueOnlyNumber(result.Damage)} {FormatDamageKeyword()}를 {FormatDefaultText("입혔습니다")}";
+
+            case AttackResultType.Hit:
+                return $"{attackerName}이 {targetName}에게 {actionText}{FormatDamageValueOnlyNumber(result.Damage)} {FormatDamageKeyword()}를 {FormatDefaultText("입혔습니다")}";
+
+            case AttackResultType.Graze:
+                return $"{attackerName}이 {targetName}에게 {actionText}{FormatDefaultText("스침으로")} {FormatDamageValueOnlyNumber(result.Damage)} {FormatDamageKeyword()}를 {FormatDefaultText("입혔습니다")}";
+
+            case AttackResultType.Miss:
+                return $"{attackerName}이 {targetName}에게 {actionText}{FormatDefaultText("공격했지만 빗나갔습니다")}";
+        }
+
+        return $"{attackerName}이 {targetName}에게 {FormatDefaultText("공격했습니다")}";
+    }
+
+    private string BuildItemHealLog(BattleUnit user, BattleUnit target, string actionText, int value, string effectText)
+    {
+        return $"{FormatUnitName(user.Name)}이 {FormatUnitName(target.Name)}에게 {FormatDefaultText(actionText)} {FormatHealValueOnlyNumber(value)} {FormatHealKeyword()}을 {FormatDefaultText("회복시켰습니다")}";
+    }
+
+    private string BuildBuffLog(BattleUnit user, BattleUnit target, string actionText, int value, string buffText)
+    {
+        return $"{FormatUnitName(user.Name)}이 {FormatUnitName(target.Name)}에게 {FormatDefaultText(actionText)} {FormatBuffValueOnlyNumber(value)} {FormatBuffKeyword(buffText)}을 {FormatDefaultText("부여했습니다")}";
+    }
+
+    private string BuildShieldLog(BattleUnit user, BattleUnit target, string actionText, int value)
+    {
+        return $"{FormatUnitName(user.Name)}이 {FormatUnitName(target.Name)}에게 {FormatDefaultText(actionText)} {FormatBuffValueOnlyNumber(value)} {FormatShieldKeyword()}을 {FormatDefaultText("부여했습니다")}";
     }
 }

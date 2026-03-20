@@ -138,7 +138,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.990566, g: 0.6401299, b: 0.6401299, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -172,6 +172,7 @@ MonoBehaviour:
   hpFillImage: {fileID: 5386853862988639266}
   currentTurnMarker: {fileID: 3137165275017152285}
   targetMarker: {fileID: 5676488159608638109}
+  highlightImage: {fileID: 0}
 --- !u!1 &2525814245629147571
 GameObject:
   m_ObjectHideFlags: 0
@@ -321,7 +322,7 @@ GameObject:
   - component: {fileID: 3644424938757213708}
   - component: {fileID: 2998776464388800548}
   m_Layer: 5
-  m_Name: Image
+  m_Name: TurnMark
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -472,7 +473,7 @@ GameObject:
   - component: {fileID: 3003560039304152507}
   - component: {fileID: 7883613810350450753}
   m_Layer: 5
-  m_Name: Image
+  m_Name: TargetMark
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
