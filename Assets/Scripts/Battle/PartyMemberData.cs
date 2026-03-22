@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 [Serializable]
@@ -11,7 +12,30 @@ public class PartyMemberData
     public UnitViewDefinition unitViewDefinition;
 
     [Header("Formation")]
-    [Tooltip("½ÃÀÛ ½½·Ô ¹øÈ£. 0=¾Õ¿­, 3=µŞ¿­")]
+    [Tooltip("ì‹œì‘ ìŠ¬ë¡¯ ë²ˆí˜¸. 0=ì•ì—´, 3=ë’·ì—´")]
     [Range(0, 3)]
     public int startSlotIndex = 0;
+
+    [Header("Instance Identity")]
+    [Tooltip("ë¹„ì›Œë‘ë©´ unitDefinition.unitNameì„ ì‚¬ìš©")]
+    public string instanceDisplayNameOverride;
+    [TextArea(2, 5)]
+    public string fixedEpitaph;
+
+    [Header("Instance Stats Override")]
+    public bool useInstanceStatOverride = false;
+    public int maxHPOverride;
+    public int dmgOverride;
+    public int spdOverride;
+    public float hitOverride;
+    public float acOverride;
+    public float criOverride;
+    public float crdOverride;
+    public float poisonResistOverride;
+    public float bleedResistOverride;
+    public float stunResistOverride;
+
+    [Header("Instance Skills")]
+    [Tooltip("ë¹„ì–´ ìˆìœ¼ë©´ UnitDefinition.defaultSkills ì‚¬ìš©")]
+    public List<SkillDefinition> equippedSkills = new List<SkillDefinition>();
 }
