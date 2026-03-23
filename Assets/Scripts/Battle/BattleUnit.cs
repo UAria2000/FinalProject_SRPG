@@ -52,8 +52,8 @@ public class BattleUnit
     public int MaxHP { get { return Mathf.Max(1, BaseMaxHP + GetVariance().maxHpDelta); } }
     public int DMG { get { return Mathf.Max(0, BaseDMG + GetVariance().dmgDelta); } }
     public int SPD { get { return Mathf.Max(0, BaseSPD + GetVariance().spdDelta); } }
-    public float HIT { get { return BaseHIT + (GetVariance().hitDeltaX10 * 0.1f); } }
-    public float AC { get { return BaseAC + (GetVariance().acDeltaX10 * 0.1f); } }
+    public float HIT { get { return Mathf.Max(0f, BaseHIT + GetVariance().hitDeltaX10); } }
+    public float AC { get { return Mathf.Max(0f, BaseAC + GetVariance().acDeltaX10); } }
     public int CRI { get { return Mathf.Max(0, BaseCRI + GetVariance().criDelta); } }
     public int CRD { get { return Mathf.Max(0, BaseCRD + GetVariance().crdDelta); } }
 

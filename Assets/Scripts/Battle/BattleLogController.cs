@@ -38,7 +38,7 @@ public class BattleLogController : MonoBehaviour
             System.Text.StringBuilder sb = new System.Text.StringBuilder();
             for (int i = 0; i < entries.Count; i++)
             {
-                if (i > 0) sb.Append('\n');
+                if (i > 0) sb.AppendLine();
                 sb.Append(entries[i].text);
             }
             popupLogText.text = sb.ToString();
@@ -101,6 +101,16 @@ public class BattleLogController : MonoBehaviour
     public string BuildShieldLog(BattleUnit user, BattleUnit target, string sourceName, int amount)
     {
         return string.Format("{0}의 {1} → {2}: 보호막 {3}", user.Name, sourceName, target.Name, amount);
+    }
+
+    public string BuildFleeSuccessLog(BattleUnit actor, int chancePercent)
+    {
+        return string.Format("{0} 도주 성공 ({1}%) → 전투에서 이탈", actor.Name, chancePercent);
+    }
+
+    public string BuildFleeFailureLog(BattleUnit actor, int chancePercent)
+    {
+        return string.Format("{0} 도주 실패 ({1}%)", actor.Name, chancePercent);
     }
 
     public string BuildVictoryLog()

@@ -13,15 +13,17 @@ public static class BattleStatFormatter
         return string.Format("{0} <color={1}>({2}{3})</color>", finalValue, color, sign, delta);
     }
 
-    public static string FormatScaledX10ValueWithDelta(float finalValue, int deltaX10)
+    public static string FormatScaledX10ValueWithDelta(float finalValue, int rawDelta)
     {
         int finalDisplay = Mathf.RoundToInt(finalValue * 10f);
-        if (deltaX10 == 0)
+        int deltaDisplay = rawDelta * 10;
+
+        if (deltaDisplay == 0)
             return finalDisplay.ToString();
 
-        string color = deltaX10 > 0 ? "#5BD45B" : "#FF6666";
-        string sign = deltaX10 > 0 ? "+" : "";
-        return string.Format("{0} <color={1}>({2}{3})</color>", finalDisplay, color, sign, deltaX10);
+        string color = deltaDisplay > 0 ? "#5BD45B" : "#FF6666";
+        string sign = deltaDisplay > 0 ? "+" : "";
+        return string.Format("{0} <color={1}>({2}{3})</color>", finalDisplay, color, sign, deltaDisplay);
     }
 
     public static string FormatPercent(int value)

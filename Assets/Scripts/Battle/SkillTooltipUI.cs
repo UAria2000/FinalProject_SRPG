@@ -2,7 +2,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class SkillTooltipUI : MonoBehaviour
+public class SkillTooltipUI : HoverPopupUIBase
 {
     [SerializeField] private GameObject root;
     [SerializeField] private Image iconImage;
@@ -13,8 +13,6 @@ public class SkillTooltipUI : MonoBehaviour
     [SerializeField] private TMP_Text positionText;
     [SerializeField] private TMP_Text cooldownText;
 
-    protected virtual Vector2 ScreenOffset => new Vector2(120f, -50f);
-
     public virtual void Show(SkillDefinition skill, Vector2 pointerScreenPosition)
     {
         if (skill == null)
@@ -23,13 +21,7 @@ public class SkillTooltipUI : MonoBehaviour
             return;
         }
 
-        if (root != null)
-        {
-            root.SetActive(true);
-            RectTransform rt = root.transform as RectTransform;
-            if (rt != null)
-                rt.position = pointerScreenPosition + ScreenOffset;
-        }
+        ShowRootAt(root, pointerScreenPosition);
 
         if (iconImage != null) iconImage.sprite = skill.icon;
         if (nameText != null) nameText.text = skill.skillName;
@@ -55,7 +47,6 @@ public class SkillTooltipUI : MonoBehaviour
 
     public virtual void Hide()
     {
-        if (root != null)
-            root.SetActive(false);
+        HideRoot(root);
     }
 }

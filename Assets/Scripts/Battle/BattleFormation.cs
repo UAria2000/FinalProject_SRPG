@@ -34,6 +34,20 @@ public class BattleFormation
         }
     }
 
+    public bool Contains(BattleUnit unit)
+    {
+        if (unit == null)
+            return false;
+
+        for (int i = 0; i < slots.Length; i++)
+        {
+            if (slots[i] == unit)
+                return true;
+        }
+
+        return false;
+    }
+
     public List<BattleUnit> GetAliveUnits()
     {
         List<BattleUnit> result = new List<BattleUnit>();

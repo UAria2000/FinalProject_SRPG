@@ -15,6 +15,7 @@ public class BattleUIController : MonoBehaviour
     [SerializeField] private SkillTooltipUI skillTooltipUI;
     [SerializeField] private EnemySkillTooltipUI enemySkillTooltipUI;
     [SerializeField] private TargetPreviewHoverUI targetPreviewHoverUI;
+    [SerializeField] private FleeTooltipUI fleeTooltipUI;
 
     [Header("Bottom Context Roots")]
     [SerializeField] private GameObject enemyInfoContextRoot;
@@ -27,6 +28,7 @@ public class BattleUIController : MonoBehaviour
     [SerializeField] private Image[] actionCooldownOverlays = new Image[4];
     [SerializeField] private TMP_Text[] actionCooldownTexts = new TMP_Text[4];
     [SerializeField] private Button moveButton;
+    [SerializeField] private Button fleeButton;
     [SerializeField] private Button inventoryButton;
     [SerializeField] private Button cancelButton;
     [SerializeField] private Button popupLogButton;
@@ -59,11 +61,12 @@ public class BattleUIController : MonoBehaviour
         HideSkillTooltip();
         HideEnemySkillTooltip();
         HideTargetPreview();
+        HideFleeTooltip();
 
-        // 시작은 인벤토리 열림
         SetBottomContext(BottomContextType.Inventory);
 
         ApplyButtonNavigationNone(moveButton);
+        ApplyButtonNavigationNone(fleeButton);
         ApplyButtonNavigationNone(inventoryButton);
         ApplyButtonNavigationNone(cancelButton);
         ApplyButtonNavigationNone(popupLogButton);
@@ -97,6 +100,17 @@ public class BattleUIController : MonoBehaviour
         {
             moveButton.onClick.RemoveAllListeners();
             moveButton.onClick.AddListener(battleManager.OnMoveButtonPressed);
+        }
+
+        if (fleeButton != null)
+        {
+            fleeButton.onClick.RemoveAllListeners();
+            fleeButton.onClick.AddListener(battleManager.OnFleeButtonPressed);
+
+            FleeButtonHoverHandler handler = fleeButton.GetComponent<FleeButtonHoverHandler>();
+            if (handler == null)
+                handler = fleeButton.gameObject.AddComponent<FleeButtonHoverHandler>();
+            handler.Initialize(battleManager);
         }
 
         if (inventoryButton != null)
@@ -189,11 +203,16 @@ public class BattleUIController : MonoBehaviour
                 actionCooldownTexts[i].text = hasSkill && remaining > 0 ? remaining.ToString() : string.Empty;
 
             if (i < actionButtons.Length && actionButtons[i] != null)
-                actionButtons[i].interactable = interactable && hasSkill && unit.CanUseSkill(skill);
+                actionButtons[i].interactable = interactable && hasSkill && unit != null && unit.CanUseSkill(skill);
         }
 
+        bool canAct = interactable && battleManager != null && battleManager.InputMode == BattleInputMode.WaitingForAction;
+
         if (moveButton != null)
-            moveButton.interactable = interactable && battleManager != null && battleManager.InputMode == BattleInputMode.WaitingForAction;
+            moveButton.interactable = canAct;
+
+        if (fleeButton != null)
+            fleeButton.interactable = canAct;
 
         if (inventoryButton != null)
             inventoryButton.interactable = true;
@@ -214,7 +233,6 @@ public class BattleUIController : MonoBehaviour
 
     public void SetBottomContext(BottomContextType mode)
     {
-        // EnemyInfoPanel은 상시 노출이라 끄지 않는다.
         if (enemyInfoContextRoot != null)
             enemyInfoContextRoot.SetActive(true);
 
@@ -227,7 +245,6 @@ public class BattleUIController : MonoBehaviour
         if (inventoryPanelUI != null)
             inventoryPanelUI.Show(mode == BottomContextType.Inventory);
 
-        // 인벤토리/맵일 때 상세 팝업은 닫기
         if (mode != BottomContextType.EnemyInfo && enemyDetailPopupUI != null && enemyDetailPopupUI.IsOpen())
             enemyDetailPopupUI.Hide();
     }
@@ -296,6 +313,18 @@ public class BattleUIController : MonoBehaviour
     {
         if (targetPreviewHoverUI != null)
             targetPreviewHoverUI.Hide();
+    }
+
+    public void ShowFleeTooltip(int fleeChancePercent, Vector3 screenPosition)
+    {
+        if (fleeTooltipUI != null)
+            fleeTooltipUI.Show(fleeChancePercent, screenPosition);
+    }
+
+    public void HideFleeTooltip()
+    {
+        if (fleeTooltipUI != null)
+            fleeTooltipUI.Hide();
     }
 
     public IEnumerator ShowTurnStartTextRoutine(int round)

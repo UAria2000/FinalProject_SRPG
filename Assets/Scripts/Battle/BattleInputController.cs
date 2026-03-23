@@ -44,6 +44,7 @@ public class BattleInputController : MonoBehaviour
         battleManager.ShowTargetMarkers(validTargets);
         uiController.HideSkillTooltip();
         uiController.HideTargetPreview();
+        uiController.HideFleeTooltip();
 
         ClearUISelection();
         battleManager.RefreshAllUI();
@@ -68,9 +69,28 @@ public class BattleInputController : MonoBehaviour
         battleManager.ShowTargetMarkers(validTargets);
         uiController.HideTargetPreview();
         uiController.HideSkillTooltip();
+        uiController.HideFleeTooltip();
 
         ClearUISelection();
         battleManager.RefreshAllUI();
+    }
+
+    public void HandleFleePressed()
+    {
+        if (!CanAcceptPlayerInput())
+            return;
+
+        battleManager.SelectedSkill = null;
+        battleManager.SelectedInventoryIndex = -1;
+        battleManager.SelectedSkillSlotIndex = -1;
+        battleManager.SetInputMode(BattleInputMode.WaitingForAction);
+        battleManager.ClearTargetMarkers();
+        uiController.HideTargetPreview();
+        uiController.HideSkillTooltip();
+        uiController.HideFleeTooltip();
+
+        ClearUISelection();
+        battleManager.StartManagedCoroutine(actionController.ExecuteFlee(battleManager.CurrentActingUnit));
     }
 
     public void HandleInventorySlotPressed(int inventoryIndex)
@@ -102,6 +122,7 @@ public class BattleInputController : MonoBehaviour
         battleManager.ShowTargetMarkers(validTargets);
         uiController.HideTargetPreview();
         uiController.HideSkillTooltip();
+        uiController.HideFleeTooltip();
 
         ClearUISelection();
         battleManager.RefreshAllUI();
@@ -119,6 +140,7 @@ public class BattleInputController : MonoBehaviour
         battleManager.ClearTargetMarkers();
         uiController.HideTargetPreview();
         uiController.HideSkillTooltip();
+        uiController.HideFleeTooltip();
 
         ClearUISelection();
         battleManager.RefreshAllUI();
@@ -150,7 +172,6 @@ public class BattleInputController : MonoBehaviour
         battleManager.RefreshAllUI();
     }
 
-    // 기존 BattleClickable과 호환
     public void OnUnitViewHoverEntered(BattleUnitView hoveredView)
     {
         if (hoveredView == null)
@@ -159,7 +180,6 @@ public class BattleInputController : MonoBehaviour
         UpdateTargetPreviewHover(hoveredView, hoveredView.HoverAnchor != null ? hoveredView.HoverAnchor.position : Vector3.zero);
     }
 
-    // 새 PointerEvent 기반과 호환
     public void OnUnitViewHoverEntered(BattleUnitView hoveredView, Vector2 pointerScreenPosition)
     {
         UpdateTargetPreviewHover(hoveredView, pointerScreenPosition);

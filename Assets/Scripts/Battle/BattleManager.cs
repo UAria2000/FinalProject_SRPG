@@ -38,7 +38,6 @@ public class BattleManager : MonoBehaviour
     private bool battleStarted;
     private int currentRound;
 
-    // 시작 시 인벤토리 패널을 기본 컨텍스트로 사용
     private BottomContextType bottomContextType = BottomContextType.Inventory;
 
     public BattleFormation AllyFormation { get { return allyFormation; } }
@@ -174,7 +173,7 @@ public class BattleManager : MonoBehaviour
             while (turnManager.HasNextTurn() && BattleResult == BattleResultType.None)
             {
                 BattleUnit unit = turnManager.GetNextUnit();
-                if (unit == null || unit.IsDead)
+                if (unit == null || unit.IsDead || !IsUnitInBattle(unit))
                     continue;
 
                 CurrentActingUnit = unit;
@@ -238,17 +237,24 @@ public class BattleManager : MonoBehaviour
 
     public void RefreshAllUI()
     {
-        BattleUnit shownAlly = LastShownAllyUnit != null ? LastShownAllyUnit : GetDefaultShownAllyUnit();
-        BattleUnit shownEnemy = SelectedEnemyInfoUnit != null ? SelectedEnemyInfoUnit : GetDefaultShownEnemyUnit();
+        BattleUnit shownAlly = IsUnitInBattle(LastShownAllyUnit) ? LastShownAllyUnit : GetDefaultShownAllyUnit();
+        BattleUnit shownEnemy = IsUnitInBattle(SelectedEnemyInfoUnit) ? SelectedEnemyInfoUnit : GetDefaultShownEnemyUnit();
+        BattleUnit actionOwner = CurrentActingUnit != null && CurrentActingUnit.Team == TeamType.Ally && IsUnitInBattle(CurrentActingUnit)
+            ? CurrentActingUnit
+            : shownAlly;
+        bool canPlayerAct = CurrentState == TurnState.PlayerInput &&
+                            CurrentActingUnit != null &&
+                            CurrentActingUnit.Team == TeamType.Ally &&
+                            IsUnitInBattle(CurrentActingUnit);
+
+        LastShownAllyUnit = shownAlly;
+        SelectedEnemyInfoUnit = shownEnemy;
 
         if (uiController != null)
         {
             uiController.RefreshCurrentUnitPanel(shownAlly);
             uiController.RefreshEnemyPanels(shownEnemy);
-            uiController.RefreshActionButtons(
-                CurrentActingUnit != null && CurrentActingUnit.Team == TeamType.Ally ? CurrentActingUnit : shownAlly,
-                CurrentState == TurnState.PlayerInput && CurrentActingUnit != null && CurrentActingUnit.Team == TeamType.Ally
-            );
+            uiController.RefreshActionButtons(actionOwner, canPlayerAct);
             uiController.RefreshInventory(this, allyPartyDefinition, SelectedInventoryIndex);
             uiController.SetBottomContext(bottomContextType);
         }
@@ -271,8 +277,11 @@ public class BattleManager : MonoBehaviour
             yield return StartCoroutine(viewManager.AnimateRefreshAllPositions(allyFormation, enemyFormation, moveAnimationDuration));
         }
 
-        if (SelectedEnemyInfoUnit != null && SelectedEnemyInfoUnit.IsDead)
+        if (!IsUnitInBattle(SelectedEnemyInfoUnit))
             SelectedEnemyInfoUnit = GetDefaultShownEnemyUnit();
+
+        if (!IsUnitInBattle(LastShownAllyUnit))
+            LastShownAllyUnit = GetDefaultShownAllyUnit();
     }
 
     private void RemoveDeadViews()
@@ -308,6 +317,7 @@ public class BattleManager : MonoBehaviour
         {
             uiController.HideTargetPreview();
             uiController.HideSkillTooltip();
+            uiController.HideFleeTooltip();
         }
 
         ClearUISelection();
@@ -320,6 +330,37 @@ public class BattleManager : MonoBehaviour
             waitingForPlayerAction = false;
             CurrentState = TurnState.TurnEnding;
         }
+    }
+
+    public void NotifyUnitLeftBattle(BattleUnit unit)
+    {
+        if (unit == null)
+            return;
+
+        ClearTargetMarkers();
+
+        if (LastShownAllyUnit == unit)
+            LastShownAllyUnit = GetDefaultShownAllyUnit();
+
+        if (SelectedEnemyInfoUnit == unit)
+            SelectedEnemyInfoUnit = GetDefaultShownEnemyUnit();
+
+        if (uiController != null)
+        {
+            uiController.HideTargetPreview();
+            uiController.HideSkillTooltip();
+            uiController.HideEnemySkillTooltip();
+            uiController.HideFleeTooltip();
+        }
+    }
+
+    public bool IsUnitInBattle(BattleUnit unit)
+    {
+        if (unit == null)
+            return false;
+
+        return (allyFormation != null && allyFormation.Contains(unit)) ||
+               (enemyFormation != null && enemyFormation.Contains(unit));
     }
 
     private void CheckBattleResult()
@@ -384,6 +425,11 @@ public class BattleManager : MonoBehaviour
         inputController.HandleMovePressed();
     }
 
+    public void OnFleeButtonPressed()
+    {
+        inputController.HandleFleePressed();
+    }
+
     public void OnCancelButtonPressed()
     {
         inputController.CancelCurrentInput();
@@ -441,6 +487,21 @@ public class BattleManager : MonoBehaviour
     {
         if (uiController != null)
             uiController.HideSkillTooltip();
+    }
+
+    public void OnFleeButtonHoverEnter(Vector3 screenPosition)
+    {
+        if (uiController == null || CurrentState != TurnState.PlayerInput || CurrentActingUnit == null || CurrentActingUnit.Team != TeamType.Ally)
+            return;
+
+        int fleeChancePercent = BattleCalculator.CalculateFleeChancePercent(CurrentActingUnit, enemyFormation);
+        uiController.ShowFleeTooltip(fleeChancePercent, screenPosition);
+    }
+
+    public void OnFleeButtonHoverExit()
+    {
+        if (uiController != null)
+            uiController.HideFleeTooltip();
     }
 
     public void OnEnemySkillHoverEnter(int slotIndex, Vector3 screenPosition)

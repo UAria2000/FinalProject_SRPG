@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
-public class TargetPreviewHoverUI : MonoBehaviour
+public class TargetPreviewHoverUI : HoverPopupUIBase
 {
     [SerializeField] private GameObject root;
     [SerializeField] private TMP_Text hitChanceText;
@@ -12,7 +12,6 @@ public class TargetPreviewHoverUI : MonoBehaviour
     [SerializeField] private StatusChanceEntryUI statusEntryPrefab;
 
     private readonly List<StatusChanceEntryUI> spawnedEntries = new List<StatusChanceEntryUI>();
-    private readonly Vector2 screenOffset = new Vector2(120f, -50f);
 
     public void Show(TargetPreviewData data, Vector2 pointerScreenPosition)
     {
@@ -22,13 +21,7 @@ public class TargetPreviewHoverUI : MonoBehaviour
             return;
         }
 
-        if (root != null)
-        {
-            root.SetActive(true);
-            RectTransform rt = root.transform as RectTransform;
-            if (rt != null)
-                rt.position = pointerScreenPosition + screenOffset;
-        }
+        ShowRootAt(root, pointerScreenPosition);
 
         if (hitChanceText != null)
         {
@@ -56,8 +49,7 @@ public class TargetPreviewHoverUI : MonoBehaviour
 
     public void Hide()
     {
-        if (root != null)
-            root.SetActive(false);
+        HideRoot(root);
     }
 
     private void RefreshStatuses(List<StatusChancePreviewData> statuses)

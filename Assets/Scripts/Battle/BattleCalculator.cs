@@ -153,6 +153,36 @@ public static class BattleCalculator
         return data;
     }
 
+
+    public static int CalculateFleeChancePercent(BattleUnit actor, BattleFormation enemyFormation)
+    {
+        if (actor == null)
+            return 0;
+
+        int evadePercent = Mathf.RoundToInt(actor.AC);
+        float averageEnemySpeed = CalculateAverageSpeed(enemyFormation);
+        bool isFastEnough = actor.SPD >= averageEnemySpeed;
+
+        int chance = evadePercent + (isFastEnough ? 25 : 0);
+        return Mathf.Clamp(chance, 0, 100);
+    }
+
+    public static float CalculateAverageSpeed(BattleFormation formation)
+    {
+        if (formation == null)
+            return 0f;
+
+        List<BattleUnit> units = formation.GetAliveUnits();
+        if (units == null || units.Count <= 0)
+            return 0f;
+
+        float total = 0f;
+        for (int i = 0; i < units.Count; i++)
+            total += units[i].SPD;
+
+        return total / units.Count;
+    }
+
     public static int CalculateEffectSuccessChance(BattleEffectBlock block, BattleUnit target)
     {
         if (block == null)

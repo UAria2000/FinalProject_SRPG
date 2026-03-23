@@ -176,6 +176,38 @@ public class BattleActionController : MonoBehaviour
         battleManager.OnActionExecutionFinished(item.consumeTurnOnUse);
     }
 
+    public IEnumerator ExecuteFlee(BattleUnit actor)
+    {
+        if (actor == null)
+        {
+            battleManager.OnActionExecutionFinished(true);
+            yield break;
+        }
+
+        battleManager.SetTurnState(TurnState.ExecutingAction);
+
+        BattleFormation ownFormation = actor.Team == TeamType.Ally
+            ? battleManager.AllyFormation
+            : battleManager.EnemyFormation;
+
+        int fleeChancePercent = BattleCalculator.CalculateFleeChancePercent(actor, battleManager.EnemyFormation);
+        bool success = Random.Range(0f, 100f) < fleeChancePercent;
+
+        if (success)
+        {
+            logController.AppendBattleLog(logController.BuildFleeSuccessLog(actor, fleeChancePercent));
+            ownFormation.RemoveUnit(actor);
+            battleManager.NotifyUnitLeftBattle(actor);
+            yield return StartCoroutine(battleManager.HandleDeathsAndCompressionRoutine());
+        }
+        else
+        {
+            logController.AppendBattleLog(logController.BuildFleeFailureLog(actor, fleeChancePercent));
+        }
+
+        battleManager.OnActionExecutionFinished(true);
+    }
+
     private void ApplyItemEffects(BattleUnit actor, BattleUnit target, ItemDefinition item)
     {
         if (item == null || item.effects == null)
@@ -251,8 +283,8 @@ public class BattleActionController : MonoBehaviour
             case BattleEffectKind.Shield:
                 {
                     int amount = block.flatValue > 0 ? block.flatValue : Mathf.FloorToInt(actor.DMG * (block.powerPercent * 0.01f));
-                    int shield = target.AddShield(amount);
-                    logController.AppendBattleLog(logController.BuildShieldLog(actor, target, sourceName, shield));
+                    target.AddShield(amount);
+                    logController.AppendBattleLog(logController.BuildShieldLog(actor, target, sourceName, amount));
                     break;
                 }
             case BattleEffectKind.ApplyStatus:
@@ -265,21 +297,6 @@ public class BattleActionController : MonoBehaviour
                 {
                     target.RemoveStatus(block.statusType);
                     logController.AppendBattleLog(logController.BuildEffectSuccessLog(actor, target, sourceName, block.statusType.ToString() + " 해제"));
-                    break;
-                }
-            case BattleEffectKind.Buff:
-            case BattleEffectKind.Debuff:
-                {
-                    logController.AppendBattleLog(logController.BuildEffectSuccessLog(actor, target, sourceName, block.kind.ToString()));
-                    break;
-                }
-            case BattleEffectKind.Damage:
-                {
-                    int amount = block.flatValue > 0 ? block.flatValue : Mathf.FloorToInt(actor.DMG * (block.powerPercent * 0.01f));
-                    target.ApplyDamage(amount);
-                    logController.AppendBattleLog(string.Format("{0}의 {1} → {2}: {3}", actor.Name, sourceName, target.Name, amount));
-                    if (target.IsDead)
-                        logController.AppendBattleLog(logController.BuildDeathLog(target));
                     break;
                 }
         }
