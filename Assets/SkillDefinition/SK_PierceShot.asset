@@ -34,7 +34,7 @@ MonoBehaviour:
   allowCrit: 1
   allowGraze: 1
   secondaryTargetRule: 1
-  secondaryAccuracyCoefficientPercent: 100
+  secondaryAccuracyCoefficientPercent: 90
   secondaryDamagePercent: 50
   secondaryApplyNonDamageEffects: 0
   effects:

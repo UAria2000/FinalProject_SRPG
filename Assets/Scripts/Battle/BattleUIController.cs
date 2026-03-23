@@ -192,16 +192,16 @@ public class BattleUIController : MonoBehaviour
                 actionButtons[i].interactable = interactable && hasSkill && unit.CanUseSkill(skill);
         }
 
-        bool moveInteractable = interactable && battleManager != null && battleManager.InputMode == BattleInputMode.WaitingForAction;
-
         if (moveButton != null)
-            moveButton.interactable = moveInteractable;
+            moveButton.interactable = interactable && battleManager != null && battleManager.InputMode == BattleInputMode.WaitingForAction;
 
-        // 인벤토리는 UI 토글이므로 항상 열 수 있게
         if (inventoryButton != null)
             inventoryButton.interactable = true;
 
-        RefreshCancelButtonState();
+        if (cancelButton != null)
+            cancelButton.interactable = battleManager != null &&
+                                        battleManager.CurrentState == TurnState.PlayerInput &&
+                                        battleManager.InputMode != BattleInputMode.WaitingForAction;
     }
 
     public void RefreshInventory(BattleManager manager, PartyDefinition allyParty, int selectedIndex)

@@ -31,19 +31,19 @@ public class EnemyAIController : MonoBehaviour
         actionController = manager != null ? manager.ActionController : null;
     }
 
-    public IEnumerator ExecuteTurn(BattleUnit attacker)
+    public IEnumerator ExecuteTurn(BattleUnit actor)
     {
-        if (battleManager == null || actionController == null || attacker == null || attacker.IsDead)
+        if (battleManager == null || actionController == null || actor == null || actor.IsDead)
             yield break;
 
         yield return new WaitForSeconds(thinkDelay);
 
-        List<AiCandidate> candidates = BuildCandidates(attacker);
+        List<AiCandidate> candidates = BuildCandidates(actor);
 
         if (candidates.Count <= 0)
         {
             if (debugLog)
-                Debug.Log($"[EnemyAI] {attacker.Name} has no valid action.");
+                Debug.Log($"[EnemyAI] {actor.Name} has no valid action.");
             battleManager.OnActionExecutionFinished(true);
             yield break;
         }
@@ -51,44 +51,40 @@ public class EnemyAIController : MonoBehaviour
         AiCandidate best = ChooseBestCandidate(candidates);
 
         if (debugLog)
-            Debug.Log($"[EnemyAI] {attacker.Name} -> {best.debugText}");
+            Debug.Log($"[EnemyAI] {actor.Name} -> {best.debugText}");
 
         if (best.isMove)
-        {
-            yield return StartCoroutine(actionController.ExecuteMove(attacker, best.target));
-        }
+            yield return StartCoroutine(actionController.ExecuteMove(actor, best.target));
         else
-        {
-            yield return StartCoroutine(actionController.ExecuteSkill(attacker, best.skill, best.target));
-        }
+            yield return StartCoroutine(actionController.ExecuteSkill(actor, best.skill, best.target));
     }
 
-    private List<AiCandidate> BuildCandidates(BattleUnit attacker)
+    private List<AiCandidate> BuildCandidates(BattleUnit actor)
     {
-        List<AiCandidate> attackSkillCandidates = new List<AiCandidate>();
-        List<AiCandidate> utilitySkillCandidates = new List<AiCandidate>();
-        List<AiCandidate> basicAttackCandidates = new List<AiCandidate>();
+        List<AiCandidate> attackSkills = new List<AiCandidate>();
+        List<AiCandidate> utilitySkills = new List<AiCandidate>();
+        List<AiCandidate> basicAttacks = new List<AiCandidate>();
         List<AiCandidate> moveCandidates = new List<AiCandidate>();
 
-        BattleFormation ownFormation = attacker.Team == TeamType.Ally
+        BattleFormation ownFormation = actor.Team == TeamType.Ally
             ? battleManager.AllyFormation
             : battleManager.EnemyFormation;
 
-        BattleFormation opponentFormation = attacker.Team == TeamType.Ally
+        BattleFormation opponentFormation = actor.Team == TeamType.Ally
             ? battleManager.EnemyFormation
             : battleManager.AllyFormation;
 
-        for (int slot = 0; slot < attacker.GetActionSkillSlotCount(); slot++)
+        for (int slot = 0; slot < actor.GetActionSkillSlotCount(); slot++)
         {
-            SkillDefinition skill = attacker.GetActionSkillAt(slot);
+            SkillDefinition skill = actor.GetActionSkillAt(slot);
             if (skill == null)
                 continue;
 
-            if (!attacker.CanUseSkill(skill))
+            if (!actor.CanUseSkill(skill))
                 continue;
 
             List<BattleUnit> validTargets = BattleTargeting.GetValidSkillTargets(
-                attacker,
+                actor,
                 skill,
                 ownFormation,
                 opponentFormation);
@@ -101,8 +97,8 @@ public class EnemyAIController : MonoBehaviour
                 BattleUnit target = ChooseLowestHpTarget(validTargets);
                 if (target != null)
                 {
-                    float score = ScoreAttack(attacker, target, skill);
-                    basicAttackCandidates.Add(new AiCandidate
+                    float score = ScoreAttack(actor, target, skill);
+                    basicAttacks.Add(new AiCandidate
                     {
                         priority = PRIORITY_BASIC_ATTACK,
                         score = score,
@@ -112,7 +108,6 @@ public class EnemyAIController : MonoBehaviour
                         debugText = $"Basic [{skill.skillName}] -> {target.Name} score={score:0.##}"
                     });
                 }
-
                 continue;
             }
 
@@ -121,50 +116,50 @@ public class EnemyAIController : MonoBehaviour
                 BattleUnit target = ChooseLowestHpTarget(validTargets);
                 if (target != null)
                 {
-                    float score = ScoreAttack(attacker, target, skill);
-                    attackSkillCandidates.Add(new AiCandidate
+                    float score = ScoreAttack(actor, target, skill);
+                    attackSkills.Add(new AiCandidate
                     {
                         priority = PRIORITY_ATTACK_SKILL,
                         score = score,
                         skill = skill,
                         target = target,
                         isMove = false,
-                        debugText = $"AttackSkill [{skill.skillName}] -> {target.Name} score={score:0.##}"
+                        debugText = $"Attack [{skill.skillName}] -> {target.Name} score={score:0.##}"
                     });
                 }
             }
             else
             {
-                BattleUnit target = ChooseUtilityTarget(attacker, skill, validTargets);
+                BattleUnit target = ChooseUtilityTarget(skill, validTargets);
                 if (target != null)
                 {
-                    float score = ScoreUtility(attacker, target, skill);
-                    utilitySkillCandidates.Add(new AiCandidate
+                    float score = ScoreUtility(target, skill);
+                    utilitySkills.Add(new AiCandidate
                     {
                         priority = PRIORITY_UTILITY_SKILL,
                         score = score,
                         skill = skill,
                         target = target,
                         isMove = false,
-                        debugText = $"UtilitySkill [{skill.skillName}] -> {target.Name} score={score:0.##}"
+                        debugText = $"Utility [{skill.skillName}] -> {target.Name} score={score:0.##}"
                     });
                 }
             }
         }
 
-        if (attackSkillCandidates.Count > 0)
-            return attackSkillCandidates;
+        if (attackSkills.Count > 0)
+            return attackSkills;
 
-        if (utilitySkillCandidates.Count > 0)
-            return utilitySkillCandidates;
+        if (utilitySkills.Count > 0)
+            return utilitySkills;
 
-        if (basicAttackCandidates.Count > 0)
-            return basicAttackCandidates;
+        if (basicAttacks.Count > 0)
+            return basicAttacks;
 
-        List<BattleUnit> movableTargets = BattleTargeting.GetMovableTargets(attacker, ownFormation);
+        List<BattleUnit> movableTargets = BattleTargeting.GetMovableTargets(actor, ownFormation);
         if (movableTargets != null && movableTargets.Count > 0)
         {
-            BattleUnit moveTarget = ChooseMoveTarget(attacker, movableTargets);
+            BattleUnit moveTarget = ChooseMoveTarget(actor, movableTargets);
             if (moveTarget != null)
             {
                 moveCandidates.Add(new AiCandidate
@@ -186,31 +181,23 @@ public class EnemyAIController : MonoBehaviour
     {
         int bestPriority = int.MinValue;
         for (int i = 0; i < candidates.Count; i++)
-        {
             if (candidates[i].priority > bestPriority)
                 bestPriority = candidates[i].priority;
-        }
 
         List<AiCandidate> samePriority = new List<AiCandidate>();
         for (int i = 0; i < candidates.Count; i++)
-        {
             if (candidates[i].priority == bestPriority)
                 samePriority.Add(candidates[i]);
-        }
 
         float bestScore = float.MinValue;
         for (int i = 0; i < samePriority.Count; i++)
-        {
             if (samePriority[i].score > bestScore)
                 bestScore = samePriority[i].score;
-        }
 
         List<AiCandidate> bestCandidates = new List<AiCandidate>();
         for (int i = 0; i < samePriority.Count; i++)
-        {
             if (Mathf.Abs(samePriority[i].score - bestScore) < 0.01f)
                 bestCandidates.Add(samePriority[i]);
-        }
 
         return bestCandidates[Random.Range(0, bestCandidates.Count)];
     }
@@ -240,7 +227,7 @@ public class EnemyAIController : MonoBehaviour
         return best;
     }
 
-    private BattleUnit ChooseUtilityTarget(BattleUnit attacker, SkillDefinition skill, List<BattleUnit> validTargets)
+    private BattleUnit ChooseUtilityTarget(SkillDefinition skill, List<BattleUnit> validTargets)
     {
         bool hasShield = HasEffectKind(skill, BattleEffectKind.Shield);
         bool hasHeal = HasEffectKind(skill, BattleEffectKind.Heal);
@@ -308,13 +295,13 @@ public class EnemyAIController : MonoBehaviour
         return validTargets[0];
     }
 
-    private BattleUnit ChooseMoveTarget(BattleUnit attacker, List<BattleUnit> movableTargets)
+    private BattleUnit ChooseMoveTarget(BattleUnit actor, List<BattleUnit> movableTargets)
     {
         if (movableTargets == null || movableTargets.Count == 0)
             return null;
 
-        int preferredDirection = GetPreferredMoveDirection(attacker);
-        int preferredSlot = attacker.SlotIndex + preferredDirection;
+        int preferredDirection = GetPreferredMoveDirection(actor);
+        int preferredSlot = actor.SlotIndex + preferredDirection;
 
         if (preferredDirection != 0)
         {
@@ -323,28 +310,6 @@ public class EnemyAIController : MonoBehaviour
                 if (movableTargets[i] != null && movableTargets[i].SlotIndex == preferredSlot)
                     return movableTargets[i];
             }
-        }
-
-        if (attacker.RangeType == CharacterRangeType.Melee)
-        {
-            BattleUnit best = movableTargets[0];
-            for (int i = 1; i < movableTargets.Count; i++)
-            {
-                if (movableTargets[i].SlotIndex < best.SlotIndex)
-                    best = movableTargets[i];
-            }
-            return best;
-        }
-
-        if (attacker.RangeType == CharacterRangeType.Ranged)
-        {
-            BattleUnit best = movableTargets[0];
-            for (int i = 1; i < movableTargets.Count; i++)
-            {
-                if (movableTargets[i].SlotIndex > best.SlotIndex)
-                    best = movableTargets[i];
-            }
-            return best;
         }
 
         return movableTargets[0];
@@ -386,7 +351,7 @@ public class EnemyAIController : MonoBehaviour
         return expectedDamage;
     }
 
-    private float ScoreUtility(BattleUnit attacker, BattleUnit target, SkillDefinition skill)
+    private float ScoreUtility(BattleUnit target, SkillDefinition skill)
     {
         float score = 100f;
 

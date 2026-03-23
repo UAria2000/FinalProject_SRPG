@@ -188,26 +188,31 @@ public class BattleManager : MonoBehaviour
                 SelectedInventoryIndex = -1;
                 SelectedSkillSlotIndex = -1;
 
+                if (CurrentActingUnit.Team == TeamType.Ally)
+                {
+                    CurrentState = TurnState.PlayerInput;
+                    waitingForPlayerAction = true;
+                }
+                else
+                {
+                    CurrentState = TurnState.EnemyThinking;
+                }
+
                 if (viewManager != null)
                 {
                     viewManager.ClearAllMarkers();
                     viewManager.SetTurnMarker(CurrentActingUnit);
                 }
 
-                ClearUISelection();
                 RefreshAllUI();
 
                 if (CurrentActingUnit.Team == TeamType.Ally)
                 {
-                    CurrentState = TurnState.PlayerInput;
-                    waitingForPlayerAction = true;
-
                     while (waitingForPlayerAction && BattleResult == BattleResultType.None)
                         yield return null;
                 }
                 else
                 {
-                    CurrentState = TurnState.EnemyThinking;
                     yield return StartCoroutine(enemyAIController.ExecuteTurn(CurrentActingUnit));
                 }
 
