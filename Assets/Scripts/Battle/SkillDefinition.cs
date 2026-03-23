@@ -1,33 +1,5 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
-
-[Flags]
-public enum SkillTag
-{
-    None = 0,
-    Active = 1 << 0,
-    Passive = 1 << 1,
-    Buff = 1 << 2,
-    Common = 1 << 3,
-    Unique = 1 << 4,
-    Melee = 1 << 5,
-    Mid = 1 << 6,
-    Ranged = 1 << 7
-}
-
-public enum SkillEffectType
-{
-    MultiHitSingleTarget,   // ¿¬¼ÓÅ¸°Ý °°Àº ´ÜÀÏ ´ë»ó ´Ù´ÜÈ÷Æ®
-    FrontAndBackShot        // °üÅë¼¦ °°Àº ¾Õ´ë»ó + µÚ´ë»ó
-}
-
-public enum SkillTargetTeam
-{
-    Enemy,
-    Ally,
-    Self
-}
 
 [CreateAssetMenu(menuName = "Battle/Skill Definition")]
 public class SkillDefinition : ScriptableObject
@@ -38,105 +10,84 @@ public class SkillDefinition : ScriptableObject
     [TextArea(2, 5)] public string description;
     public Sprite icon;
 
-    [Header("Tags")]
-    public SkillTag tags = SkillTag.Active;
+    [Header("Identity")]
+    public bool isBasicAttack = false;
+    public SkillCastType castType = SkillCastType.Active;
+    public ActiveSkillRole activeRole = ActiveSkillRole.Attack;
+    public SkillLearnTag learnTags = SkillLearnTag.None;
+    public CharacterRangeType rangeTag = CharacterRangeType.Melee;
 
-    [Header("Availability")]
-    [Tooltip("»ç¿ë °¡´É ½ÃÀÛ À§Ä¡ (0=1¿­, 3=4¿­)")]
+    [Header("Targeting")]
     [Range(0, 3)] public int usableMinSlotIndex = 0;
-
-    [Tooltip("»ç¿ë °¡´É ¸¶Áö¸· À§Ä¡ (0=1¿­, 3=4¿­)")]
     [Range(0, 3)] public int usableMaxSlotIndex = 3;
-
-    [Tooltip("¼±ÅÃ °¡´ÉÇÑ ´ë»ó ½ÃÀÛ À§Ä¡ (0=1¿­, 3=4¿­)")]
     [Range(0, 3)] public int targetMinSlotIndex = 0;
-
-    [Tooltip("¼±ÅÃ °¡´ÉÇÑ ´ë»ó ¸¶Áö¸· À§Ä¡ (0=1¿­, 3=4¿­)")]
     [Range(0, 3)] public int targetMaxSlotIndex = 3;
-
     public SkillTargetTeam targetTeam = SkillTargetTeam.Enemy;
+    public TargetScope targetScope = TargetScope.Single;
 
-    [Header("Core")]
-    public SkillEffectType effectType;
+    [Header("Resolution")]
+    public SkillResolutionMode resolutionMode = SkillResolutionMode.Attack;
     [Min(0)] public int cooldownTurns = 0;
+    [Tooltip("ê³µê²© íŒì •í˜• ìŠ¤í‚¬ ì „ìš©. 100 = ê¸°ë³¸, 80 = ë‚®ìŒ, 120 = ë†’ìŒ")]
+    [Range(0f, 300f)] public float accuracyCoefficientPercent = 100f;
+    public bool allowCrit = true;
+    public bool allowGraze = true;
 
-    [Tooltip("ÆòÅ¸ ÃÖÁ¾ ¸íÁß ±¸°£¿¡ °öÇÏ´Â ¹èÀ². ¿¹: 0.9 = 90%")]
-    [Range(0f, 2f)] public float accuracyMultiplier = 1f;
+    [Header("Effects")]
+    public List<BattleEffectBlock> effects = new List<BattleEffectBlock>();
 
-    [Header("Damage")]
-    [Tooltip("ÁÖ ´ë»ó ÇÇÇØ °è¼ö. 1.0 = DMGÀÇ 100%")]
-    [Min(0f)] public float primaryDamageMultiplier = 1f;
-
-    [Tooltip("º¸Á¶ ´ë»ó ÇÇÇØ °è¼ö. ¿¹: °üÅë¼¦ÀÇ µÚ´ë»ó 0.5")]
-    [Min(0f)] public float secondaryDamageMultiplier = 0f;
-
-    [Tooltip("´ÜÀÏ ´ë»ó ¹Ýº¹ Å¸°Ý È½¼ö. ¿¹: ¿¬¼ÓÅ¸°Ý 2È¸")]
-    [Min(1)] public int hitCount = 1;
-
-    [Header("Tooltip Display")]
-    [Tooltip("ÅøÆÁ¿¡ Ç¥½ÃÇÒ ¸íÁß·ü ¼öÄ¡ ¹èÀ². ¿¹: 0.9 -> 900 Ç¥±â")]
-    [Min(1)] public int tooltipAccuracyScale = 1000;
-
-    [Header("Restrictions")]
-    [Tooltip("ºñ¾î ÀÖÀ¸¸é ´©±¸³ª °¡´É. °ªÀÌ ÀÖÀ¸¸é ÇØ´ç unitName¸¸ °¡´É")]
-    public List<string> allowedUnitNames = new List<string>();
-
-    public bool HasTag(SkillTag tag)
+    public bool HasDamageEffect()
     {
-        return (tags & tag) != 0;
+        if (effects == null) return false;
+        for (int i = 0; i < effects.Count; i++)
+            if (effects[i] != null && effects[i].kind == BattleEffectKind.Damage)
+                return true;
+        return false;
     }
 
-    public bool CanBeUsedByUnit(BattleUnit unit)
+    public bool CanBeUsedFromSlot(int slotIndex)
     {
-        if (unit == null)
-            return false;
+        return slotIndex >= usableMinSlotIndex && slotIndex <= usableMaxSlotIndex;
+    }
 
-        int slot = unit.SlotIndex;
-        if (slot < usableMinSlotIndex || slot > usableMaxSlotIndex)
-            return false;
+    public bool CanTargetSlot(int slotIndex)
+    {
+        return slotIndex >= targetMinSlotIndex && slotIndex <= targetMaxSlotIndex;
+    }
 
-        if (allowedUnitNames != null && allowedUnitNames.Count > 0)
+    public bool IsEnemyTargetAttackSkill()
+    {
+        return castType == SkillCastType.Active &&
+               resolutionMode == SkillResolutionMode.Attack &&
+               targetTeam == SkillTargetTeam.Enemy &&
+               HasDamageEffect();
+    }
+
+    public bool ShouldShowTargetPreview()
+    {
+        return targetTeam == SkillTargetTeam.Enemy &&
+               castType == SkillCastType.Active;
+    }
+
+    public int GetPrimaryPowerPercent()
+    {
+        if (effects == null) return 100;
+        for (int i = 0; i < effects.Count; i++)
         {
-            string unitName = unit.Definition != null ? unit.Definition.unitName : "";
-            if (!allowedUnitNames.Contains(unitName))
-                return false;
+            BattleEffectBlock block = effects[i];
+            if (block != null && block.kind == BattleEffectKind.Damage)
+                return Mathf.RoundToInt(block.powerPercent);
         }
-
-        return true;
-    }
-
-    public bool CanTargetSlot(int targetSlotIndex)
-    {
-        return targetSlotIndex >= targetMinSlotIndex && targetSlotIndex <= targetMaxSlotIndex;
-    }
-
-    public int GetTooltipAccuracyValue()
-    {
-        return Mathf.RoundToInt(accuracyMultiplier * tooltipAccuracyScale);
+        return 100;
     }
 
     public string GetUsablePositionText()
     {
-        return $"{usableMinSlotIndex + 1}~{usableMaxSlotIndex + 1}¿­";
+        return string.Format("{0}~{1}", usableMinSlotIndex + 1, usableMaxSlotIndex + 1);
     }
 
     public string GetTargetPositionText()
     {
-        return $"{targetMinSlotIndex + 1}~{targetMaxSlotIndex + 1}¿­";
-    }
-
-    public string GetDamageText()
-    {
-        switch (effectType)
-        {
-            case SkillEffectType.MultiHitSingleTarget:
-                return $"DMGÀÇ {Mathf.RoundToInt(primaryDamageMultiplier * 100f)}% ¡¿ {hitCount}È¸";
-
-            case SkillEffectType.FrontAndBackShot:
-                return $"´ë»ó {Mathf.RoundToInt(primaryDamageMultiplier * 100f)}%, µÚ ´ë»ó {Mathf.RoundToInt(secondaryDamageMultiplier * 100f)}%";
-
-            default:
-                return "";
-        }
+        return string.Format("{0}~{1}", targetMinSlotIndex + 1, targetMaxSlotIndex + 1);
     }
 }

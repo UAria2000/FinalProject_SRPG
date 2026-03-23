@@ -4,44 +4,30 @@ using UnityEngine.UI;
 
 public class CurrentUnitInfoPanel : MonoBehaviour
 {
-    [Header("Root")]
-    [SerializeField] private GameObject panelRoot;
-
-    [Header("Basic Info")]
+    [SerializeField] private GameObject root;
     [SerializeField] private Image portraitImage;
-    [SerializeField] private TMP_Text nameText;
-    [SerializeField] private TMP_Text levelText;
-
-    [Header("Main Stats")]
-    [SerializeField] private TMP_Text hpText;
-    [SerializeField] private TMP_Text dmgText;
-    [SerializeField] private TMP_Text spdText;
-    [SerializeField] private TMP_Text hitText;
-    [SerializeField] private TMP_Text acText;
-    [SerializeField] private TMP_Text criText;
-    [SerializeField] private TMP_Text crdText;
-
-    [Header("Resistances")]
-    [SerializeField] private TMP_Text poisonResistText;
-    [SerializeField] private TMP_Text bleedResistText;
-    [SerializeField] private TMP_Text stunResistText;
-
-    [Header("Optional Actions")]
-    [SerializeField] private GameObject basicAttackRoot;
-    [SerializeField] private GameObject skillListRoot;
-    [SerializeField] private TMP_Text basicAttackText;
-    [SerializeField] private TMP_Text skillListText;
+    [SerializeField] private TMP_Text nameValueText;
+    [SerializeField] private TMP_Text currentLevelValueText;
+    [SerializeField] private TMP_Text originalLevelValueText;
+    [SerializeField] private TMP_Text hpValueText;
+    [SerializeField] private TMP_Text dmgValueText;
+    [SerializeField] private TMP_Text spdValueText;
+    [SerializeField] private TMP_Text hitValueText;
+    [SerializeField] private TMP_Text acValueText;
+    [SerializeField] private TMP_Text criValueText;
+    [SerializeField] private TMP_Text crdValueText;
+    [SerializeField] private TMP_Text poisonResistValueText;
+    [SerializeField] private TMP_Text bleedResistValueText;
+    [SerializeField] private TMP_Text stunResistValueText;
+    [SerializeField] private TMP_Text epitaphText;
 
     public void Show(BattleUnit unit)
     {
-        if (unit == null)
-        {
-            Hide();
-            return;
-        }
+        if (root != null)
+            root.SetActive(unit != null);
 
-        if (panelRoot != null)
-            panelRoot.SetActive(true);
+        if (unit == null)
+            return;
 
         if (portraitImage != null)
         {
@@ -49,61 +35,27 @@ public class CurrentUnitInfoPanel : MonoBehaviour
             portraitImage.color = unit.PortraitSprite != null ? Color.white : new Color(1f, 1f, 1f, 0f);
         }
 
-        if (nameText != null)
-            nameText.text = unit.Name;
+        UnitInstanceStatVariance variance = unit.GetVariance();
 
-        if (levelText != null)
-            levelText.text = unit.Level.ToString();
-
-        // 숫자만 표시
-        if (hpText != null)
-            hpText.text = $"{unit.CurrentHP}/{unit.MaxHP}";
-
-        if (dmgText != null)
-            dmgText.text = unit.DMG.ToString();
-
-        if (spdText != null)
-            spdText.text = unit.SPD.ToString();
-
-        // HIT / AC는 UI에서 10배 정수 표기
-        if (hitText != null)
-            hitText.text = Mathf.RoundToInt(unit.HIT * 10f).ToString();
-
-        if (acText != null)
-            acText.text = Mathf.RoundToInt(unit.AC * 10f).ToString();
-
-        if (criText != null)
-            criText.text = Mathf.RoundToInt(unit.CRI).ToString();
-
-        if (crdText != null)
-            crdText.text = Mathf.RoundToInt(unit.CRD).ToString();
-
-        if (poisonResistText != null)
-            poisonResistText.text = Mathf.RoundToInt(unit.PoisonResist).ToString();
-
-        if (bleedResistText != null)
-            bleedResistText.text = Mathf.RoundToInt(unit.BleedResist).ToString();
-
-        if (stunResistText != null)
-            stunResistText.text = Mathf.RoundToInt(unit.StunResist).ToString();
-
-        // 평타 / 스킬은 보류
-        if (basicAttackRoot != null)
-            basicAttackRoot.SetActive(false);
-
-        if (skillListRoot != null)
-            skillListRoot.SetActive(false);
-
-        if (basicAttackText != null)
-            basicAttackText.text = "";
-
-        if (skillListText != null)
-            skillListText.text = "";
+        if (nameValueText != null) nameValueText.text = unit.Name;
+        if (currentLevelValueText != null) currentLevelValueText.text = unit.CurrentLevel.ToString();
+        if (originalLevelValueText != null) originalLevelValueText.text = unit.OriginalLevel.ToString();
+        if (hpValueText != null) hpValueText.text = string.Format("{0}/{1}", unit.CurrentHP, unit.MaxHP);
+        if (dmgValueText != null) dmgValueText.text = BattleStatFormatter.FormatIntValueWithDelta(unit.DMG, variance.dmgDelta);
+        if (spdValueText != null) spdValueText.text = BattleStatFormatter.FormatIntValueWithDelta(unit.SPD, variance.spdDelta);
+        if (hitValueText != null) hitValueText.text = BattleStatFormatter.FormatScaledX10ValueWithDelta(unit.HIT, variance.hitDeltaX10);
+        if (acValueText != null) acValueText.text = BattleStatFormatter.FormatScaledX10ValueWithDelta(unit.AC, variance.acDeltaX10);
+        if (criValueText != null) criValueText.text = BattleStatFormatter.FormatIntValueWithDelta(unit.CRI, variance.criDelta);
+        if (crdValueText != null) crdValueText.text = BattleStatFormatter.FormatIntValueWithDelta(unit.CRD, variance.crdDelta);
+        if (poisonResistValueText != null) poisonResistValueText.text = BattleStatFormatter.FormatPercent(unit.PoisonResist);
+        if (bleedResistValueText != null) bleedResistValueText.text = BattleStatFormatter.FormatPercent(unit.BleedResist);
+        if (stunResistValueText != null) stunResistValueText.text = BattleStatFormatter.FormatPercent(unit.StunResist);
+        if (epitaphText != null) epitaphText.text = unit.Epitaph;
     }
 
     public void Hide()
     {
-        if (panelRoot != null)
-            panelRoot.SetActive(false);
+        if (root != null)
+            root.SetActive(false);
     }
 }

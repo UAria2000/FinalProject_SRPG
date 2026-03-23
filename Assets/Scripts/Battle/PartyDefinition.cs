@@ -4,14 +4,13 @@ using UnityEngine;
 [CreateAssetMenu(menuName = "Battle/Party Definition")]
 public class PartyDefinition : ScriptableObject
 {
-    [Header("Info")]
     public string partyName;
 
-    [Header("Members")]
-    [Tooltip("ÀüÅõ¿¡ Âü¿©ÇÒ ÆÄÆ¼ ¸â¹ö ¸ñ·Ï. ÃÖ¼Ò 1¸í, ÃÖ´ë 4¸í")]
+    [Tooltip("ì „íˆ¬ ì™¸ë¶€ì—ì„œ ì´ë¯¸ ì¤€ë¹„ëœ íŒŒí‹° ìƒíƒœ")]
     public List<PartyMemberData> members = new List<PartyMemberData>();
 
-    public int Count => members != null ? members.Count : 0;
+    [Tooltip("íŒŒí‹° ê³µìš© ì¸ë²¤í† ë¦¬. ì  íŒŒí‹°ëŠ” ë¹„ì›Œë‘ë©´ ëœë‹¤.")]
+    public List<InventoryStackData> inventory = new List<InventoryStackData>();
 
     public bool IsValidMemberCount()
     {
@@ -21,27 +20,21 @@ public class PartyDefinition : ScriptableObject
     public bool HasDuplicateSlotIndex()
     {
         if (members == null) return false;
-
-        HashSet<int> usedSlots = new HashSet<int>();
-
+        HashSet<int> used = new HashSet<int>();
         for (int i = 0; i < members.Count; i++)
         {
             PartyMemberData member = members[i];
             if (member == null) continue;
-
-            if (usedSlots.Contains(member.startSlotIndex))
+            if (used.Contains(member.startSlotIndex))
                 return true;
-
-            usedSlots.Add(member.startSlotIndex);
+            used.Add(member.startSlotIndex);
         }
-
         return false;
     }
 
     public bool HasNullDefinitions()
     {
         if (members == null) return true;
-
         for (int i = 0; i < members.Count; i++)
         {
             PartyMemberData member = members[i];
@@ -49,7 +42,6 @@ public class PartyDefinition : ScriptableObject
             if (member.unitDefinition == null) return true;
             if (member.unitViewDefinition == null) return true;
         }
-
         return false;
     }
 }

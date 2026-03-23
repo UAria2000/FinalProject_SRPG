@@ -87,6 +87,7 @@ GameObject:
   - component: {fileID: 2756938383939848985}
   - component: {fileID: 1639307678594046532}
   - component: {fileID: 5061461418041598090}
+  - component: {fileID: 2029231700425238281}
   m_Layer: 5
   m_Name: BattleUnitViewPrefab
   m_TagString: Untagged
@@ -170,9 +171,22 @@ MonoBehaviour:
   unitBodyImage: {fileID: 1639307678594046532}
   labelText: {fileID: 786223945827447407}
   hpFillImage: {fileID: 5386853862988639266}
-  currentTurnMarker: {fileID: 3137165275017152285}
-  targetMarker: {fileID: 5676488159608638109}
+  turnMark: {fileID: 3137165275017152285}
+  targetMark: {fileID: 5676488159608638109}
   highlightImage: {fileID: 0}
+  hoverAnchor: {fileID: 2175609556252713137}
+--- !u!114 &2029231700425238281
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 968995518294098561}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2c37f57f53ed4a54e80a05dd5da0b831, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BattleClickable
 --- !u!1 &2525814245629147571
 GameObject:
   m_ObjectHideFlags: 0

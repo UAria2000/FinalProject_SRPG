@@ -1,27 +1,29 @@
 using System.Collections.Generic;
-using UnityEngine;
 
 public class TurnManager
 {
-    private Queue<BattleUnit> turnQueue = new Queue<BattleUnit>();
+    private readonly Queue<BattleUnit> turnQueue = new Queue<BattleUnit>();
 
-    public void BuildTurnQueue(List<BattleUnit> allAliveUnits)
+    public void BuildTurnQueue(List<BattleUnit> aliveUnits)
     {
-        List<BattleUnit> sorted = new List<BattleUnit>(allAliveUnits);
-
-        sorted.Sort((a, b) =>
-        {
-            int speedCompare = b.SPD.CompareTo(a.SPD);
-            if (speedCompare != 0)
-                return speedCompare;
-
-            return Random.Range(0, 2) == 0 ? -1 : 1;
-        });
-
         turnQueue.Clear();
 
-        foreach (BattleUnit unit in sorted)
-            turnQueue.Enqueue(unit);
+        if (aliveUnits == null)
+            return;
+
+        aliveUnits.Sort(delegate (BattleUnit a, BattleUnit b)
+        {
+            int bySpd = b.SPD.CompareTo(a.SPD);
+            if (bySpd != 0) return bySpd;
+
+            if (a.Team != b.Team)
+                return a.Team == TeamType.Ally ? -1 : 1;
+
+            return a.SlotIndex.CompareTo(b.SlotIndex);
+        });
+
+        for (int i = 0; i < aliveUnits.Count; i++)
+            turnQueue.Enqueue(aliveUnits[i]);
     }
 
     public bool HasNextTurn()
@@ -31,13 +33,8 @@ public class TurnManager
 
     public BattleUnit GetNextUnit()
     {
-        while (turnQueue.Count > 0)
-        {
-            BattleUnit unit = turnQueue.Dequeue();
-            if (unit != null && !unit.IsDead)
-                return unit;
-        }
-
-        return null;
+        if (turnQueue.Count <= 0)
+            return null;
+        return turnQueue.Dequeue();
     }
 }

@@ -5,37 +5,33 @@ using UnityEngine;
 [Serializable]
 public class PartyMemberData
 {
-    [Header("Unit Data")]
+    [Header("Unit")]
     public UnitDefinition unitDefinition;
-
-    [Header("View Data")]
     public UnitViewDefinition unitViewDefinition;
 
     [Header("Formation")]
-    [Tooltip("시작 슬롯 번호. 0=앞열, 3=뒷열")]
-    [Range(0, 3)]
-    public int startSlotIndex = 0;
+    [Range(0, 3)] public int startSlotIndex = 0;
 
-    [Header("Instance Identity")]
-    [Tooltip("비워두면 unitDefinition.unitName을 사용")]
+    [Header("Identity")]
+    public string instanceId;
     public string instanceDisplayNameOverride;
-    [TextArea(2, 5)]
-    public string fixedEpitaph;
+    [TextArea(2, 5)] public string fixedEpitaph;
 
-    [Header("Instance Stats Override")]
-    public bool useInstanceStatOverride = false;
-    public int maxHPOverride;
-    public int dmgOverride;
-    public int spdOverride;
-    public float hitOverride;
-    public float acOverride;
-    public float criOverride;
-    public float crdOverride;
-    public float poisonResistOverride;
-    public float bleedResistOverride;
-    public float stunResistOverride;
+    [Header("Level")]
+    public int currentLevel = 1;
+    public int originalLevel = 1;
 
-    [Header("Instance Skills")]
-    [Tooltip("비어 있으면 UnitDefinition.defaultSkills 사용")]
-    public List<SkillDefinition> equippedSkills = new List<SkillDefinition>();
+    [Header("Fixed Runtime Data")]
+    public UnitInstanceStatVariance statVariance = new UnitInstanceStatVariance();
+
+    [Tooltip("평타 제외, 최대 3개. 전투 외부에서 이미 결정된 상태를 넣는다.")]
+    public List<SkillDefinition> learnedSkills = new List<SkillDefinition>();
+
+    public string GetDisplayName()
+    {
+        if (!string.IsNullOrEmpty(instanceDisplayNameOverride))
+            return instanceDisplayNameOverride;
+
+        return unitDefinition != null ? unitDefinition.unitName : "Unit";
+    }
 }

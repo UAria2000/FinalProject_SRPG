@@ -5,183 +5,111 @@ using UnityEngine.UI;
 
 public class BattleLogController : MonoBehaviour
 {
-    [Header("Battle Log UI")]
-    [SerializeField] private TMP_Text battleLogText;
-
-    [Header("Popup Log UI")]
+    [SerializeField] private TMP_Text recentLogText;
     [SerializeField] private TMP_Text popupLogText;
     [SerializeField] private ScrollRect popupLogScrollRect;
 
-    [Header("Colors")]
-    [SerializeField] private string unitNameColor = "#817F7F";
-    [SerializeField] private string defaultTextColor = "#FFFFFF";
-    [SerializeField] private string damageColor = "#DA7332";
-    [SerializeField] private string healColor = "#0EE01C";
-    [SerializeField] private string buffColor = "#4D4D4D";
-    [SerializeField] private string turnColor = "#FFD966";
-
-    private string latestBattleLog = "";
-    private readonly List<string> fullBattleLogs = new List<string>();
-
-    public string LatestBattleLog => latestBattleLog;
-    public IReadOnlyList<string> FullBattleLogs => fullBattleLogs;
+    private readonly List<BattleLogEntry> entries = new List<BattleLogEntry>();
 
     public void ClearBattleLog()
     {
-        latestBattleLog = "";
-        fullBattleLogs.Clear();
-        RefreshBattleLogUI();
-        RefreshPopupBattleLogUI();
+        entries.Clear();
+        Refresh();
     }
 
-    public void AppendBattleLog(string message)
+    public void AppendBattleLog(string text)
     {
-        if (string.IsNullOrEmpty(message))
+        if (string.IsNullOrEmpty(text))
             return;
 
-        latestBattleLog = message;
-        fullBattleLogs.Add(message);
-
-        RefreshBattleLogUI();
-        RefreshPopupBattleLogUI();
+        BattleLogEntry entry = new BattleLogEntry();
+        entry.text = text;
+        entries.Add(entry);
+        Refresh();
     }
 
-    public void RefreshBattleLogUI()
+    public void Refresh()
     {
-        if (battleLogText != null)
-            battleLogText.text = latestBattleLog;
-    }
+        if (recentLogText != null)
+            recentLogText.text = entries.Count > 0 ? entries[entries.Count - 1].text : string.Empty;
 
-    public void RefreshPopupBattleLogUI()
-    {
         if (popupLogText != null)
-            popupLogText.text = string.Join("\n", fullBattleLogs);
+        {
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            for (int i = 0; i < entries.Count; i++)
+            {
+                if (i > 0) sb.Append('\n');
+                sb.Append(entries[i].text);
+            }
+            popupLogText.text = sb.ToString();
+        }
 
         Canvas.ForceUpdateCanvases();
-
         if (popupLogScrollRect != null)
             popupLogScrollRect.verticalNormalizedPosition = 0f;
     }
 
-    public string FormatTurnLog(int round)
+    public string BuildTurnStartLog(int round)
     {
-        return $"<color={turnColor}>Turn{round}</color>";
+        return string.Format("<color=#FFD966>Turn {0}</color>", round);
     }
 
-    public string FormatUnitName(string unitName)
+    public string BuildAttackLog(BattleUnit attacker, BattleUnit target, SkillDefinition skill, AttackResult result)
     {
-        return $"<color={unitNameColor}>{unitName}</color>";
+        string skillName = skill != null ? skill.skillName : "Í≥µÍ≤©";
+
+        if (result.ResultType == AttackResultType.Miss)
+            return string.Format("{0}Ïùò {1} ‚Üí {2}: ÎπóÎÇòÍ∞ê", attacker.Name, skillName, target.Name);
+        if (result.ResultType == AttackResultType.Graze)
+            return string.Format("{0}Ïùò {1} ‚Üí {2}: Ïä§Ïπ® {3}", attacker.Name, skillName, target.Name, result.Damage);
+        if (result.ResultType == AttackResultType.Crit)
+            return string.Format("{0}Ïùò {1} ‚Üí {2}: ÏπòÎ™Ö {3}", attacker.Name, skillName, target.Name, result.Damage);
+
+        return string.Format("{0}Ïùò {1} ‚Üí {2}: {3}", attacker.Name, skillName, target.Name, result.Damage);
     }
 
-    public string FormatDefaultText(string text)
+    public string BuildEffectSuccessLog(BattleUnit user, BattleUnit target, string actionName, string effectName)
     {
-        return $"<color={defaultTextColor}>{text}</color>";
+        return string.Format("{0}Ïùò {1} ‚Üí {2}: {3} ÏÑ±Í≥µ", user.Name, actionName, target.Name, effectName);
     }
 
-    public string FormatDamageValueOnlyNumber(int value)
+    public string BuildEffectFailureLog(BattleUnit user, BattleUnit target, string actionName, string effectName)
     {
-        return $"<color={damageColor}>{value}</color>";
+        return string.Format("{0}Ïùò {1} ‚Üí {2}: {3} Ïã§Ìå®", user.Name, actionName, target.Name, effectName);
     }
 
-    public string FormatHealValueOnlyNumber(int value)
+    public string BuildMoveLog(BattleUnit actor, BattleUnit target)
     {
-        return $"<color={healColor}>{value}</color>";
+        return string.Format("{0}Ïù¥(Í∞Ä) {1}ÏôÄ ÏúÑÏπòÎ•º ÍµêÏ≤¥", actor.Name, target.Name);
     }
 
-    public string FormatBuffValueOnlyNumber(int value)
+    public string BuildAutoMoveLog(BattleUnit unit)
     {
-        return $"<color={buffColor}>{value}</color>";
+        return string.Format("{0}Ïù¥(Í∞Ä) Ï†ÑÏó¥Î°ú ÎãπÍ≤®Ïßê", unit.Name);
     }
 
-    public string FormatDamageKeyword()
+    public string BuildDeathLog(BattleUnit unit)
     {
-        return $"<color={damageColor}>µ•πÃ¡ˆ</color>";
+        return string.Format("{0} ÏÇ¨Îßù", unit.Name);
     }
 
-    public string FormatHealKeyword()
+    public string BuildHealLog(BattleUnit user, BattleUnit target, string sourceName, int amount)
     {
-        return $"<color={healColor}>»∏∫π</color>";
+        return string.Format("{0}Ïùò {1} ‚Üí {2}: ÌöåÎ≥µ {3}", user.Name, sourceName, target.Name, amount);
     }
 
-    public string FormatShieldKeyword()
+    public string BuildShieldLog(BattleUnit user, BattleUnit target, string sourceName, int amount)
     {
-        return $"<color={buffColor}>∫∏»£∏∑</color>";
-    }
-
-    public string FormatBuffKeyword(string buffName)
-    {
-        return $"<color={buffColor}>{buffName}</color>";
-    }
-
-    public string BuildAttackLog(BattleUnit attacker, BattleUnit target, string skillName, AttackResult result)
-    {
-        string attackerName = FormatUnitName(attacker.Name);
-        string targetName = FormatUnitName(target.Name);
-
-        string actionText = string.IsNullOrEmpty(skillName)
-            ? ""
-            : $"{FormatDefaultText(skillName)} ";
-
-        switch (result.ResultType)
-        {
-            case AttackResultType.Crit:
-                return $"{attackerName}¿Ã {targetName}ø°∞‘ {actionText}{FormatDefaultText("ƒ°∏Ì≈∏∑Œ")} {FormatDamageValueOnlyNumber(result.Damage)} {FormatDamageKeyword()}∏¶ {FormatDefaultText("¿‘«˚Ω¿¥œ¥Ÿ")}";
-
-            case AttackResultType.Hit:
-                return $"{attackerName}¿Ã {targetName}ø°∞‘ {actionText}{FormatDamageValueOnlyNumber(result.Damage)} {FormatDamageKeyword()}∏¶ {FormatDefaultText("¿‘«˚Ω¿¥œ¥Ÿ")}";
-
-            case AttackResultType.Graze:
-                return $"{attackerName}¿Ã {targetName}ø°∞‘ {actionText}{FormatDefaultText("Ω∫ƒß¿∏∑Œ")} {FormatDamageValueOnlyNumber(result.Damage)} {FormatDamageKeyword()}∏¶ {FormatDefaultText("¿‘«˚Ω¿¥œ¥Ÿ")}";
-
-            case AttackResultType.Miss:
-                return $"{attackerName}¿Ã {targetName}ø°∞‘ {actionText}{FormatDefaultText("∞¯∞›«ﬂ¡ˆ∏∏ ∫¯≥™∞¨Ω¿¥œ¥Ÿ")}";
-        }
-
-        return $"{attackerName}¿Ã {targetName}ø°∞‘ {FormatDefaultText("∞¯∞›«ﬂΩ¿¥œ¥Ÿ")}";
-    }
-
-    public string BuildItemHealLog(BattleUnit user, BattleUnit target, string actionText, int value)
-    {
-        return $"{FormatUnitName(user.Name)}¿Ã {FormatUnitName(target.Name)}ø°∞‘ {FormatDefaultText(actionText)} {FormatHealValueOnlyNumber(value)} {FormatHealKeyword()}¿ª {FormatDefaultText("»∏∫πΩ√ƒ◊Ω¿¥œ¥Ÿ")}";
-    }
-
-    public string BuildBuffLog(BattleUnit user, BattleUnit target, string actionText, int value, string buffText)
-    {
-        return $"{FormatUnitName(user.Name)}¿Ã {FormatUnitName(target.Name)}ø°∞‘ {FormatDefaultText(actionText)} {FormatBuffValueOnlyNumber(value)} {FormatBuffKeyword(buffText)}¿ª {FormatDefaultText("∫Œø©«ﬂΩ¿¥œ¥Ÿ")}";
-    }
-
-    public string BuildShieldLog(BattleUnit user, BattleUnit target, string actionText, int value)
-    {
-        return $"{FormatUnitName(user.Name)}¿Ã {FormatUnitName(target.Name)}ø°∞‘ {FormatDefaultText(actionText)} {FormatBuffValueOnlyNumber(value)} {FormatShieldKeyword()}¿ª {FormatDefaultText("∫Œø©«ﬂΩ¿¥œ¥Ÿ")}";
-    }
-
-    public string BuildMoveLog(BattleUnit user, BattleUnit target)
-    {
-        return $"{FormatUnitName(user.Name)}¿Ã {FormatUnitName(target.Name)}∞˙ {FormatDefaultText("¿ßƒ°∏¶ ±≥√º«ﬂΩ¿¥œ¥Ÿ")}";
-    }
-
-    public string BuildAutoMoveLog(BattleUnit user)
-    {
-        return $"{FormatUnitName(user.Name)}¿Ã {FormatDefaultText("¿ßƒ°∏¶ ¿Ãµø«ﬂΩ¿¥œ¥Ÿ")}";
-    }
-
-    public string BuildDeathLog(BattleUnit target)
-    {
-        return $"{FormatUnitName(target.Name)}¿Ã {FormatDefaultText("ªÁ∏¡«ﬂΩ¿¥œ¥Ÿ")}";
-    }
-
-    public string BuildBattleStartLog()
-    {
-        return FormatDefaultText("¿¸≈ı∞° Ω√¿€µ«æ˙Ω¿¥œ¥Ÿ");
+        return string.Format("{0}Ïùò {1} ‚Üí {2}: Î≥¥Ìò∏Îßâ {3}", user.Name, sourceName, target.Name, amount);
     }
 
     public string BuildVictoryLog()
     {
-        return FormatDefaultText("¿¸≈ıø°º≠ Ω¬∏Æ«ﬂΩ¿¥œ¥Ÿ");
+        return "Ï†ÑÌà¨ ÏäπÎ¶¨";
     }
 
     public string BuildDefeatLog()
     {
-        return FormatDefaultText("¿¸≈ıø°º≠ ∆–πË«ﬂΩ¿¥œ¥Ÿ");
+        return "Ï†ÑÌà¨ Ìå®Î∞∞";
     }
 }

@@ -4,84 +4,71 @@ using UnityEngine;
 
 public class BattleViewManager : MonoBehaviour
 {
-    [Header("Parent")]
     [SerializeField] private RectTransform viewRoot;
-
-    [Header("Anchors")]
     [SerializeField] private RectTransform[] allyAnchors = new RectTransform[4];
     [SerializeField] private RectTransform[] enemyAnchors = new RectTransform[4];
-
-    [Header("Fallback Prefab")]
-    [Tooltip("UnitViewDefinition에 프리팹이 비어 있을 때 사용할 기본 공통 프리팹")]
     [SerializeField] private BattleUnitView defaultUnitViewPrefab;
 
     private readonly Dictionary<BattleUnit, BattleUnitView> unitViews = new Dictionary<BattleUnit, BattleUnitView>();
 
-    public void CreateView(BattleUnit unit, BattleManager battleManager)
+    public void CreateView(BattleUnit unit, BattleInputController inputController)
     {
         if (unit == null || viewRoot == null)
             return;
 
-        BattleUnitView prefab = GetPrefabForUnit(unit);
+        BattleUnitView prefab = unit.ViewDefinition != null && unit.ViewDefinition.viewPrefab != null
+            ? unit.ViewDefinition.viewPrefab
+            : defaultUnitViewPrefab;
+
         if (prefab == null)
         {
-            Debug.LogWarning($"[BattleViewManager] View prefab is missing for unit: {unit.Name}");
+            Debug.LogWarning("[BattleViewManager] Missing defaultUnitViewPrefab.");
             return;
         }
-
-        if (unitViews.ContainsKey(unit))
-        {
-            Debug.LogWarning($"[BattleViewManager] View already exists for unit: {unit.Name}");
-            return;
-        }
-
-        string slotLabel = GetSlotLabel(unit.Team, unit.SlotIndex);
 
         BattleUnitView view = Instantiate(prefab, viewRoot);
-        view.Initialize(unit, slotLabel);
+        view.Initialize(unit, GetSlotLabel(unit.Team, unit.SlotIndex));
         view.SetPositionInstant(GetAnchorPosition(unit.Team, unit.SlotIndex));
 
         BattleClickable clickable = view.GetComponent<BattleClickable>();
         if (clickable == null)
             clickable = view.gameObject.AddComponent<BattleClickable>();
 
-        clickable.Initialize(view, battleManager);
+        clickable.Initialize(view, inputController);
 
-        unitViews.Add(unit, view);
-    }
-
-    public void RemoveView(BattleUnit unit)
-    {
-        if (unit == null)
-            return;
-
-        if (unitViews.TryGetValue(unit, out BattleUnitView view))
-        {
-            if (view != null)
-                Destroy(view.gameObject);
-
-            unitViews.Remove(unit);
-        }
+        unitViews[unit] = view;
     }
 
     public BattleUnitView GetView(BattleUnit unit)
     {
-        if (unit == null)
-            return null;
-
-        unitViews.TryGetValue(unit, out BattleUnitView view);
+        if (unit == null) return null;
+        BattleUnitView view;
+        unitViews.TryGetValue(unit, out view);
         return view;
+    }
+
+    public IEnumerable<BattleUnitView> GetAllViews()
+    {
+        return unitViews.Values;
+    }
+
+    public void RemoveView(BattleUnit unit)
+    {
+        if (unit == null) return;
+        BattleUnitView view;
+        if (unitViews.TryGetValue(unit, out view))
+        {
+            if (view != null)
+                Destroy(view.gameObject);
+            unitViews.Remove(unit);
+        }
     }
 
     public Vector3 GetAnchorPosition(TeamType team, int slotIndex)
     {
         RectTransform[] anchors = team == TeamType.Ally ? allyAnchors : enemyAnchors;
-
         if (anchors == null || slotIndex < 0 || slotIndex >= anchors.Length || anchors[slotIndex] == null)
-        {
-            Debug.LogWarning($"[BattleViewManager] Invalid anchor. Team={team}, SlotIndex={slotIndex}");
             return viewRoot != null ? viewRoot.position : Vector3.zero;
-        }
 
         return anchors[slotIndex].position;
     }
@@ -94,78 +81,84 @@ public class BattleViewManager : MonoBehaviour
 
     public IEnumerator AnimateRefreshAllPositions(BattleFormation allyFormation, BattleFormation enemyFormation, float duration)
     {
-        RefreshFormationPositionsAnimated(allyFormation, TeamType.Ally, duration);
-        RefreshFormationPositionsAnimated(enemyFormation, TeamType.Enemy, duration);
+        List<IEnumerator> routines = new List<IEnumerator>();
+        AddFormationMoveRoutines(routines, allyFormation, TeamType.Ally, duration);
+        AddFormationMoveRoutines(routines, enemyFormation, TeamType.Enemy, duration);
+
+        for (int i = 0; i < routines.Count; i++)
+            StartCoroutine(routines[i]);
 
         yield return new WaitForSeconds(duration);
     }
 
+    private void AddFormationMoveRoutines(List<IEnumerator> routines, BattleFormation formation, TeamType team, float duration)
+    {
+        if (formation == null) return;
+        List<BattleUnit> units = formation.GetAllUnits();
+        for (int i = 0; i < units.Count; i++)
+        {
+            BattleUnit unit = units[i];
+            BattleUnitView view = GetView(unit);
+            if (view == null) continue;
+            routines.Add(view.MoveToPosition(GetAnchorPosition(team, unit.SlotIndex), duration));
+        }
+    }
+
     private void RefreshFormationPositionsInstant(BattleFormation formation, TeamType team)
     {
-        if (formation == null)
-            return;
-
-        for (int i = 0; i < 4; i++)
+        if (formation == null) return;
+        List<BattleUnit> units = formation.GetAllUnits();
+        for (int i = 0; i < units.Count; i++)
         {
-            BattleUnit unit = formation.GetUnit(i);
-            if (unit == null)
-                continue;
-
-            if (unitViews.TryGetValue(unit, out BattleUnitView view) && view != null)
-                view.SetPositionInstant(GetAnchorPosition(team, i));
+            BattleUnitView view = GetView(units[i]);
+            if (view != null)
+                view.SetPositionInstant(GetAnchorPosition(team, units[i].SlotIndex));
         }
     }
 
-    private void RefreshFormationPositionsAnimated(BattleFormation formation, TeamType team, float duration)
+    public void ClearAllMarkers()
     {
-        if (formation == null)
-            return;
-
-        for (int i = 0; i < 4; i++)
+        foreach (KeyValuePair<BattleUnit, BattleUnitView> pair in unitViews)
         {
-            BattleUnit unit = formation.GetUnit(i);
-            if (unit == null)
-                continue;
-
-            if (unitViews.TryGetValue(unit, out BattleUnitView view) && view != null)
-                StartCoroutine(view.MoveToPosition(GetAnchorPosition(team, i), duration));
+            if (pair.Value == null) continue;
+            pair.Value.SetTurnMark(false);
+            pair.Value.SetTargetMark(false);
+            pair.Value.SetHighlighted(false);
         }
     }
 
-    private BattleUnitView GetPrefabForUnit(BattleUnit unit)
+    public void SetTurnMarker(BattleUnit currentUnit)
     {
-        if (unit == null)
-            return null;
+        foreach (KeyValuePair<BattleUnit, BattleUnitView> pair in unitViews)
+        {
+            if (pair.Value == null) continue;
+            pair.Value.SetTurnMark(pair.Key == currentUnit);
+        }
+    }
 
-        if (unit.ViewPrefab != null)
-            return unit.ViewPrefab;
+    public void SetTargetMarkers(List<BattleUnit> units)
+    {
+        ClearTargetMarkers();
+        if (units == null) return;
 
-        return defaultUnitViewPrefab;
+        for (int i = 0; i < units.Count; i++)
+        {
+            BattleUnitView view = GetView(units[i]);
+            if (view != null)
+                view.SetTargetMark(true);
+        }
+    }
+
+    public void ClearTargetMarkers()
+    {
+        foreach (KeyValuePair<BattleUnit, BattleUnitView> pair in unitViews)
+            if (pair.Value != null)
+                pair.Value.SetTargetMark(false);
     }
 
     private string GetSlotLabel(TeamType team, int slotIndex)
     {
-        if (team == TeamType.Ally)
-        {
-            switch (slotIndex)
-            {
-                case 0: return "A";
-                case 1: return "B";
-                case 2: return "C";
-                case 3: return "D";
-            }
-        }
-        else
-        {
-            switch (slotIndex)
-            {
-                case 0: return "E";
-                case 1: return "F";
-                case 2: return "G";
-                case 3: return "H";
-            }
-        }
-
-        return "?";
+        string prefix = team == TeamType.Ally ? "A" : "E";
+        return string.Format("{0}{1}", prefix, slotIndex + 1);
     }
 }

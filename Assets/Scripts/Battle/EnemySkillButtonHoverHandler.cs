@@ -1,41 +1,26 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-public class EnemySkillButtonHoverHandler : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerMoveHandler
+public class EnemySkillButtonHoverHandler : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
-    [SerializeField] private int skillSlotIndex = 0;
-
     private BattleManager battleManager;
-    private bool isHovering = false;
+    private int slotIndex;
 
-    public void Initialize(BattleManager manager, int slotIndex)
+    public void Initialize(BattleManager manager, int index)
     {
         battleManager = manager;
-        skillSlotIndex = slotIndex;
+        slotIndex = index;
     }
 
     public void OnPointerEnter(PointerEventData eventData)
     {
-        isHovering = true;
-
         if (battleManager != null)
-            battleManager.ShowEnemySkillTooltip(skillSlotIndex, eventData.position);
-    }
-
-    public void OnPointerMove(PointerEventData eventData)
-    {
-        if (!isHovering)
-            return;
-
-        if (battleManager != null)
-            battleManager.MoveEnemySkillTooltip(eventData.position);
+            battleManager.OnEnemySkillHoverEnter(slotIndex, Input.mousePosition);
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
-        isHovering = false;
-
         if (battleManager != null)
-            battleManager.HideEnemySkillTooltip();
+            battleManager.OnEnemySkillHoverExit();
     }
 }

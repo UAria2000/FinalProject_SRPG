@@ -5,52 +5,42 @@ using UnityEngine.UI;
 
 public class BattleUIController : MonoBehaviour
 {
-    [Header("Current Unit Info UI")]
+    [Header("Panels")]
     [SerializeField] private CurrentUnitInfoPanel currentUnitInfoPanel;
-
-    [Header("Player Skill Tooltip UI")]
-    [SerializeField] private SkillTooltipUI skillTooltipUI;
-
-    [Header("Enemy Info UI")]
     [SerializeField] private EnemyInfoPanel enemyInfoPanel;
     [SerializeField] private EnemyDetailPopupUI enemyDetailPopupUI;
-    [SerializeField] private Button enemyDetailPopupButton;
+    [SerializeField] private InventoryPanelUI inventoryPanelUI;
 
-    [Header("Enemy Skill Tooltip UI")]
+    [Header("Tooltips")]
+    [SerializeField] private SkillTooltipUI skillTooltipUI;
     [SerializeField] private EnemySkillTooltipUI enemySkillTooltipUI;
+    [SerializeField] private TargetPreviewHoverUI targetPreviewHoverUI;
 
-    [Header("Buttons")]
-    [SerializeField] private Button attackButton;
+    [Header("Bottom Context Roots")]
+    [SerializeField] private GameObject enemyInfoContextRoot;
+    [SerializeField] private GameObject inventoryContextRoot;
+    [SerializeField] private GameObject mapContextRoot;
+
+    [Header("Action Buttons")]
+    [SerializeField] private Button[] actionButtons = new Button[4];
+    [SerializeField] private Image[] actionIcons = new Image[4];
+    [SerializeField] private Image[] actionCooldownOverlays = new Image[4];
+    [SerializeField] private TMP_Text[] actionCooldownTexts = new TMP_Text[4];
     [SerializeField] private Button moveButton;
-    [SerializeField] private Button[] skillButtons = new Button[3];
-    [SerializeField] private Image[] skillIconImages = new Image[3];
-    [SerializeField] private Image[] skillCooldownOverlayImages = new Image[3];
-    [SerializeField] private Button itemButton;
+    [SerializeField] private Button inventoryButton;
     [SerializeField] private Button cancelButton;
     [SerializeField] private Button popupLogButton;
+    [SerializeField] private Button enemyDetailPopupButton;
 
     [Header("Round UI")]
     [SerializeField] private TMP_Text turnStartText;
     [SerializeField] private float turnStartTextShowTime = 1.0f;
-
-    [Header("Cancel Button Colors")]
-    [SerializeField] private Color cancelNormalColor = Color.white;
-    [SerializeField] private Color cancelEnabledColor = new Color(0.9f, 0.25f, 0.25f, 1f);
-
-    private Image cancelButtonImage;
-    private ColorBlock cancelButtonColors;
 
     private BattleManager battleManager;
 
     public void Initialize(BattleManager manager)
     {
         battleManager = manager;
-
-        if (cancelButton != null)
-        {
-            cancelButtonImage = cancelButton.GetComponent<Image>();
-            cancelButtonColors = cancelButton.colors;
-        }
 
         if (turnStartText != null)
             turnStartText.gameObject.SetActive(false);
@@ -60,6 +50,8 @@ public class BattleUIController : MonoBehaviour
 
         HideSkillTooltip();
         HideEnemySkillTooltip();
+        HideTargetPreview();
+        SetBottomContext(BottomContextType.Inventory);
     }
 
     public void BindButtonEvents()
@@ -67,200 +59,158 @@ public class BattleUIController : MonoBehaviour
         if (battleManager == null)
             return;
 
-        if (attackButton != null)
-            attackButton.onClick.AddListener(battleManager.OnAttackButtonClicked);
-
-        if (moveButton != null)
-            moveButton.onClick.AddListener(battleManager.OnMoveButtonClicked);
-
-        for (int i = 0; i < skillButtons.Length; i++)
+        for (int i = 0; i < actionButtons.Length; i++)
         {
-            int skillIndex = i;
+            int slotIndex = i;
+            if (actionButtons[i] == null)
+                continue;
 
-            if (skillButtons[i] != null)
-            {
-                skillButtons[i].onClick.AddListener(() => battleManager.OnSkillButtonClicked(skillIndex));
+            actionButtons[i].onClick.RemoveAllListeners();
+            actionButtons[i].onClick.AddListener(delegate { battleManager.OnActionSlotPressed(slotIndex); });
 
-                SkillButtonHoverHandler hoverHandler = skillButtons[i].GetComponent<SkillButtonHoverHandler>();
-                if (hoverHandler == null)
-                    hoverHandler = skillButtons[i].gameObject.AddComponent<SkillButtonHoverHandler>();
-
-                hoverHandler.Initialize(battleManager, skillIndex);
-            }
+            SkillButtonHoverHandler handler = actionButtons[i].GetComponent<SkillButtonHoverHandler>();
+            if (handler == null)
+                handler = actionButtons[i].gameObject.AddComponent<SkillButtonHoverHandler>();
+            handler.Initialize(battleManager, slotIndex);
         }
 
-        if (itemButton != null)
-            itemButton.onClick.AddListener(battleManager.OnItemButtonClicked);
+        if (moveButton != null)
+        {
+            moveButton.onClick.RemoveAllListeners();
+            moveButton.onClick.AddListener(battleManager.OnMoveButtonPressed);
+        }
+
+        if (inventoryButton != null)
+        {
+            inventoryButton.interactable = true;
+        }
 
         if (cancelButton != null)
-            cancelButton.onClick.AddListener(battleManager.OnCancelButtonClicked);
+        {
+            cancelButton.onClick.RemoveAllListeners();
+            cancelButton.onClick.AddListener(battleManager.OnCancelButtonPressed);
+        }
 
         if (popupLogButton != null)
-            popupLogButton.onClick.AddListener(battleManager.OnPopupLogButtonClicked);
+        {
+            popupLogButton.onClick.RemoveAllListeners();
+            popupLogButton.onClick.AddListener(battleManager.OnPopupLogButtonPressed);
+        }
 
         if (enemyDetailPopupButton != null)
-            enemyDetailPopupButton.onClick.AddListener(battleManager.OnEnemyDetailPopupButtonClicked);
+        {
+            enemyDetailPopupButton.onClick.RemoveAllListeners();
+            enemyDetailPopupButton.onClick.AddListener(battleManager.OnEnemyDetailPopupButtonPressed);
+        }
     }
 
-    public void BindEnemySkillHoverEvents(Button[] enemySkillButtons)
+    public void BindEnemySkillHoverEvents(GameObject[] enemySkillTargets)
     {
-        if (battleManager == null || enemySkillButtons == null)
+        if (battleManager == null || enemySkillTargets == null)
             return;
 
-        for (int i = 0; i < enemySkillButtons.Length; i++)
+        for (int i = 0; i < enemySkillTargets.Length; i++)
         {
-            int skillIndex = i;
+            if (enemySkillTargets[i] == null)
+                continue;
 
-            if (enemySkillButtons[i] != null)
-            {
-                EnemySkillButtonHoverHandler hoverHandler = enemySkillButtons[i].GetComponent<EnemySkillButtonHoverHandler>();
-                if (hoverHandler == null)
-                    hoverHandler = enemySkillButtons[i].gameObject.AddComponent<EnemySkillButtonHoverHandler>();
-
-                hoverHandler.Initialize(battleManager, skillIndex);
-            }
+            EnemySkillButtonHoverHandler handler = enemySkillTargets[i].GetComponent<EnemySkillButtonHoverHandler>();
+            if (handler == null)
+                handler = enemySkillTargets[i].AddComponent<EnemySkillButtonHoverHandler>();
+            handler.Initialize(battleManager, i);
         }
     }
 
-    public void SetActionButtonsInteractable(bool interactable)
+    public void RefreshCurrentUnitPanel(BattleUnit unit)
     {
-        if (attackButton != null) attackButton.interactable = interactable;
-        if (moveButton != null) moveButton.interactable = interactable;
-        if (itemButton != null) itemButton.interactable = interactable;
-    }
-
-    public void SetAttackButtonInteractable(bool interactable)
-    {
-        if (attackButton != null)
-            attackButton.interactable = interactable;
-    }
-
-    public void SetMoveButtonInteractable(bool interactable)
-    {
-        if (moveButton != null)
-            moveButton.interactable = interactable;
-    }
-
-    public void SetItemButtonInteractable(bool interactable)
-    {
-        if (itemButton != null)
-            itemButton.interactable = interactable;
-    }
-
-    public void RefreshCancelButtonState(bool canCancel)
-    {
-        if (cancelButton != null)
-            cancelButton.interactable = canCancel;
-
-        if (cancelButtonImage != null)
-            cancelButtonImage.color = canCancel ? cancelEnabledColor : cancelNormalColor;
-
-        if (cancelButton != null)
-        {
-            ColorBlock cb = cancelButtonColors;
-            cb.normalColor = canCancel ? cancelEnabledColor : cancelNormalColor;
-            cb.highlightedColor = canCancel ? cancelEnabledColor * 1.05f : cancelNormalColor * 1.05f;
-            cb.selectedColor = cb.highlightedColor;
-            cb.pressedColor = canCancel ? cancelEnabledColor * 0.9f : cancelNormalColor * 0.9f;
-            cancelButton.colors = cb;
-        }
-    }
-
-    public void ShowCurrentUnitInfo(BattleUnit unit)
-    {
-        if (currentUnitInfoPanel != null && unit != null)
+        if (currentUnitInfoPanel != null)
             currentUnitInfoPanel.Show(unit);
     }
 
-    public void HideCurrentUnitInfo()
+    public void RefreshEnemyPanels(BattleUnit enemy)
     {
-        if (currentUnitInfoPanel != null)
-            currentUnitInfoPanel.Hide();
+        if (enemyInfoPanel != null)
+            enemyInfoPanel.Show(enemy);
+
+        if (enemyDetailPopupUI != null && enemyDetailPopupUI.IsOpen())
+            enemyDetailPopupUI.Show(enemy);
     }
 
-    public void RefreshPlayerSkillButtons(BattleUnit displayUnit, BattleUnit currentActingUnit, bool allowUse)
+    public void RefreshActionButtons(BattleUnit unit, bool interactable)
     {
-        for (int i = 0; i < skillButtons.Length; i++)
+        for (int i = 0; i < actionButtons.Length; i++)
         {
-            Button button = i < skillButtons.Length ? skillButtons[i] : null;
-            Image iconImage = i < skillIconImages.Length ? skillIconImages[i] : null;
-            Image overlayImage = i < skillCooldownOverlayImages.Length ? skillCooldownOverlayImages[i] : null;
+            SkillDefinition skill = unit != null ? unit.GetActionSkillAt(i) : null;
+            bool hasSkill = skill != null;
 
-            UpdatePlayerSkillButton(button, iconImage, overlayImage, displayUnit, currentActingUnit, i, allowUse);
-        }
-    }
-
-    private void UpdatePlayerSkillButton(
-        Button button,
-        Image iconImage,
-        Image overlayImage,
-        BattleUnit displayUnit,
-        BattleUnit currentActingUnit,
-        int slotIndex,
-        bool allowUse)
-    {
-        if (button == null)
-            return;
-
-        SkillDefinition skill = displayUnit != null ? displayUnit.GetSkillAt(slotIndex) : null;
-        bool hasSkill = skill != null;
-
-        if (iconImage != null)
-        {
-            iconImage.sprite = hasSkill ? skill.icon : null;
-            iconImage.color = hasSkill ? Color.white : new Color(1f, 1f, 1f, 0.2f);
-        }
-
-        bool interactable = false;
-        if (allowUse && displayUnit != null && displayUnit == currentActingUnit && hasSkill)
-            interactable = currentActingUnit.CanUseSkill(skill);
-
-        button.interactable = interactable;
-
-        if (overlayImage != null)
-        {
-            if (!hasSkill)
+            if (i < actionIcons.Length && actionIcons[i] != null)
             {
-                overlayImage.gameObject.SetActive(false);
-                overlayImage.fillAmount = 0f;
+                actionIcons[i].sprite = hasSkill ? skill.icon : null;
+                actionIcons[i].color = hasSkill ? Color.white : new Color(1f, 1f, 1f, 0.2f);
             }
-            else
-            {
-                int remaining = displayUnit.GetRemainingCooldown(skill);
-                if (remaining > 0)
-                {
-                    overlayImage.gameObject.SetActive(true);
 
-                    float divisor = Mathf.Max(1f, skill.cooldownTurns + 1f);
-                    overlayImage.fillAmount = Mathf.Clamp01(remaining / divisor);
+            int remaining = hasSkill ? unit.GetRemainingCooldown(skill) : 0;
+
+            if (i < actionCooldownOverlays.Length && actionCooldownOverlays[i] != null)
+            {
+                actionCooldownOverlays[i].gameObject.SetActive(hasSkill && remaining > 0);
+                if (hasSkill && remaining > 0)
+                {
+                    float divisor = Mathf.Max(1f, skill.cooldownTurns);
+                    actionCooldownOverlays[i].fillAmount = divisor > 0f ? Mathf.Clamp01(remaining / divisor) : 0f;
                 }
                 else
                 {
-                    overlayImage.gameObject.SetActive(false);
-                    overlayImage.fillAmount = 0f;
+                    actionCooldownOverlays[i].fillAmount = 0f;
                 }
             }
+
+            if (i < actionCooldownTexts.Length && actionCooldownTexts[i] != null)
+                actionCooldownTexts[i].text = hasSkill && remaining > 0 ? remaining.ToString() : string.Empty;
+
+            if (i < actionButtons.Length && actionButtons[i] != null)
+                actionButtons[i].interactable = interactable && hasSkill && unit.CanUseSkill(skill);
         }
+
+        if (moveButton != null)
+            moveButton.interactable = interactable;
+
+        if (inventoryButton != null)
+            inventoryButton.interactable = interactable;
     }
 
-    public void RefreshEnemyInfo(BattleUnit selectedEnemy, string epitaph)
+    public void RefreshInventory(BattleManager manager, PartyDefinition allyParty, int selectedIndex)
     {
-        if (enemyInfoPanel != null)
-            enemyInfoPanel.Show(selectedEnemy);
+        if (inventoryPanelUI == null)
+            return;
 
-        if (enemyDetailPopupUI != null && enemyDetailPopupUI.IsOpen())
-            enemyDetailPopupUI.Show(selectedEnemy, epitaph);
+        inventoryPanelUI.Bind(manager, allyParty != null ? allyParty.inventory : null, selectedIndex);
     }
 
-    public void ToggleEnemyDetailPopup(BattleUnit selectedEnemy, string epitaph)
+    public void SetBottomContext(BottomContextType mode)
+    {
+        if (enemyInfoContextRoot != null)
+            enemyInfoContextRoot.SetActive(mode == BottomContextType.EnemyInfo);
+
+        if (inventoryContextRoot != null)
+            inventoryContextRoot.SetActive(mode == BottomContextType.Inventory);
+
+        if (mapContextRoot != null)
+            mapContextRoot.SetActive(mode == BottomContextType.Map);
+
+        if (inventoryPanelUI != null)
+            inventoryPanelUI.Show(mode == BottomContextType.Inventory);
+    }
+
+    public void ToggleEnemyDetailPopup(BattleUnit enemy)
     {
         if (enemyDetailPopupUI == null)
             return;
 
         if (enemyDetailPopupUI.IsOpen())
             enemyDetailPopupUI.Hide();
-        else if (selectedEnemy != null)
-            enemyDetailPopupUI.Show(selectedEnemy, epitaph);
+        else
+            enemyDetailPopupUI.Show(enemy);
     }
 
     public void HideEnemyDetailPopup()
@@ -269,44 +219,10 @@ public class BattleUIController : MonoBehaviour
             enemyDetailPopupUI.Hide();
     }
 
-    public IEnumerator ShowTurnStartTextRoutine(int roundNumber)
-    {
-        if (turnStartText == null)
-            yield break;
-
-        turnStartText.text = $"Turn {roundNumber} Start";
-        turnStartText.gameObject.SetActive(true);
-
-        yield return new WaitForSeconds(turnStartTextShowTime);
-
-        turnStartText.gameObject.SetActive(false);
-    }
-
-    public void ShowSkillTooltip(int skillSlotIndex, BattleUnit displayUnit, Vector2 screenPosition)
-    {
-        if (skillTooltipUI == null)
-            return;
-
-        if (displayUnit == null)
-        {
-            skillTooltipUI.Hide();
-            return;
-        }
-
-        SkillDefinition skill = displayUnit.GetSkillAt(skillSlotIndex);
-        if (skill == null)
-        {
-            skillTooltipUI.Hide();
-            return;
-        }
-
-        skillTooltipUI.Show(skill, screenPosition);
-    }
-
-    public void MoveSkillTooltip(Vector2 screenPosition)
+    public void ShowPlayerSkillTooltip(SkillDefinition skill, Vector3 screenPosition)
     {
         if (skillTooltipUI != null)
-            skillTooltipUI.Move(screenPosition);
+            skillTooltipUI.Show(skill, screenPosition);
     }
 
     public void HideSkillTooltip()
@@ -315,36 +231,38 @@ public class BattleUIController : MonoBehaviour
             skillTooltipUI.Hide();
     }
 
-    public void ShowEnemySkillTooltip(int skillSlotIndex, BattleUnit selectedEnemy, Vector2 screenPosition)
-    {
-        if (enemySkillTooltipUI == null)
-            return;
-
-        if (selectedEnemy == null)
-        {
-            enemySkillTooltipUI.Hide();
-            return;
-        }
-
-        SkillDefinition skill = selectedEnemy.GetSkillAt(skillSlotIndex);
-        if (skill == null)
-        {
-            enemySkillTooltipUI.Hide();
-            return;
-        }
-
-        enemySkillTooltipUI.Show(skill, screenPosition);
-    }
-
-    public void MoveEnemySkillTooltip(Vector2 screenPosition)
+    public void ShowEnemySkillTooltip(SkillDefinition skill, Vector3 screenPosition)
     {
         if (enemySkillTooltipUI != null)
-            enemySkillTooltipUI.Move(screenPosition);
+            enemySkillTooltipUI.Show(skill, screenPosition);
     }
 
     public void HideEnemySkillTooltip()
     {
         if (enemySkillTooltipUI != null)
             enemySkillTooltipUI.Hide();
+    }
+
+    public void ShowTargetPreview(TargetPreviewData data, Vector3 screenPosition)
+    {
+        if (targetPreviewHoverUI != null)
+            targetPreviewHoverUI.Show(data, screenPosition);
+    }
+
+    public void HideTargetPreview()
+    {
+        if (targetPreviewHoverUI != null)
+            targetPreviewHoverUI.Hide();
+    }
+
+    public IEnumerator ShowTurnStartTextRoutine(int round)
+    {
+        if (turnStartText == null)
+            yield break;
+
+        turnStartText.gameObject.SetActive(true);
+        turnStartText.text = string.Format("Turn {0}", round);
+        yield return new WaitForSeconds(turnStartTextShowTime);
+        turnStartText.gameObject.SetActive(false);
     }
 }

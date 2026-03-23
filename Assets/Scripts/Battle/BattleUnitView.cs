@@ -5,17 +5,22 @@ using UnityEngine.UI;
 
 public class BattleUnitView : MonoBehaviour
 {
-    [Header("References")]
     [SerializeField] private Image unitBodyImage;
     [SerializeField] private TMP_Text labelText;
     [SerializeField] private Image hpFillImage;
-    [SerializeField] private GameObject currentTurnMarker;
-    [SerializeField] private GameObject targetMarker;
+    [SerializeField] private GameObject turnMark;
+    [SerializeField] private GameObject targetMark;
     [SerializeField] private Image highlightImage;
+    [SerializeField] private RectTransform hoverAnchor;
 
     private RectTransform rectTransform;
 
     public BattleUnit Unit { get; private set; }
+
+    public RectTransform HoverAnchor
+    {
+        get { return hoverAnchor != null ? hoverAnchor : rectTransform; }
+    }
 
     private void Awake()
     {
@@ -28,30 +33,18 @@ public class BattleUnitView : MonoBehaviour
 
         if (unitBodyImage != null)
         {
-            if (unit != null && unit.BodySprite != null)
-            {
-                unitBodyImage.sprite = unit.BodySprite;
-                unitBodyImage.color = Color.white;
-                unitBodyImage.preserveAspect = true;
-            }
-            else
-            {
-                unitBodyImage.sprite = null;
-                unitBodyImage.color = Color.white;
-            }
+            unitBodyImage.sprite = unit != null ? unit.BodySprite : null;
+            unitBodyImage.color = unitBodyImage.sprite != null ? Color.white : new Color(1f, 1f, 1f, 0f);
+            unitBodyImage.preserveAspect = true;
         }
 
         if (labelText != null)
             labelText.text = label;
 
-        SetCurrentTurnMarker(false);
-        SetTargetMarker(false);
+        SetTurnMark(false);
+        SetTargetMark(false);
         SetHighlighted(false);
         RefreshHPInstant();
-
-        gameObject.name = unit != null
-            ? $"View_{label}_{unit.Name}"
-            : $"View_{label}_Null";
     }
 
     public void RefreshHPInstant()
@@ -59,10 +52,7 @@ public class BattleUnitView : MonoBehaviour
         if (hpFillImage == null || Unit == null)
             return;
 
-        float ratio = 0f;
-        if (Unit.MaxHP > 0)
-            ratio = (float)Unit.CurrentHP / Unit.MaxHP;
-
+        float ratio = Unit.MaxHP > 0 ? (float)Unit.CurrentHP / Unit.MaxHP : 0f;
         hpFillImage.fillAmount = Mathf.Clamp01(ratio);
     }
 
@@ -72,41 +62,29 @@ public class BattleUnitView : MonoBehaviour
             yield break;
 
         float start = hpFillImage.fillAmount;
-
-        float target = 0f;
-        if (Unit.MaxHP > 0)
-            target = (float)Unit.CurrentHP / Unit.MaxHP;
-
-        target = Mathf.Clamp01(target);
-
-        if (duration <= 0f)
-        {
-            hpFillImage.fillAmount = target;
-            yield break;
-        }
+        float target = Unit.MaxHP > 0 ? Mathf.Clamp01((float)Unit.CurrentHP / Unit.MaxHP) : 0f;
 
         float elapsed = 0f;
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(elapsed / duration);
-            hpFillImage.fillAmount = Mathf.Lerp(start, target, t);
+            hpFillImage.fillAmount = Mathf.Lerp(start, target, Mathf.Clamp01(elapsed / duration));
             yield return null;
         }
 
         hpFillImage.fillAmount = target;
     }
 
-    public void SetCurrentTurnMarker(bool active)
+    public void SetTurnMark(bool active)
     {
-        if (currentTurnMarker != null)
-            currentTurnMarker.SetActive(active);
+        if (turnMark != null)
+            turnMark.SetActive(active);
     }
 
-    public void SetTargetMarker(bool active)
+    public void SetTargetMark(bool active)
     {
-        if (targetMarker != null)
-            targetMarker.SetActive(active);
+        if (targetMark != null)
+            targetMark.SetActive(active);
     }
 
     public void SetHighlighted(bool active)
@@ -119,7 +97,6 @@ public class BattleUnitView : MonoBehaviour
     {
         if (rectTransform == null)
             rectTransform = GetComponent<RectTransform>();
-
         rectTransform.position = worldPosition;
     }
 
@@ -129,22 +106,13 @@ public class BattleUnitView : MonoBehaviour
             rectTransform = GetComponent<RectTransform>();
 
         Vector3 start = rectTransform.position;
-
-        if (duration <= 0f)
-        {
-            rectTransform.position = worldPosition;
-            yield break;
-        }
-
         float elapsed = 0f;
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(elapsed / duration);
-            rectTransform.position = Vector3.Lerp(start, worldPosition, t);
+            rectTransform.position = Vector3.Lerp(start, worldPosition, Mathf.Clamp01(elapsed / duration));
             yield return null;
         }
-
         rectTransform.position = worldPosition;
     }
 
@@ -156,39 +124,24 @@ public class BattleUnitView : MonoBehaviour
         Vector3 originalPos = rectTransform.position;
         Vector3 dir = targetWorldPosition - originalPos;
         float distance = dir.magnitude;
-
-        if (distance > 0.001f)
-            dir.Normalize();
-        else
-            dir = Vector3.zero;
-
+        if (distance > 0.001f) dir.Normalize();
         float moveDistance = Mathf.Min(distance * moveRatio, maxDistance);
         Vector3 attackPos = originalPos + dir * moveDistance;
 
-        float halfDuration = duration * 0.5f;
-        if (halfDuration <= 0f)
-        {
-            rectTransform.position = originalPos;
-            yield break;
-        }
-
+        float half = duration * 0.5f;
         float elapsed = 0f;
-        while (elapsed < halfDuration)
+        while (elapsed < half)
         {
             elapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(elapsed / halfDuration);
-            rectTransform.position = Vector3.Lerp(originalPos, attackPos, t);
+            rectTransform.position = Vector3.Lerp(originalPos, attackPos, Mathf.Clamp01(elapsed / half));
             yield return null;
         }
 
-        rectTransform.position = attackPos;
-
         elapsed = 0f;
-        while (elapsed < halfDuration)
+        while (elapsed < half)
         {
             elapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(elapsed / halfDuration);
-            rectTransform.position = Vector3.Lerp(attackPos, originalPos, t);
+            rectTransform.position = Vector3.Lerp(attackPos, originalPos, Mathf.Clamp01(elapsed / half));
             yield return null;
         }
 

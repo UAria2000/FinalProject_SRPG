@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -9,11 +8,7 @@ public class BattleInputController : MonoBehaviour
     private BattleActionController actionController;
     private BattleLogController logController;
 
-    public void Initialize(
-        BattleManager manager,
-        BattleUIController ui,
-        BattleActionController action,
-        BattleLogController log)
+    public void Initialize(BattleManager manager, BattleUIController ui, BattleActionController action, BattleLogController log)
     {
         battleManager = manager;
         uiController = ui;
@@ -21,68 +16,93 @@ public class BattleInputController : MonoBehaviour
         logController = log;
     }
 
-    public void OnAttackButtonClicked()
+    public void HandleActionSlotPressed(int slotIndex)
     {
-        if (!CanAcceptPlayerInput()) return;
-
-        battleManager.SetInputMode(BattleInputMode.WaitingForAttackTarget);
-        battleManager.ClearSelectedSkill();
-
-        HighlightAttackableTargets();
-        RefreshCancelUI();
-        uiController?.HideSkillTooltip();
-    }
-
-    public void OnMoveButtonClicked()
-    {
-        if (!CanAcceptPlayerInput()) return;
-
-        battleManager.SetInputMode(BattleInputMode.WaitingForMoveTarget);
-        battleManager.ClearSelectedSkill();
-
-        HighlightMoveableTargets();
-        RefreshCancelUI();
-        uiController?.HideSkillTooltip();
-    }
-
-    public void OnSkillButtonClicked(int skillIndex)
-    {
-        if (!CanAcceptPlayerInput()) return;
-
-        BattleUnit actor = battleManager.CurrentActingUnit;
-        SkillDefinition skill = actor.GetSkillAt(skillIndex);
-        if (skill == null) return;
-        if (!actor.CanUseSkill(skill)) return;
-
-        List<BattleUnit> validTargets = battleManager.GetPrimarySkillTargets(actor, skill);
-        if (validTargets.Count <= 0) return;
-
-        battleManager.SetSelectedSkill(skill);
-        battleManager.SetInputMode(BattleInputMode.WaitingForSkillTarget);
-
-        HighlightSkillTargets(actor, skill);
-        RefreshCancelUI();
-        uiController?.HideSkillTooltip();
-    }
-
-    public void OnItemButtonClicked()
-    {
-        if (!CanAcceptPlayerInput()) return;
-
-        battleManager.SetInputMode(BattleInputMode.WaitingForItemTarget);
-        battleManager.ClearSelectedSkill();
-
-        HighlightItemTargets();
-        RefreshCancelUI();
-        uiController?.HideSkillTooltip();
-    }
-
-    public void OnCancelButtonClicked()
-    {
-        if (!battleManager.CanCancelCurrentSelection())
+        if (!CanAcceptPlayerInput())
             return;
 
-        CancelCurrentSelection();
+        BattleUnit actor = battleManager.CurrentActingUnit;
+        SkillDefinition skill = actor != null ? actor.GetActionSkillAt(slotIndex) : null;
+        if (actor == null || skill == null || !actor.CanUseSkill(skill))
+            return;
+
+        List<BattleUnit> validTargets = BattleTargeting.GetValidSkillTargets(
+            actor,
+            skill,
+            battleManager.AllyFormation,
+            battleManager.EnemyFormation);
+
+        if (validTargets.Count <= 0)
+            return;
+
+        battleManager.SelectedSkillSlotIndex = slotIndex;
+        battleManager.SelectedSkill = skill;
+        battleManager.SelectedInventoryIndex = -1;
+        battleManager.SetInputMode(BattleInputMode.WaitingForSkillTarget);
+
+        battleManager.ShowTargetMarkers(validTargets);
+        uiController.HideSkillTooltip();
+        uiController.HideTargetPreview();
+    }
+
+    public void HandleMovePressed()
+    {
+        if (!CanAcceptPlayerInput())
+            return;
+
+        List<BattleUnit> validTargets = BattleTargeting.GetMovableTargets(
+            battleManager.CurrentActingUnit,
+            battleManager.AllyFormation);
+
+        if (validTargets.Count <= 0)
+            return;
+
+        battleManager.SelectedSkill = null;
+        battleManager.SelectedInventoryIndex = -1;
+        battleManager.SetInputMode(BattleInputMode.WaitingForMoveTarget);
+        battleManager.ShowTargetMarkers(validTargets);
+        uiController.HideTargetPreview();
+    }
+
+    public void HandleInventorySlotPressed(int inventoryIndex)
+    {
+        if (!CanAcceptPlayerInput())
+            return;
+
+        PartyDefinition allyParty = battleManager.AllyPartyDefinition;
+        if (allyParty == null || inventoryIndex < 0 || inventoryIndex >= allyParty.inventory.Count)
+            return;
+
+        InventoryStackData stack = allyParty.inventory[inventoryIndex];
+        if (stack == null || stack.item == null || stack.amount <= 0)
+            return;
+
+        List<BattleUnit> validTargets = BattleTargeting.GetValidItemTargets(
+            battleManager.CurrentActingUnit,
+            stack.item,
+            battleManager.AllyFormation,
+            battleManager.EnemyFormation);
+
+        if (validTargets.Count <= 0)
+            return;
+
+        battleManager.SelectedInventoryIndex = inventoryIndex;
+        battleManager.SelectedSkill = null;
+        battleManager.SetInputMode(BattleInputMode.WaitingForItemTarget);
+        battleManager.ShowTargetMarkers(validTargets);
+        uiController.HideTargetPreview();
+    }
+
+    public void CancelCurrentInput()
+    {
+        if (battleManager.CurrentState != TurnState.PlayerInput)
+            return;
+
+        battleManager.SelectedSkill = null;
+        battleManager.SelectedInventoryIndex = -1;
+        battleManager.SetInputMode(BattleInputMode.WaitingForAction);
+        battleManager.ClearTargetMarkers();
+        uiController.HideTargetPreview();
     }
 
     public void OnUnitViewClicked(BattleUnitView clickedView)
@@ -93,194 +113,108 @@ public class BattleInputController : MonoBehaviour
         BattleUnit clickedUnit = clickedView.Unit;
 
         if (clickedUnit.Team == TeamType.Enemy)
-            battleManager.SetSelectedEnemyInfoUnit(clickedUnit);
-
-        if (battleManager.CurrentState != TurnState.PlayerInput)
-            return;
+            battleManager.SelectedEnemyInfoUnit = clickedUnit;
 
         switch (battleManager.InputMode)
         {
-            case BattleInputMode.WaitingForAttackTarget:
-                HandleAttackTargetClick(clickedUnit);
-                break;
-
-            case BattleInputMode.WaitingForMoveTarget:
-                HandleMoveTargetClick(clickedUnit);
-                break;
-
-            case BattleInputMode.WaitingForItemTarget:
-                HandleItemTargetClick(clickedUnit);
-                break;
-
             case BattleInputMode.WaitingForSkillTarget:
                 HandleSkillTargetClick(clickedUnit);
                 break;
+            case BattleInputMode.WaitingForMoveTarget:
+                HandleMoveTargetClick(clickedUnit);
+                break;
+            case BattleInputMode.WaitingForItemTarget:
+                HandleItemTargetClick(clickedUnit);
+                break;
         }
+
+        battleManager.RefreshAllUI();
     }
 
-    private void HandleAttackTargetClick(BattleUnit clickedUnit)
+    public void OnUnitViewHoverEntered(BattleUnitView hoveredView)
     {
-        if (clickedUnit.Team != TeamType.Enemy)
+        if (hoveredView == null || hoveredView.Unit == null)
             return;
 
-        List<BattleUnit> validTargets = BattleTargeting.GetBasicAttackTargets(
+        if (battleManager.InputMode != BattleInputMode.WaitingForSkillTarget)
+            return;
+
+        SkillDefinition skill = battleManager.SelectedSkill;
+        if (skill == null)
+            return;
+
+        BattleUnit hoveredUnit = hoveredView.Unit;
+        List<BattleUnit> validTargets = BattleTargeting.GetValidSkillTargets(
             battleManager.CurrentActingUnit,
-            battleManager.EnemyFormation
-        );
+            skill,
+            battleManager.AllyFormation,
+            battleManager.EnemyFormation);
 
-        if (!validTargets.Contains(clickedUnit))
+        if (!validTargets.Contains(hoveredUnit))
             return;
 
-        battleManager.SetSelectedAttackTarget(clickedUnit);
-        battleManager.StartManagedCoroutine(ResolvePlayerAttack());
+        if (!skill.ShouldShowTargetPreview())
+            return;
+
+        if (skill.targetTeam != SkillTargetTeam.Enemy)
+            return;
+
+        TargetPreviewData data = BattleCalculator.BuildSkillPreview(battleManager.CurrentActingUnit, hoveredUnit, skill);
+        uiController.ShowTargetPreview(data, hoveredView.HoverAnchor.position);
     }
 
-    private void HandleMoveTargetClick(BattleUnit clickedUnit)
+    public void OnUnitViewHoverExited(BattleUnitView hoveredView)
     {
-        if (clickedUnit.Team != TeamType.Ally)
-            return;
-
-        List<BattleUnit> validTargets = battleManager.GetMoveableTargets(
-            battleManager.CurrentActingUnit,
-            battleManager.AllyFormation
-        );
-
-        if (!validTargets.Contains(clickedUnit))
-            return;
-
-        battleManager.SetSelectedMoveTarget(clickedUnit);
-        battleManager.StartManagedCoroutine(ResolvePlayerMove());
-    }
-
-    private void HandleItemTargetClick(BattleUnit clickedUnit)
-    {
-        if (clickedUnit.Team != TeamType.Ally)
-            return;
-
-        List<BattleUnit> validTargets = battleManager.GetItemTargets(
-            battleManager.CurrentActingUnit,
-            battleManager.AllyFormation
-        );
-
-        if (!validTargets.Contains(clickedUnit))
-            return;
-
-        battleManager.SetSelectedItemTarget(clickedUnit);
-        battleManager.StartManagedCoroutine(ResolvePlayerItemUse());
+        uiController.HideTargetPreview();
     }
 
     private void HandleSkillTargetClick(BattleUnit clickedUnit)
     {
-        SkillDefinition selectedSkill = battleManager.SelectedSkill;
-        if (selectedSkill == null)
-            return;
+        SkillDefinition skill = battleManager.SelectedSkill;
+        if (skill == null) return;
 
-        List<BattleUnit> validTargets = battleManager.GetPrimarySkillTargets(
+        List<BattleUnit> validTargets = BattleTargeting.GetValidSkillTargets(
             battleManager.CurrentActingUnit,
-            selectedSkill
-        );
+            skill,
+            battleManager.AllyFormation,
+            battleManager.EnemyFormation);
 
         if (!validTargets.Contains(clickedUnit))
             return;
 
-        battleManager.SetSelectedSkillTarget(clickedUnit);
-        battleManager.StartManagedCoroutine(ResolvePlayerSkillUse());
+        battleManager.StartManagedCoroutine(actionController.ExecuteSkill(battleManager.CurrentActingUnit, skill, clickedUnit));
     }
 
-    private IEnumerator ResolvePlayerAttack()
+    private void HandleMoveTargetClick(BattleUnit clickedUnit)
     {
-        battleManager.SetInputMode(BattleInputMode.None);
-        battleManager.ClearAllTargetMarkersAndHighlights();
-
-        uiController?.SetActionButtonsInteractable(false);
-        uiController?.RefreshCancelButtonState(false);
-
-        yield return actionController.ExecuteBasicAttack(
+        List<BattleUnit> validTargets = BattleTargeting.GetMovableTargets(
             battleManager.CurrentActingUnit,
-            battleManager.SelectedAttackTarget
-        );
+            battleManager.AllyFormation);
 
-        battleManager.MarkPlayerActionSubmitted();
+        if (!validTargets.Contains(clickedUnit))
+            return;
+
+        battleManager.StartManagedCoroutine(actionController.ExecuteMove(battleManager.CurrentActingUnit, clickedUnit));
     }
 
-    private IEnumerator ResolvePlayerMove()
+    private void HandleItemTargetClick(BattleUnit clickedUnit)
     {
-        battleManager.SetInputMode(BattleInputMode.None);
-        battleManager.ClearAllTargetMarkersAndHighlights();
+        int index = battleManager.SelectedInventoryIndex;
+        PartyDefinition allyParty = battleManager.AllyPartyDefinition;
+        if (allyParty == null || index < 0 || index >= allyParty.inventory.Count)
+            return;
 
-        uiController?.SetActionButtonsInteractable(false);
-        uiController?.RefreshCancelButtonState(false);
-
-        bool moved = actionController.TrySwapUnits(
+        ItemDefinition item = allyParty.inventory[index].item;
+        List<BattleUnit> validTargets = BattleTargeting.GetValidItemTargets(
             battleManager.CurrentActingUnit,
-            battleManager.SelectedMoveTarget,
-            battleManager.AllyFormation
-        );
+            item,
+            battleManager.AllyFormation,
+            battleManager.EnemyFormation);
 
-        if (moved)
-        {
-            logController?.AppendBattleLog(
-                logController.BuildMoveLog(battleManager.CurrentActingUnit, battleManager.SelectedMoveTarget)
-            );
+        if (!validTargets.Contains(clickedUnit))
+            return;
 
-            if (battleManager.ViewManager != null)
-            {
-                yield return battleManager.ViewManager.AnimateRefreshAllPositions(
-                    battleManager.AllyFormation,
-                    battleManager.EnemyFormation,
-                    battleManager.MoveAnimationDuration
-                );
-            }
-        }
-
-        battleManager.MarkPlayerActionSubmitted();
-    }
-
-    private IEnumerator ResolvePlayerItemUse()
-    {
-        battleManager.SetInputMode(BattleInputMode.None);
-        battleManager.ClearAllTargetMarkersAndHighlights();
-
-        uiController?.SetActionButtonsInteractable(false);
-        uiController?.RefreshCancelButtonState(false);
-
-        yield return actionController.ExecutePotionUse(
-            battleManager.CurrentActingUnit,
-            battleManager.SelectedItemTarget,
-            battleManager.PotionHealAmount
-        );
-
-        battleManager.MarkPlayerActionSubmitted();
-    }
-
-    private IEnumerator ResolvePlayerSkillUse()
-    {
-        battleManager.SetInputMode(BattleInputMode.None);
-        battleManager.ClearAllTargetMarkersAndHighlights();
-
-        uiController?.SetActionButtonsInteractable(false);
-        uiController?.RefreshCancelButtonState(false);
-
-        yield return actionController.ExecuteSkill(
-            battleManager.CurrentActingUnit,
-            battleManager.SelectedSkillTarget,
-            battleManager.SelectedSkill
-        );
-
-        battleManager.MarkPlayerActionSubmitted();
-    }
-
-    private void CancelCurrentSelection()
-    {
-        battleManager.SetInputMode(BattleInputMode.WaitingForAction);
-        battleManager.ClearSelectedTargetsAndSkill();
-        battleManager.ClearAllTargetMarkersAndHighlights();
-
-        if (battleManager.CurrentActingUnit != null)
-            battleManager.ShowCurrentTurnMarker(battleManager.CurrentActingUnit, true);
-
-        battleManager.RefreshPlayerActionUI();
-        uiController?.HideSkillTooltip();
+        battleManager.StartManagedCoroutine(actionController.ExecuteItem(battleManager.CurrentActingUnit, index, clickedUnit));
     }
 
     private bool CanAcceptPlayerInput()
@@ -288,86 +222,6 @@ public class BattleInputController : MonoBehaviour
         return battleManager != null &&
                battleManager.CurrentState == TurnState.PlayerInput &&
                battleManager.CurrentActingUnit != null &&
-               !battleManager.CurrentActingUnit.IsDead;
-    }
-
-    private void RefreshCancelUI()
-    {
-        uiController?.RefreshCancelButtonState(battleManager.CanCancelCurrentSelection());
-    }
-
-    private void HighlightAttackableTargets()
-    {
-        BattleUnit actor = battleManager.CurrentActingUnit;
-        battleManager.ClearAllTargetMarkersAndHighlights();
-
-        List<BattleUnit> validTargets = BattleTargeting.GetBasicAttackTargets(actor, battleManager.EnemyFormation);
-        foreach (BattleUnit target in validTargets)
-        {
-            BattleUnitView view = battleManager.ViewManager.GetView(target);
-            if (view != null)
-            {
-                view.SetHighlighted(true);
-                view.SetTargetMarker(true);
-            }
-        }
-
-        battleManager.ShowCurrentTurnMarker(actor, true);
-    }
-
-    private void HighlightMoveableTargets()
-    {
-        BattleUnit actor = battleManager.CurrentActingUnit;
-        battleManager.ClearAllTargetMarkersAndHighlights();
-
-        List<BattleUnit> validTargets = battleManager.GetMoveableTargets(actor, battleManager.AllyFormation);
-        foreach (BattleUnit target in validTargets)
-        {
-            BattleUnitView view = battleManager.ViewManager.GetView(target);
-            if (view != null)
-            {
-                view.SetHighlighted(true);
-                view.SetTargetMarker(true);
-            }
-        }
-
-        battleManager.ShowCurrentTurnMarker(actor, true);
-    }
-
-    private void HighlightItemTargets()
-    {
-        BattleUnit actor = battleManager.CurrentActingUnit;
-        battleManager.ClearAllTargetMarkersAndHighlights();
-
-        List<BattleUnit> validTargets = battleManager.GetItemTargets(actor, battleManager.AllyFormation);
-        foreach (BattleUnit target in validTargets)
-        {
-            BattleUnitView view = battleManager.ViewManager.GetView(target);
-            if (view != null)
-            {
-                view.SetHighlighted(true);
-                view.SetTargetMarker(true);
-            }
-        }
-
-        battleManager.ShowCurrentTurnMarker(actor, true);
-    }
-
-    private void HighlightSkillTargets(BattleUnit actor, SkillDefinition skill)
-    {
-        battleManager.ClearAllTargetMarkersAndHighlights();
-
-        List<BattleUnit> validTargets = battleManager.GetPrimarySkillTargets(actor, skill);
-        foreach (BattleUnit target in validTargets)
-        {
-            BattleUnitView view = battleManager.ViewManager.GetView(target);
-            if (view != null)
-            {
-                view.SetHighlighted(true);
-                view.SetTargetMarker(true);
-            }
-        }
-
-        battleManager.ShowCurrentTurnMarker(actor, true);
+               battleManager.CurrentActingUnit.Team == TeamType.Ally;
     }
 }

@@ -1,40 +1,13 @@
 public static class BattleRules
 {
-    public static bool CanUseBasicAttackFromSlot(CharacterRangeType rangeType, int slotIndex)
+    public static bool CanSwapWith(BattleUnit actor, BattleUnit target)
     {
-        int rank = slotIndex + 1;
+        if (actor == null || target == null) return false;
+        if (actor.Team != target.Team) return false;
+        if (actor.IsDead || target.IsDead) return false;
 
-        switch (rangeType)
-        {
-            case CharacterRangeType.Melee:
-                return rank == 1 || rank == 2;
-
-            case CharacterRangeType.Mid:
-                return rank >= 1 && rank <= 3;
-
-            case CharacterRangeType.Ranged:
-                return rank >= 2 && rank <= 4;
-        }
-
-        return false;
-    }
-
-    public static bool CanTargetWithBasicAttack(CharacterRangeType rangeType, int targetSlotIndex)
-    {
-        int rank = targetSlotIndex + 1;
-
-        switch (rangeType)
-        {
-            case CharacterRangeType.Melee:
-                return rank == 1 || rank == 2;
-
-            case CharacterRangeType.Mid:
-                return rank >= 1 && rank <= 3;
-
-            case CharacterRangeType.Ranged:
-                return rank >= 2 && rank <= 4;
-        }
-
-        return false;
+        int distance = actor.SlotIndex - target.SlotIndex;
+        if (distance < 0) distance = -distance;
+        return distance == 1;
     }
 }

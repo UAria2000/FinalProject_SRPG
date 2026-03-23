@@ -2,93 +2,117 @@ using System.Collections.Generic;
 
 public class BattleFormation
 {
-    public BattleUnit[] Slots { get; private set; } = new BattleUnit[4];
+    private readonly BattleUnit[] slots = new BattleUnit[4];
+
+    public BattleUnit GetUnit(int slotIndex)
+    {
+        if (slotIndex < 0 || slotIndex >= slots.Length)
+            return null;
+        return slots[slotIndex];
+    }
 
     public void SetUnit(int slotIndex, BattleUnit unit)
     {
-        if (slotIndex < 0 || slotIndex >= Slots.Length)
+        if (slotIndex < 0 || slotIndex >= slots.Length)
             return;
 
-        Slots[slotIndex] = unit;
-
+        slots[slotIndex] = unit;
         if (unit != null)
             unit.SlotIndex = slotIndex;
     }
 
-    public BattleUnit GetUnit(int slotIndex)
+    public void RemoveUnit(BattleUnit unit)
     {
-        if (slotIndex < 0 || slotIndex >= Slots.Length)
-            return null;
-
-        return Slots[slotIndex];
+        if (unit == null) return;
+        for (int i = 0; i < slots.Length; i++)
+        {
+            if (slots[i] == unit)
+            {
+                slots[i] = null;
+                return;
+            }
+        }
     }
 
     public List<BattleUnit> GetAliveUnits()
     {
-        List<BattleUnit> units = new List<BattleUnit>();
-
-        for (int i = 0; i < Slots.Length; i++)
+        List<BattleUnit> result = new List<BattleUnit>();
+        for (int i = 0; i < slots.Length; i++)
         {
-            if (Slots[i] != null && !Slots[i].IsDead)
-                units.Add(Slots[i]);
+            if (slots[i] != null && !slots[i].IsDead)
+                result.Add(slots[i]);
         }
-
-        return units;
+        return result;
     }
 
-    public bool HasAliveUnits()
+    public List<BattleUnit> GetAllUnits()
     {
-        for (int i = 0; i < Slots.Length; i++)
+        List<BattleUnit> result = new List<BattleUnit>();
+        for (int i = 0; i < slots.Length; i++)
         {
-            if (Slots[i] != null && !Slots[i].IsDead)
+            if (slots[i] != null)
+                result.Add(slots[i]);
+        }
+        return result;
+    }
+
+    public void Swap(BattleUnit a, BattleUnit b)
+    {
+        if (a == null || b == null) return;
+
+        int indexA = -1;
+        int indexB = -1;
+        for (int i = 0; i < slots.Length; i++)
+        {
+            if (slots[i] == a) indexA = i;
+            if (slots[i] == b) indexB = i;
+        }
+
+        if (indexA < 0 || indexB < 0) return;
+
+        slots[indexA] = b;
+        slots[indexB] = a;
+        a.SlotIndex = indexB;
+        b.SlotIndex = indexA;
+    }
+
+    public List<BattleUnit> RemoveDeadAndCompress()
+    {
+        List<BattleUnit> moved = new List<BattleUnit>();
+
+        for (int i = 0; i < slots.Length; i++)
+        {
+            if (slots[i] != null && slots[i].IsDead)
+                slots[i] = null;
+        }
+
+        int writeIndex = 0;
+        for (int readIndex = 0; readIndex < slots.Length; readIndex++)
+        {
+            BattleUnit unit = slots[readIndex];
+            if (unit == null) continue;
+
+            if (readIndex != writeIndex)
+            {
+                slots[writeIndex] = unit;
+                slots[readIndex] = null;
+                unit.SlotIndex = writeIndex;
+                moved.Add(unit);
+            }
+
+            writeIndex++;
+        }
+
+        return moved;
+    }
+
+    public bool HasLivingUnits()
+    {
+        for (int i = 0; i < slots.Length; i++)
+        {
+            if (slots[i] != null && !slots[i].IsDead)
                 return true;
         }
-
         return false;
-    }
-
-    public bool TrySwapAdjacent(int slotIndex, int direction)
-    {
-        int targetIndex = slotIndex + direction;
-
-        if (slotIndex < 0 || slotIndex >= Slots.Length)
-            return false;
-
-        if (targetIndex < 0 || targetIndex >= Slots.Length)
-            return false;
-
-        if (Slots[slotIndex] == null || Slots[targetIndex] == null)
-            return false;
-
-        BattleUnit a = Slots[slotIndex];
-        BattleUnit b = Slots[targetIndex];
-
-        Slots[slotIndex] = b;
-        Slots[targetIndex] = a;
-
-        a.SlotIndex = targetIndex;
-        b.SlotIndex = slotIndex;
-
-        return true;
-    }
-
-    public void RemoveDeadAndCompress()
-    {
-        List<BattleUnit> alive = new List<BattleUnit>();
-
-        for (int i = 0; i < Slots.Length; i++)
-        {
-            if (Slots[i] != null && !Slots[i].IsDead)
-                alive.Add(Slots[i]);
-        }
-
-        for (int i = 0; i < Slots.Length; i++)
-            Slots[i] = null;
-
-        for (int i = 0; i < alive.Count; i++)
-        {
-            Slots[i] = alive[i];
-            alive[i].SlotIndex = i;
-        }
     }
 }

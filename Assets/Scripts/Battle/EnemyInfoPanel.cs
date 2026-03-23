@@ -4,30 +4,27 @@ using UnityEngine.UI;
 
 public class EnemyInfoPanel : MonoBehaviour
 {
-    [Header("Root")]
-    [SerializeField] private GameObject panelRoot;
+    [SerializeField] private GameObject root;
+    [SerializeField] private TMP_Text nameValueText;
+    [SerializeField] private TMP_Text levelValueText;
+    [SerializeField] private TMP_Text hpValueText;
 
-    [Header("Basic")]
-    [SerializeField] private TMP_Text nameText;
-    [SerializeField] private TMP_Text levelText;
-    [SerializeField] private TMP_Text hpText;
-    [SerializeField] private TMP_Text basicAttackText;
-
-    [Header("Skill Slots")]
-    [SerializeField] private Button[] skillButtons = new Button[2];
-    [SerializeField] private Image[] skillIcons = new Image[2];
-    [SerializeField] private Image[] skillCooldownOverlayImages = new Image[2];
+    [Header("Skill Preview")]
+    [SerializeField] private GameObject[] skillSlotRoots = new GameObject[4];
+    [SerializeField] private Image[] skillIcons = new Image[4];
+    [SerializeField] private Image[] cooldownOverlays = new Image[4];
+    [SerializeField] private TMP_Text[] cooldownTexts = new TMP_Text[4];
 
     private BattleUnit currentEnemy;
 
-    public BattleUnit CurrentEnemy => currentEnemy;
+    public BattleUnit CurrentEnemy { get { return currentEnemy; } }
 
     public void Show(BattleUnit enemy)
     {
         currentEnemy = enemy;
 
-        if (panelRoot != null)
-            panelRoot.SetActive(enemy != null);
+        if (root != null)
+            root.SetActive(enemy != null);
 
         if (enemy == null)
         {
@@ -35,19 +32,43 @@ public class EnemyInfoPanel : MonoBehaviour
             return;
         }
 
-        if (nameText != null)
-            nameText.text = enemy.Name;
+        if (nameValueText != null) nameValueText.text = enemy.Name;
+        if (levelValueText != null) levelValueText.text = enemy.CurrentLevel.ToString();
+        if (hpValueText != null) hpValueText.text = string.Format("{0}/{1}", enemy.CurrentHP, enemy.MaxHP);
 
-        if (levelText != null)
-            levelText.text = enemy.Level.ToString();
+        for (int i = 0; i < 4; i++)
+        {
+            SkillDefinition skill = enemy.GetActionSkillAt(i);
+            bool hasSkill = skill != null;
 
-        if (hpText != null)
-            hpText.text = $"{enemy.CurrentHP}/{enemy.MaxHP}";
+            if (i < skillSlotRoots.Length && skillSlotRoots[i] != null)
+                skillSlotRoots[i].SetActive(true);
 
-        if (basicAttackText != null)
-            basicAttackText.text = BuildBasicAttackText(enemy);
+            if (i < skillIcons.Length && skillIcons[i] != null)
+            {
+                skillIcons[i].sprite = hasSkill ? skill.icon : null;
+                skillIcons[i].color = hasSkill ? Color.white : new Color(1f, 1f, 1f, 0.2f);
+            }
 
-        RefreshSkillSlots();
+            int remaining = hasSkill ? enemy.GetRemainingCooldown(skill) : 0;
+
+            if (i < cooldownOverlays.Length && cooldownOverlays[i] != null)
+            {
+                cooldownOverlays[i].gameObject.SetActive(hasSkill && remaining > 0);
+                if (hasSkill && remaining > 0)
+                {
+                    float divisor = Mathf.Max(1f, skill.cooldownTurns);
+                    cooldownOverlays[i].fillAmount = divisor > 0f ? Mathf.Clamp01(remaining / divisor) : 0f;
+                }
+                else
+                {
+                    cooldownOverlays[i].fillAmount = 0f;
+                }
+            }
+
+            if (i < cooldownTexts.Length && cooldownTexts[i] != null)
+                cooldownTexts[i].text = hasSkill && remaining > 0 ? remaining.ToString() : string.Empty;
+        }
     }
 
     public void Refresh()
@@ -57,85 +78,24 @@ public class EnemyInfoPanel : MonoBehaviour
 
     private void Clear()
     {
-        if (nameText != null) nameText.text = "";
-        if (levelText != null) levelText.text = "";
-        if (hpText != null) hpText.text = "";
-        if (basicAttackText != null) basicAttackText.text = "";
+        if (nameValueText != null) nameValueText.text = string.Empty;
+        if (levelValueText != null) levelValueText.text = string.Empty;
+        if (hpValueText != null) hpValueText.text = string.Empty;
 
-        for (int i = 0; i < skillButtons.Length; i++)
+        for (int i = 0; i < 4; i++)
         {
-            if (skillButtons[i] != null)
-                skillButtons[i].interactable = false;
-
             if (i < skillIcons.Length && skillIcons[i] != null)
             {
                 skillIcons[i].sprite = null;
                 skillIcons[i].color = new Color(1f, 1f, 1f, 0.2f);
             }
-
-            if (i < skillCooldownOverlayImages.Length && skillCooldownOverlayImages[i] != null)
+            if (i < cooldownOverlays.Length && cooldownOverlays[i] != null)
             {
-                skillCooldownOverlayImages[i].gameObject.SetActive(false);
-                skillCooldownOverlayImages[i].fillAmount = 0f;
+                cooldownOverlays[i].gameObject.SetActive(false);
+                cooldownOverlays[i].fillAmount = 0f;
             }
+            if (i < cooldownTexts.Length && cooldownTexts[i] != null)
+                cooldownTexts[i].text = string.Empty;
         }
-    }
-
-    private void RefreshSkillSlots()
-    {
-        for (int i = 0; i < skillButtons.Length; i++)
-        {
-            SkillDefinition skill = currentEnemy != null ? currentEnemy.GetSkillAt(i) : null;
-            bool hasSkill = skill != null;
-
-            if (skillButtons[i] != null)
-                skillButtons[i].interactable = false; // 적 패널은 정보 표시용, 클릭 사용 안 함
-
-            if (i < skillIcons.Length && skillIcons[i] != null)
-            {
-                skillIcons[i].sprite = hasSkill ? skill.icon : null;
-                skillIcons[i].color = hasSkill ? Color.white : new Color(1f, 1f, 1f, 0.2f);
-            }
-
-            if (i < skillCooldownOverlayImages.Length && skillCooldownOverlayImages[i] != null)
-            {
-                if (!hasSkill)
-                {
-                    skillCooldownOverlayImages[i].gameObject.SetActive(false);
-                }
-                else
-                {
-                    int remaining = currentEnemy.GetRemainingCooldown(skill);
-                    if (remaining > 0)
-                    {
-                        skillCooldownOverlayImages[i].gameObject.SetActive(true);
-
-                        float divisor = Mathf.Max(1f, skill.cooldownTurns + 1f);
-                        skillCooldownOverlayImages[i].fillAmount = Mathf.Clamp01(remaining / divisor);
-                    }
-                    else
-                    {
-                        skillCooldownOverlayImages[i].gameObject.SetActive(false);
-                        skillCooldownOverlayImages[i].fillAmount = 0f;
-                    }
-                }
-            }
-        }
-    }
-
-    private string BuildBasicAttackText(BattleUnit unit)
-    {
-        if (unit == null)
-            return "";
-
-        string rangeText = unit.RangeType switch
-        {
-            CharacterRangeType.Melee => "근거리",
-            CharacterRangeType.Mid => "중거리",
-            CharacterRangeType.Ranged => "원거리",
-            _ => "기본"
-        };
-
-        return $"{rangeText} / {unit.DMG}";
     }
 }

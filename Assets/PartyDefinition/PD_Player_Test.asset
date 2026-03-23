@@ -17,9 +17,61 @@ MonoBehaviour:
   - unitDefinition: {fileID: 11400000, guid: 592fc88aebc95f14da1c15df923601fc, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: 358658ab6cd56c84184d837f206ebc73, type: 2}
     startSlotIndex: 0
+    instanceId: 
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    currentLevel: 1
+    originalLevel: 1
+    statVariance:
+      maxHpDelta: 0
+      dmgDelta: 0
+      spdDelta: 0
+      hitDeltaX10: 0
+      acDeltaX10: 0
+      criDelta: 0
+      crdDelta: 0
+      poisonResistDelta: 0
+      bleedResistDelta: 0
+      stunResistDelta: 0
+    learnedSkills: []
   - unitDefinition: {fileID: 11400000, guid: f8f9adbf09c124c4f841e0510acbe903, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: db5ea6affc7c81a4ab640be9675790dd, type: 2}
     startSlotIndex: 1
+    instanceId: 
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    currentLevel: 1
+    originalLevel: 1
+    statVariance:
+      maxHpDelta: 0
+      dmgDelta: 0
+      spdDelta: 0
+      hitDeltaX10: 0
+      acDeltaX10: 0
+      criDelta: 0
+      crdDelta: 0
+      poisonResistDelta: 0
+      bleedResistDelta: 0
+      stunResistDelta: 0
+    learnedSkills: []
   - unitDefinition: {fileID: 11400000, guid: f8f9adbf09c124c4f841e0510acbe903, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: db5ea6affc7c81a4ab640be9675790dd, type: 2}
     startSlotIndex: 2
+    instanceId: 
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    currentLevel: 1
+    originalLevel: 1
+    statVariance:
+      maxHpDelta: 0
+      dmgDelta: 0
+      spdDelta: 0
+      hitDeltaX10: 0
+      acDeltaX10: 0
+      criDelta: 0
+      crdDelta: 0
+      poisonResistDelta: 0
+      bleedResistDelta: 0
+      stunResistDelta: 0
+    learnedSkills: []
+  inventory: []

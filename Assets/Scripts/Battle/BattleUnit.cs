@@ -3,185 +3,122 @@ using UnityEngine;
 
 public class BattleUnit
 {
-    public UnitDefinition Definition { get; private set; }
-    public UnitViewDefinition ViewDefinition { get; private set; }
+    private readonly PartyMemberData memberData;
+    private readonly Dictionary<string, int> skillCooldowns = new Dictionary<string, int>();
+    private readonly List<BattleStatusInstance> statuses = new List<BattleStatusInstance>();
+
+    public BattleUnit(PartyMemberData data, TeamType team)
+    {
+        memberData = data;
+        Team = team;
+        SlotIndex = data != null ? data.startSlotIndex : 0;
+        CurrentHP = MaxHP;
+        CurrentShield = 0;
+    }
+
     public TeamType Team { get; private set; }
+    public int SlotIndex { get; set; }
+
+    public PartyMemberData MemberData { get { return memberData; } }
+    public UnitDefinition Definition { get { return memberData != null ? memberData.unitDefinition : null; } }
+    public UnitViewDefinition ViewDefinition { get { return memberData != null ? memberData.unitViewDefinition : null; } }
+
+    public string Name { get { return memberData != null ? memberData.GetDisplayName() : "Unit"; } }
+    public string Epitaph { get { return memberData != null ? memberData.fixedEpitaph : string.Empty; } }
+
+    public Sprite PortraitSprite { get { return ViewDefinition != null ? ViewDefinition.portrait : null; } }
+    public Sprite BodySprite { get { return ViewDefinition != null ? ViewDefinition.bodySprite : null; } }
+
+    public int CurrentLevel { get { return memberData != null ? memberData.currentLevel : 1; } }
+    public int OriginalLevel { get { return memberData != null ? memberData.originalLevel : 1; } }
 
     public int CurrentHP { get; private set; }
-    public int SlotIndex { get; set; }
-    public bool IsDead => CurrentHP <= 0;
+    public int CurrentShield { get; private set; }
+    public bool IsDead { get { return CurrentHP <= 0; } }
 
-    private readonly int maxHP;
-    private readonly int dmg;
-    private readonly int spd;
-    private readonly float hit;
-    private readonly float ac;
-    private readonly float cri;
-    private readonly float crd;
-    private readonly float poisonResist;
-    private readonly float bleedResist;
-    private readonly float stunResist;
+    public CharacterRangeType RangeType { get { return Definition != null ? Definition.rangeType : CharacterRangeType.Melee; } }
 
-    private readonly string runtimeName;
-    private readonly string epitaph;
+    public int BaseMaxHP { get { return Definition != null ? Definition.maxHP : 0; } }
+    public int BaseDMG { get { return Definition != null ? Definition.dmg : 0; } }
+    public int BaseSPD { get { return Definition != null ? Definition.spd : 0; } }
+    public float BaseHIT { get { return Definition != null ? Definition.hit : 0f; } }
+    public float BaseAC { get { return Definition != null ? Definition.ac : 0f; } }
+    public int BaseCRI { get { return Definition != null ? Definition.cri : 0; } }
+    public int BaseCRD { get { return Definition != null ? Definition.crd : 0; } }
+    public int BasePoisonResist { get { return Definition != null ? Definition.poisonResist : 0; } }
+    public int BaseBleedResist { get { return Definition != null ? Definition.bleedResist : 0; } }
+    public int BaseStunResist { get { return Definition != null ? Definition.stunResist : 0; } }
 
-    private readonly List<SkillDefinition> equippedSkills = new List<SkillDefinition>();
-    private readonly Dictionary<string, int> skillCooldowns = new Dictionary<string, int>();
+    public int MaxHP { get { return Mathf.Max(1, BaseMaxHP + GetVariance().maxHpDelta); } }
+    public int DMG { get { return Mathf.Max(0, BaseDMG + GetVariance().dmgDelta); } }
+    public int SPD { get { return Mathf.Max(0, BaseSPD + GetVariance().spdDelta); } }
+    public float HIT { get { return BaseHIT + (GetVariance().hitDeltaX10 * 0.1f); } }
+    public float AC { get { return BaseAC + (GetVariance().acDeltaX10 * 0.1f); } }
+    public int CRI { get { return Mathf.Max(0, BaseCRI + GetVariance().criDelta); } }
+    public int CRD { get { return Mathf.Max(0, BaseCRD + GetVariance().crdDelta); } }
 
-    public BattleUnit(UnitDefinition definition, UnitViewDefinition viewDefinition, TeamType team, int slotIndex)
+    public int PoisonResist { get { return BasePoisonResist + GetVariance().poisonResistDelta; } }
+    public int BleedResist { get { return BaseBleedResist + GetVariance().bleedResistDelta; } }
+    public int StunResist { get { return BaseStunResist + GetVariance().stunResistDelta; } }
+
+    public UnitInstanceStatVariance GetVariance()
     {
-        Definition = definition;
-        ViewDefinition = viewDefinition;
-        Team = team;
-        SlotIndex = slotIndex;
-
-        runtimeName = definition != null ? definition.unitName : "Unknown";
-        epitaph = "";
-
-        maxHP = definition != null ? definition.maxHP : 0;
-        dmg = definition != null ? definition.dmg : 0;
-        spd = definition != null ? definition.spd : 0;
-        hit = definition != null ? definition.hit : 0f;
-        ac = definition != null ? definition.ac : 0f;
-        cri = definition != null ? definition.cri : 0f;
-        crd = definition != null ? definition.crd : 0f;
-        poisonResist = definition != null ? definition.poisonResist : 0f;
-        bleedResist = definition != null ? definition.bleedResist : 0f;
-        stunResist = definition != null ? definition.stunResist : 0f;
-
-        CurrentHP = maxHP;
-        InitializeSkills(definition != null ? definition.defaultSkills : null);
+        return memberData != null && memberData.statVariance != null
+            ? memberData.statVariance
+            : new UnitInstanceStatVariance();
     }
 
-    public BattleUnit(PartyMemberData member, TeamType team)
+    public SkillDefinition BasicAttack { get { return Definition != null ? Definition.basicAttack : null; } }
+
+    public SkillDefinition GetActionSkillAt(int slotIndex)
     {
-        Definition = member != null ? member.unitDefinition : null;
-        ViewDefinition = member != null ? member.unitViewDefinition : null;
-        Team = team;
-        SlotIndex = member != null ? member.startSlotIndex : 0;
+        if (slotIndex == 0)
+            return BasicAttack;
 
-        string baseName = Definition != null ? Definition.unitName : "Unknown";
-        runtimeName = member != null && !string.IsNullOrWhiteSpace(member.instanceDisplayNameOverride)
-            ? member.instanceDisplayNameOverride
-            : baseName;
-        epitaph = member != null ? member.fixedEpitaph : "";
-
-        bool useOverride = member != null && member.useInstanceStatOverride;
-
-        maxHP = useOverride ? member.maxHPOverride : (Definition != null ? Definition.maxHP : 0);
-        dmg = useOverride ? member.dmgOverride : (Definition != null ? Definition.dmg : 0);
-        spd = useOverride ? member.spdOverride : (Definition != null ? Definition.spd : 0);
-        hit = useOverride ? member.hitOverride : (Definition != null ? Definition.hit : 0f);
-        ac = useOverride ? member.acOverride : (Definition != null ? Definition.ac : 0f);
-        cri = useOverride ? member.criOverride : (Definition != null ? Definition.cri : 0f);
-        crd = useOverride ? member.crdOverride : (Definition != null ? Definition.crd : 0f);
-        poisonResist = useOverride ? member.poisonResistOverride : (Definition != null ? Definition.poisonResist : 0f);
-        bleedResist = useOverride ? member.bleedResistOverride : (Definition != null ? Definition.bleedResist : 0f);
-        stunResist = useOverride ? member.stunResistOverride : (Definition != null ? Definition.stunResist : 0f);
-
-        CurrentHP = maxHP;
-
-        List<SkillDefinition> sourceSkills = null;
-        if (member != null && member.equippedSkills != null && member.equippedSkills.Count > 0)
-            sourceSkills = member.equippedSkills;
-        else if (Definition != null)
-            sourceSkills = Definition.defaultSkills;
-
-        InitializeSkills(sourceSkills);
-    }
-
-    public string Name => runtimeName;
-    public string Epitaph => epitaph;
-    public CharacterRangeType RangeType => Definition != null ? Definition.rangeType : CharacterRangeType.Melee;
-    public int Level => Definition != null ? Definition.level : 1;
-    public int Exp => Definition != null ? Definition.exp : 0;
-    public int MaxHP => maxHP;
-    public int DMG => dmg;
-    public int SPD => spd;
-    public float HIT => hit;
-    public float AC => ac;
-    public float CRI => cri;
-    public float CRD => crd;
-    public float PoisonResist => poisonResist;
-    public float BleedResist => bleedResist;
-    public float StunResist => stunResist;
-    public BattleUnitView ViewPrefab => ViewDefinition != null ? ViewDefinition.unitViewPrefab : null;
-    public Sprite PortraitSprite => ViewDefinition != null ? ViewDefinition.portraitSprite : null;
-    public Sprite BodySprite => ViewDefinition != null ? ViewDefinition.bodySprite : null;
-    public IReadOnlyList<SkillDefinition> EquippedSkills => equippedSkills;
-
-    public void TakeDamage(int amount) => CurrentHP = Mathf.Max(0, CurrentHP - amount);
-    public void Heal(int amount) => CurrentHP = Mathf.Min(MaxHP, CurrentHP + amount);
-
-    private void InitializeSkills(List<SkillDefinition> sourceSkills)
-    {
-        equippedSkills.Clear();
-        skillCooldowns.Clear();
-
-        if (sourceSkills == null)
-            return;
-
-        int maxSkillCount = Team == TeamType.Ally ? 3 : 2;
-        int count = Mathf.Min(sourceSkills.Count, maxSkillCount);
-        HashSet<string> usedSkillIds = new HashSet<string>();
-
-        for (int i = 0; i < count; i++)
-        {
-            SkillDefinition skill = sourceSkills[i];
-            if (skill == null)
-                continue;
-
-            string key = GetSkillKey(skill);
-            if (usedSkillIds.Contains(key))
-                continue;
-
-            equippedSkills.Add(skill);
-            usedSkillIds.Add(key);
-            skillCooldowns[key] = 0;
-        }
-    }
-
-    public SkillDefinition GetSkillAt(int index)
-    {
-        if (index < 0 || index >= equippedSkills.Count)
+        if (memberData == null || memberData.learnedSkills == null)
             return null;
-        return equippedSkills[index];
+
+        int learnedIndex = slotIndex - 1;
+        if (learnedIndex < 0 || learnedIndex >= memberData.learnedSkills.Count)
+            return null;
+
+        return memberData.learnedSkills[learnedIndex];
     }
 
-    public int GetMaxSkillSlotCount() => Team == TeamType.Ally ? 3 : 2;
-    public bool HasSkillInSlot(int index) => GetSkillAt(index) != null;
-
-    public bool IsSkillOnCooldown(SkillDefinition skill)
+    public int GetActionSkillSlotCount()
     {
-        if (skill == null) return false;
-        string key = GetSkillKey(skill);
-        return skillCooldowns.TryGetValue(key, out int remaining) && remaining > 0;
+        return 4;
+    }
+
+    public bool CanUseSkill(SkillDefinition skill)
+    {
+        if (skill == null || IsDead)
+            return false;
+
+        if (!skill.CanBeUsedFromSlot(SlotIndex))
+            return false;
+
+        return GetRemainingCooldown(skill) <= 0;
     }
 
     public int GetRemainingCooldown(SkillDefinition skill)
     {
         if (skill == null) return 0;
         string key = GetSkillKey(skill);
-        return skillCooldowns.TryGetValue(key, out int remaining) ? remaining : 0;
-    }
-
-    public bool CanUseSkill(SkillDefinition skill)
-    {
-        if (skill == null || IsDead) return false;
-        if (!equippedSkills.Contains(skill)) return false;
-        if (IsSkillOnCooldown(skill)) return false;
-        return skill.CanBeUsedByUnit(this);
+        int value;
+        if (skillCooldowns.TryGetValue(key, out value))
+            return Mathf.Max(0, value);
+        return 0;
     }
 
     public void ConsumeSkillCooldown(SkillDefinition skill)
     {
         if (skill == null) return;
         string key = GetSkillKey(skill);
-        skillCooldowns[key] = Mathf.Max(0, skill.cooldownTurns + 1);
+        skillCooldowns[key] = Mathf.Max(0, skill.cooldownTurns);
     }
 
-    // 실제로는 턴 종료 감소 용도. 호환성 때문에 이름 유지.
-    public void OnTurnStart()
+    public void OnOwnTurnStart()
     {
         List<string> keys = new List<string>(skillCooldowns.Keys);
         for (int i = 0; i < keys.Count; i++)
@@ -190,14 +127,95 @@ public class BattleUnit
             if (skillCooldowns[key] > 0)
                 skillCooldowns[key]--;
         }
+
+        for (int i = statuses.Count - 1; i >= 0; i--)
+        {
+            statuses[i].remainingTurns--;
+            if (statuses[i].remainingTurns <= 0)
+                statuses.RemoveAt(i);
+        }
+    }
+
+    public int ApplyDamage(int amount)
+    {
+        amount = Mathf.Max(0, amount);
+
+        int shieldAbsorb = Mathf.Min(CurrentShield, amount);
+        CurrentShield -= shieldAbsorb;
+        int hpDamage = amount - shieldAbsorb;
+
+        CurrentHP = Mathf.Max(0, CurrentHP - hpDamage);
+        return hpDamage;
+    }
+
+    public int Heal(int amount)
+    {
+        amount = Mathf.Max(0, amount);
+        int before = CurrentHP;
+        CurrentHP = Mathf.Min(MaxHP, CurrentHP + amount);
+        return CurrentHP - before;
+    }
+
+    public int AddShield(int amount)
+    {
+        amount = Mathf.Max(0, amount);
+        CurrentShield += amount;
+        return amount;
+    }
+
+    public void ApplyStatus(StatusEffectType statusType, int duration)
+    {
+        if (statusType == StatusEffectType.None || duration <= 0)
+            return;
+
+        for (int i = 0; i < statuses.Count; i++)
+        {
+            if (statuses[i].statusType == statusType)
+            {
+                statuses[i].remainingTurns = Mathf.Max(statuses[i].remainingTurns, duration);
+                return;
+            }
+        }
+
+        BattleStatusInstance instance = new BattleStatusInstance();
+        instance.statusType = statusType;
+        instance.remainingTurns = duration;
+        statuses.Add(instance);
+    }
+
+    public void RemoveStatus(StatusEffectType statusType)
+    {
+        for (int i = statuses.Count - 1; i >= 0; i--)
+        {
+            if (statuses[i].statusType == statusType)
+                statuses.RemoveAt(i);
+        }
+    }
+
+    public bool HasStatus(StatusEffectType statusType)
+    {
+        for (int i = 0; i < statuses.Count; i++)
+            if (statuses[i].statusType == statusType)
+                return true;
+        return false;
+    }
+
+    public int GetResistance(StatusEffectType statusType)
+    {
+        switch (statusType)
+        {
+            case StatusEffectType.Poison: return PoisonResist;
+            case StatusEffectType.Bleed: return BleedResist;
+            case StatusEffectType.Stun: return StunResist;
+        }
+        return 0;
     }
 
     private string GetSkillKey(SkillDefinition skill)
     {
-        if (skill == null) return "";
-        if (!string.IsNullOrEmpty(skill.skillId)) return skill.skillId;
+        if (!string.IsNullOrEmpty(skill.skillId))
+            return skill.skillId;
+
         return skill.name;
     }
-
-    public override string ToString() => $"{Name}({Team}) [Slot:{SlotIndex + 1}, HP:{CurrentHP}/{MaxHP}]";
 }
