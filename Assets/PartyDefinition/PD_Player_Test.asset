@@ -17,61 +17,61 @@ MonoBehaviour:
   - unitDefinition: {fileID: 11400000, guid: 592fc88aebc95f14da1c15df923601fc, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: 358658ab6cd56c84184d837f206ebc73, type: 2}
     startSlotIndex: 0
-    instanceId: 
-    instanceDisplayNameOverride: 
+    instanceId: player_blackknight_001
+    instanceDisplayNameOverride: "\uD751\uAE30\uC0ACA"
     fixedEpitaph: 
     currentLevel: 1
     originalLevel: 1
     statVariance:
-      maxHpDelta: 0
-      dmgDelta: 0
-      spdDelta: 0
-      hitDeltaX10: 0
-      acDeltaX10: 0
-      criDelta: 0
+      maxHpDelta: 5
+      dmgDelta: 1
+      spdDelta: -1
+      hitDeltaX10: 2
+      acDeltaX10: 3
+      criDelta: -2
       crdDelta: 0
-      poisonResistDelta: 0
-      bleedResistDelta: 0
-      stunResistDelta: 0
+      poisonResistDelta: -1
+      bleedResistDelta: -2
+      stunResistDelta: 1
     learnedSkills: []
   - unitDefinition: {fileID: 11400000, guid: f8f9adbf09c124c4f841e0510acbe903, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: db5ea6affc7c81a4ab640be9675790dd, type: 2}
     startSlotIndex: 1
-    instanceId: 
-    instanceDisplayNameOverride: 
+    instanceId: player_darkelf_001
+    instanceDisplayNameOverride: "\uB2E4\uD06C\uC5D8\uD504A"
     fixedEpitaph: 
     currentLevel: 1
     originalLevel: 1
     statVariance:
-      maxHpDelta: 0
-      dmgDelta: 0
-      spdDelta: 0
-      hitDeltaX10: 0
-      acDeltaX10: 0
-      criDelta: 0
-      crdDelta: 0
-      poisonResistDelta: 0
-      bleedResistDelta: 0
-      stunResistDelta: 0
+      maxHpDelta: 1
+      dmgDelta: 2
+      spdDelta: 3
+      hitDeltaX10: 4
+      acDeltaX10: 5
+      criDelta: -1
+      crdDelta: -2
+      poisonResistDelta: -3
+      bleedResistDelta: -4
+      stunResistDelta: -5
     learnedSkills: []
   - unitDefinition: {fileID: 11400000, guid: f8f9adbf09c124c4f841e0510acbe903, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: db5ea6affc7c81a4ab640be9675790dd, type: 2}
     startSlotIndex: 2
-    instanceId: 
-    instanceDisplayNameOverride: 
+    instanceId: player_darkelf_002
+    instanceDisplayNameOverride: "\uB2E4\uD06C\uC5D8\uD504B"
     fixedEpitaph: 
     currentLevel: 1
     originalLevel: 1
     statVariance:
-      maxHpDelta: 0
-      dmgDelta: 0
-      spdDelta: 0
-      hitDeltaX10: 0
-      acDeltaX10: 0
+      maxHpDelta: 5
+      dmgDelta: 4
+      spdDelta: 3
+      hitDeltaX10: 2
+      acDeltaX10: 1
       criDelta: 0
-      crdDelta: 0
-      poisonResistDelta: 0
-      bleedResistDelta: 0
-      stunResistDelta: 0
+      crdDelta: 1
+      poisonResistDelta: 2
+      bleedResistDelta: 3
+      stunResistDelta: 4
     learnedSkills: []
   inventory: []

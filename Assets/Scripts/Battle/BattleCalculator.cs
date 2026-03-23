@@ -34,7 +34,16 @@ public static class BattleCalculator
 
     public static AttackResult ResolveAttack(BattleUnit attacker, BattleUnit target, SkillDefinition skill)
     {
-        float effectiveHit = attacker.HIT * (skill != null ? skill.accuracyCoefficientPercent * 0.01f : 1f);
+        return ResolveAttack(attacker, target, skill, -1f, -1f);
+    }
+
+    public static AttackResult ResolveAttack(BattleUnit attacker, BattleUnit target, SkillDefinition skill, float accuracyCoefficientOverridePercent, float damagePowerPercentOverride)
+    {
+        float accuracyPercent = accuracyCoefficientOverridePercent >= 0f
+            ? accuracyCoefficientOverridePercent
+            : (skill != null ? skill.accuracyCoefficientPercent : 100f);
+
+        float effectiveHit = attacker.HIT * (accuracyPercent * 0.01f);
         float acStat = target.AC;
 
         float totalHitChance = CalculateTotalHitChance(effectiveHit, acStat);
@@ -67,7 +76,7 @@ public static class BattleCalculator
         int baseRollDamage = RollDamageFromUnitDmg(attacker.DMG);
         int damage = 0;
 
-        float damageMultiplier = GetTotalDamageMultiplier(skill);
+        float damageMultiplier = GetTotalDamageMultiplier(skill, damagePowerPercentOverride);
         int scaledDamage = Mathf.Max(0, Mathf.FloorToInt(baseRollDamage * damageMultiplier));
 
         switch (resultType)
@@ -117,7 +126,7 @@ public static class BattleCalculator
             int minBase;
             int maxBase;
             GetDamageVarianceRange(attacker.DMG, out minBase, out maxBase);
-            float multiplier = GetTotalDamageMultiplier(skill);
+            float multiplier = GetTotalDamageMultiplier(skill, -1f);
             data.damageMin = Mathf.Max(0, Mathf.FloorToInt(minBase * multiplier));
             data.damageMax = Mathf.Max(0, Mathf.FloorToInt(maxBase * multiplier));
 
@@ -207,8 +216,11 @@ public static class BattleCalculator
         if (maxValue < minValue) maxValue = minValue;
     }
 
-    public static float GetTotalDamageMultiplier(SkillDefinition skill)
+    public static float GetTotalDamageMultiplier(SkillDefinition skill, float damagePowerPercentOverride)
     {
+        if (damagePowerPercentOverride >= 0f)
+            return damagePowerPercentOverride * 0.01f;
+
         if (skill == null || skill.effects == null)
             return 1f;
 

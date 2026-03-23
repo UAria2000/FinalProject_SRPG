@@ -126,4 +126,35 @@ public static class BattleTargeting
 
         return result;
     }
+
+    public static BattleUnit GetSecondaryTarget(
+        BattleUnit actor,
+        SkillDefinition skill,
+        BattleUnit primaryTarget,
+        BattleFormation allyFormation,
+        BattleFormation enemyFormation)
+    {
+        if (actor == null || skill == null || primaryTarget == null)
+            return null;
+
+        if (skill.secondaryTargetRule == SecondaryTargetRule.None)
+            return null;
+
+        BattleFormation targetFormation = primaryTarget.Team == TeamType.Ally ? allyFormation : enemyFormation;
+        if (targetFormation == null)
+            return null;
+
+        switch (skill.secondaryTargetRule)
+        {
+            case SecondaryTargetRule.BackOne:
+            {
+                BattleUnit back = targetFormation.GetUnit(primaryTarget.SlotIndex + 1);
+                if (back == null || back.IsDead)
+                    return null;
+                return back;
+            }
+        }
+
+        return null;
+    }
 }

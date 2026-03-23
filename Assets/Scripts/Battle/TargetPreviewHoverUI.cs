@@ -12,8 +12,9 @@ public class TargetPreviewHoverUI : MonoBehaviour
     [SerializeField] private StatusChanceEntryUI statusEntryPrefab;
 
     private readonly List<StatusChanceEntryUI> spawnedEntries = new List<StatusChanceEntryUI>();
+    private readonly Vector2 screenOffset = new Vector2(120f, -50f);
 
-    public void Show(TargetPreviewData data, Vector3 screenPosition)
+    public void Show(TargetPreviewData data, Vector2 pointerScreenPosition)
     {
         if (data == null)
         {
@@ -26,28 +27,28 @@ public class TargetPreviewHoverUI : MonoBehaviour
             root.SetActive(true);
             RectTransform rt = root.transform as RectTransform;
             if (rt != null)
-                rt.position = screenPosition;
+                rt.position = pointerScreenPosition + screenOffset;
         }
 
         if (hitChanceText != null)
         {
             hitChanceText.gameObject.SetActive(data.showHitChance);
             if (data.showHitChance)
-                hitChanceText.text = string.Format("명중률 {0}%", data.hitChancePercent);
+                hitChanceText.text = $"명중률 {data.hitChancePercent}%";
         }
 
         if (damageRangeText != null)
         {
             damageRangeText.gameObject.SetActive(data.showDamageRange);
             if (data.showDamageRange)
-                damageRangeText.text = string.Format("피해 {0}~{1}", data.damageMin, data.damageMax);
+                damageRangeText.text = $"피해 {data.damageMin}~{data.damageMax}";
         }
 
         if (successText != null)
         {
             successText.gameObject.SetActive(data.showSuccessOnly);
             if (data.showSuccessOnly)
-                successText.text = string.Format("성공률 {0}%", data.successPercent);
+                successText.text = $"성공률 {data.successPercent}%";
         }
 
         RefreshStatuses(data.statusChances);

@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-public class EnemySkillButtonHoverHandler : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+public class EnemySkillButtonHoverHandler : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerMoveHandler
 {
     private BattleManager battleManager;
     private int slotIndex;
@@ -15,7 +15,13 @@ public class EnemySkillButtonHoverHandler : MonoBehaviour, IPointerEnterHandler,
     public void OnPointerEnter(PointerEventData eventData)
     {
         if (battleManager != null)
-            battleManager.OnEnemySkillHoverEnter(slotIndex, Input.mousePosition);
+            battleManager.OnEnemySkillHoverEnter(slotIndex, eventData.position);
+    }
+
+    public void OnPointerMove(PointerEventData eventData)
+    {
+        if (battleManager != null)
+            battleManager.OnEnemySkillHoverEnter(slotIndex, eventData.position);
     }
 
     public void OnPointerExit(PointerEventData eventData)

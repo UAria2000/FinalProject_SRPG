@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-public class SkillButtonHoverHandler : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+public class SkillButtonHoverHandler : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerMoveHandler
 {
     private BattleManager battleManager;
     private int slotIndex;
@@ -15,7 +15,13 @@ public class SkillButtonHoverHandler : MonoBehaviour, IPointerEnterHandler, IPoi
     public void OnPointerEnter(PointerEventData eventData)
     {
         if (battleManager != null)
-            battleManager.OnPlayerSkillButtonHoverEnter(slotIndex, Input.mousePosition);
+            battleManager.OnPlayerSkillButtonHoverEnter(slotIndex, eventData.position);
+    }
+
+    public void OnPointerMove(PointerEventData eventData)
+    {
+        if (battleManager != null)
+            battleManager.OnPlayerSkillButtonHoverEnter(slotIndex, eventData.position);
     }
 
     public void OnPointerExit(PointerEventData eventData)

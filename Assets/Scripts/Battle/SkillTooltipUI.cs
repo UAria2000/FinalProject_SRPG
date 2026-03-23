@@ -13,7 +13,9 @@ public class SkillTooltipUI : MonoBehaviour
     [SerializeField] private TMP_Text positionText;
     [SerializeField] private TMP_Text cooldownText;
 
-    public virtual void Show(SkillDefinition skill, Vector3 screenPosition)
+    protected virtual Vector2 ScreenOffset => new Vector2(120f, -50f);
+
+    public virtual void Show(SkillDefinition skill, Vector2 pointerScreenPosition)
     {
         if (skill == null)
         {
@@ -26,28 +28,29 @@ public class SkillTooltipUI : MonoBehaviour
             root.SetActive(true);
             RectTransform rt = root.transform as RectTransform;
             if (rt != null)
-                rt.position = screenPosition;
+                rt.position = pointerScreenPosition + ScreenOffset;
         }
 
         if (iconImage != null) iconImage.sprite = skill.icon;
         if (nameText != null) nameText.text = skill.skillName;
         if (descText != null) descText.text = skill.description;
+
         if (typeText != null)
             typeText.text = skill.resolutionMode == SkillResolutionMode.Attack ? "공격형" : "성공판정형";
 
         if (accuracyOrSuccessText != null)
         {
             if (skill.resolutionMode == SkillResolutionMode.Attack)
-                accuracyOrSuccessText.text = string.Format("명중계수 {0}%", Mathf.RoundToInt(skill.accuracyCoefficientPercent));
+                accuracyOrSuccessText.text = $"명중계수 {Mathf.RoundToInt(skill.accuracyCoefficientPercent)}%";
             else
                 accuracyOrSuccessText.text = "효과별 성공률 사용";
         }
 
         if (positionText != null)
-            positionText.text = string.Format("사용 {0} / 대상 {1}", skill.GetUsablePositionText(), skill.GetTargetPositionText());
+            positionText.text = $"사용 {skill.GetUsablePositionText()} / 대상 {skill.GetTargetPositionText()}";
 
         if (cooldownText != null)
-            cooldownText.text = string.Format("CD {0}", skill.cooldownTurns);
+            cooldownText.text = $"CD {skill.cooldownTurns}";
     }
 
     public virtual void Hide()

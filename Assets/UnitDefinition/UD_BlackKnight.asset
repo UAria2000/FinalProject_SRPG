@@ -12,17 +12,28 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7c7d82bbe39798b41a6678e937734907, type: 3}
   m_Name: UD_BlackKnight
   m_EditorClassIdentifier: Assembly-CSharp::UnitDefinition
-  unitName: BlackKnight
+  unitId: blackknight
+  unitName: "\uD751\uAE30\uC0AC"
   rangeType: 0
-  level: 1
-  exp: 0
-  maxHP: 30
-  dmg: 8
-  spd: 4
+  maxHP: 150
+  dmg: 30
+  spd: 80
   hit: 55
-  ac: 55
+  ac: 65
   cri: 10
-  crd: 150
-  poisonResist: 10
-  bleedResist: 20
-  stunResist: 15
+  crd: 130
+  poisonResist: 25
+  bleedResist: 30
+  stunResist: 5
+  basicAttack: {fileID: 11400000, guid: c72a7327518d02941b3b3af2f2491da8, type: 2}
+  varianceRules:
+    maxHpRange: {x: -15, y: 15}
+    dmgRange: {x: -5, y: 5}
+    spdRange: {x: -5, y: 5}
+    hitRangeX10: {x: -5, y: 5}
+    acRangeX10: {x: -5, y: 5}
+    criRange: {x: -5, y: 5}
+    crdRange: {x: -5, y: 5}
+    poisonResistRange: {x: -5, y: 5}
+    bleedResistRange: {x: -5, y: 5}
+    stunResistRange: {x: -5, y: 5}

@@ -36,6 +36,14 @@ public class BattleUIController : MonoBehaviour
     [SerializeField] private TMP_Text turnStartText;
     [SerializeField] private float turnStartTextShowTime = 1.0f;
 
+    [Header("Cancel Button Colors")]
+    [SerializeField] private Color cancelDisabledNormal = new Color(0.45f, 0.45f, 0.45f, 1f);
+    [SerializeField] private Color cancelDisabledHighlighted = new Color(0.50f, 0.50f, 0.50f, 1f);
+    [SerializeField] private Color cancelDisabledPressed = new Color(0.38f, 0.38f, 0.38f, 1f);
+    [SerializeField] private Color cancelEnabledNormal = new Color(0.82f, 0.20f, 0.20f, 1f);
+    [SerializeField] private Color cancelEnabledHighlighted = new Color(0.92f, 0.28f, 0.28f, 1f);
+    [SerializeField] private Color cancelEnabledPressed = new Color(0.66f, 0.12f, 0.12f, 1f);
+
     private BattleManager battleManager;
 
     public void Initialize(BattleManager manager)
@@ -51,7 +59,18 @@ public class BattleUIController : MonoBehaviour
         HideSkillTooltip();
         HideEnemySkillTooltip();
         HideTargetPreview();
+
+        // 시작은 인벤토리 열림
         SetBottomContext(BottomContextType.Inventory);
+
+        ApplyButtonNavigationNone(moveButton);
+        ApplyButtonNavigationNone(inventoryButton);
+        ApplyButtonNavigationNone(cancelButton);
+        ApplyButtonNavigationNone(popupLogButton);
+        ApplyButtonNavigationNone(enemyDetailPopupButton);
+
+        for (int i = 0; i < actionButtons.Length; i++)
+            ApplyButtonNavigationNone(actionButtons[i]);
     }
 
     public void BindButtonEvents()
@@ -82,7 +101,8 @@ public class BattleUIController : MonoBehaviour
 
         if (inventoryButton != null)
         {
-            inventoryButton.interactable = true;
+            inventoryButton.onClick.RemoveAllListeners();
+            inventoryButton.onClick.AddListener(battleManager.OnInventoryTogglePressed);
         }
 
         if (cancelButton != null)
@@ -172,11 +192,16 @@ public class BattleUIController : MonoBehaviour
                 actionButtons[i].interactable = interactable && hasSkill && unit.CanUseSkill(skill);
         }
 
-        if (moveButton != null)
-            moveButton.interactable = interactable;
+        bool moveInteractable = interactable && battleManager != null && battleManager.InputMode == BattleInputMode.WaitingForAction;
 
+        if (moveButton != null)
+            moveButton.interactable = moveInteractable;
+
+        // 인벤토리는 UI 토글이므로 항상 열 수 있게
         if (inventoryButton != null)
-            inventoryButton.interactable = interactable;
+            inventoryButton.interactable = true;
+
+        RefreshCancelButtonState();
     }
 
     public void RefreshInventory(BattleManager manager, PartyDefinition allyParty, int selectedIndex)
@@ -189,8 +214,9 @@ public class BattleUIController : MonoBehaviour
 
     public void SetBottomContext(BottomContextType mode)
     {
+        // EnemyInfoPanel은 상시 노출이라 끄지 않는다.
         if (enemyInfoContextRoot != null)
-            enemyInfoContextRoot.SetActive(mode == BottomContextType.EnemyInfo);
+            enemyInfoContextRoot.SetActive(true);
 
         if (inventoryContextRoot != null)
             inventoryContextRoot.SetActive(mode == BottomContextType.Inventory);
@@ -200,6 +226,10 @@ public class BattleUIController : MonoBehaviour
 
         if (inventoryPanelUI != null)
             inventoryPanelUI.Show(mode == BottomContextType.Inventory);
+
+        // 인벤토리/맵일 때 상세 팝업은 닫기
+        if (mode != BottomContextType.EnemyInfo && enemyDetailPopupUI != null && enemyDetailPopupUI.IsOpen())
+            enemyDetailPopupUI.Hide();
     }
 
     public void ToggleEnemyDetailPopup(BattleUnit enemy)
@@ -208,9 +238,22 @@ public class BattleUIController : MonoBehaviour
             return;
 
         if (enemyDetailPopupUI.IsOpen())
+        {
             enemyDetailPopupUI.Hide();
+        }
         else
+        {
+            if (inventoryContextRoot != null)
+                inventoryContextRoot.SetActive(false);
+
+            if (mapContextRoot != null)
+                mapContextRoot.SetActive(false);
+
+            if (inventoryPanelUI != null)
+                inventoryPanelUI.Show(false);
+
             enemyDetailPopupUI.Show(enemy);
+        }
     }
 
     public void HideEnemyDetailPopup()
@@ -264,5 +307,47 @@ public class BattleUIController : MonoBehaviour
         turnStartText.text = string.Format("Turn {0}", round);
         yield return new WaitForSeconds(turnStartTextShowTime);
         turnStartText.gameObject.SetActive(false);
+    }
+
+    private void RefreshCancelButtonState()
+    {
+        if (cancelButton == null || battleManager == null)
+            return;
+
+        bool canCancel =
+            battleManager.CurrentState == TurnState.PlayerInput &&
+            (battleManager.InputMode == BattleInputMode.WaitingForSkillTarget ||
+             battleManager.InputMode == BattleInputMode.WaitingForMoveTarget ||
+             battleManager.InputMode == BattleInputMode.WaitingForItemTarget);
+
+        cancelButton.interactable = canCancel;
+
+        ColorBlock colors = cancelButton.colors;
+        if (canCancel)
+        {
+            colors.normalColor = cancelEnabledNormal;
+            colors.highlightedColor = cancelEnabledHighlighted;
+            colors.pressedColor = cancelEnabledPressed;
+            colors.selectedColor = cancelEnabledNormal;
+        }
+        else
+        {
+            colors.normalColor = cancelDisabledNormal;
+            colors.highlightedColor = cancelDisabledHighlighted;
+            colors.pressedColor = cancelDisabledPressed;
+            colors.selectedColor = cancelDisabledNormal;
+        }
+
+        cancelButton.colors = colors;
+    }
+
+    private void ApplyButtonNavigationNone(Button button)
+    {
+        if (button == null)
+            return;
+
+        Navigation nav = button.navigation;
+        nav.mode = Navigation.Mode.None;
+        button.navigation = nav;
     }
 }

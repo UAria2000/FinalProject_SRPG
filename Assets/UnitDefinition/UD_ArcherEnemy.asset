@@ -12,19 +12,28 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7c7d82bbe39798b41a6678e937734907, type: 3}
   m_Name: UD_ArcherEnemy
   m_EditorClassIdentifier: Assembly-CSharp::UnitDefinition
-  unitName: Archer
+  unitId: archer
+  unitName: "\uAD81\uC218"
   rangeType: 1
-  level: 1
-  exp: 0
-  maxHP: 18
-  dmg: 6
-  spd: 5
-  hit: 60
-  ac: 45
-  cri: 8
+  maxHP: 100
+  dmg: 45
+  spd: 95
+  hit: 70
+  ac: 50
+  cri: 15
   crd: 150
-  poisonResist: 0
-  bleedResist: 5
-  stunResist: 0
-  defaultSkills:
-  - {fileID: 11400000, guid: a84a7361bb11ca34d9d00d40ff6bdcaf, type: 2}
+  poisonResist: 10
+  bleedResist: 10
+  stunResist: 10
+  basicAttack: {fileID: 11400000, guid: f2885d2a8216b10429791eef71dec8f9, type: 2}
+  varianceRules:
+    maxHpRange: {x: -5, y: 5}
+    dmgRange: {x: -10, y: 10}
+    spdRange: {x: -5, y: 5}
+    hitRangeX10: {x: -5, y: 5}
+    acRangeX10: {x: -5, y: 5}
+    criRange: {x: -5, y: 5}
+    crdRange: {x: -5, y: 5}
+    poisonResistRange: {x: -5, y: 5}
+    bleedResistRange: {x: -5, y: 5}
+    stunResistRange: {x: -5, y: 5}

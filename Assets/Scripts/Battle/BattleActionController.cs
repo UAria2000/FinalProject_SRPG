@@ -50,21 +50,55 @@ public class BattleActionController : MonoBehaviour
         {
             for (int i = 0; i < targets.Count; i++)
             {
-                AttackResult result = BattleCalculator.ResolveAttack(actor, targets[i], skill);
-                if (result.DidHit)
+                BattleUnit primaryTarget = targets[i];
+                AttackResult primaryResult = BattleCalculator.ResolveAttack(actor, primaryTarget, skill);
+                if (primaryResult.DidHit)
                 {
-                    targets[i].ApplyDamage(result.Damage);
-                    ApplyNonDamageEffects(actor, targets[i], skill.skillName, skill.effects, true);
+                    primaryTarget.ApplyDamage(primaryResult.Damage);
+                    ApplyNonDamageEffects(actor, primaryTarget, skill.skillName, skill.effects, true);
                 }
 
-                logController.AppendBattleLog(logController.BuildAttackLog(actor, targets[i], skill, result));
+                logController.AppendBattleLog(logController.BuildAttackLog(actor, primaryTarget, skill, primaryResult));
 
-                BattleUnitView view = viewManager.GetView(targets[i]);
-                if (view != null)
-                    yield return StartCoroutine(view.AnimateHPChange(0.15f));
+                BattleUnitView primaryView = viewManager.GetView(primaryTarget);
+                if (primaryView != null)
+                    yield return StartCoroutine(primaryView.AnimateHPChange(0.15f));
 
-                if (targets[i].IsDead)
-                    logController.AppendBattleLog(logController.BuildDeathLog(targets[i]));
+                if (primaryTarget.IsDead)
+                    logController.AppendBattleLog(logController.BuildDeathLog(primaryTarget));
+
+                BattleUnit secondaryTarget = BattleTargeting.GetSecondaryTarget(
+                    actor,
+                    skill,
+                    primaryTarget,
+                    battleManager.AllyFormation,
+                    battleManager.EnemyFormation);
+
+                if (secondaryTarget != null)
+                {
+                    AttackResult secondaryResult = BattleCalculator.ResolveAttack(
+                        actor,
+                        secondaryTarget,
+                        skill,
+                        skill.secondaryAccuracyCoefficientPercent,
+                        skill.secondaryDamagePercent);
+
+                    if (secondaryResult.DidHit)
+                    {
+                        secondaryTarget.ApplyDamage(secondaryResult.Damage);
+                        if (skill.secondaryApplyNonDamageEffects)
+                            ApplyNonDamageEffects(actor, secondaryTarget, skill.skillName, skill.effects, true);
+                    }
+
+                    logController.AppendBattleLog(logController.BuildAttackLog(actor, secondaryTarget, skill, secondaryResult));
+
+                    BattleUnitView secondaryView = viewManager.GetView(secondaryTarget);
+                    if (secondaryView != null)
+                        yield return StartCoroutine(secondaryView.AnimateHPChange(0.15f));
+
+                    if (secondaryTarget.IsDead)
+                        logController.AppendBattleLog(logController.BuildDeathLog(secondaryTarget));
+                }
             }
         }
         else
@@ -92,10 +126,19 @@ public class BattleActionController : MonoBehaviour
         }
 
         battleManager.SetTurnState(TurnState.ExecutingAction);
-        battleManager.AllyFormation.Swap(actor, target);
+
+        BattleFormation formation = actor.Team == TeamType.Ally
+            ? battleManager.AllyFormation
+            : battleManager.EnemyFormation;
+
+        formation.Swap(actor, target);
         logController.AppendBattleLog(logController.BuildMoveLog(actor, target));
 
-        yield return StartCoroutine(viewManager.AnimateRefreshAllPositions(battleManager.AllyFormation, battleManager.EnemyFormation, battleManager.MoveAnimationDuration));
+        yield return StartCoroutine(viewManager.AnimateRefreshAllPositions(
+            battleManager.AllyFormation,
+            battleManager.EnemyFormation,
+            battleManager.MoveAnimationDuration));
+
         battleManager.OnActionExecutionFinished(true);
     }
 

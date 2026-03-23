@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-public class BattleClickable : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
+public class BattleClickable : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler, IPointerMoveHandler
 {
     private BattleUnitView view;
     private BattleInputController inputController;
@@ -25,7 +25,15 @@ public class BattleClickable : MonoBehaviour, IPointerClickHandler, IPointerEnte
         if (view == null || inputController == null)
             return;
 
-        inputController.OnUnitViewHoverEntered(view);
+        inputController.OnUnitViewHoverEntered(view, eventData.position);
+    }
+
+    public void OnPointerMove(PointerEventData eventData)
+    {
+        if (view == null || inputController == null)
+            return;
+
+        inputController.OnUnitViewHoverMoved(view, eventData.position);
     }
 
     public void OnPointerExit(PointerEventData eventData)

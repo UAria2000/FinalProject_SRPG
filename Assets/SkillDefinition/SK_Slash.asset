@@ -10,32 +10,31 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b0ec0aa42fa160a46a6330d7ff30c770, type: 3}
-  m_Name: SK_PierceShot
+  m_Name: SK_Slash
   m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
-  skillId: pierce_shot
-  skillName: "\uAD00\uD1B5\uC0F7"
-  description: "\uD654\uC0B4\uB85C \uC801 1\uBA85\uC744 \uAD00\uD1B5\uD558\uACE0
-    \uB4B7\uC5F4\uC5D0 \uC808\uBC18\uC758 \uD53C\uD574"
-  icon: {fileID: 21300000, guid: 11010207f1291ef4182e6b31d165b118, type: 3}
-  isBasicAttack: 0
+  skillId: slash
+  skillName: "\uB300\uAC80\uBCA0\uAE30"
+  description: "\uB300\uAC80\uC73C\uB85C \uC801 1\uBA85\uC744 \uACF5\uACA9"
+  icon: {fileID: 21300000, guid: b82a608c5778ca840a0aaf5b01ea36d3, type: 3}
+  isBasicAttack: 1
   castType: 0
   activeRole: 0
-  learnTags: 8
-  rangeTag: 1
+  learnTags: 0
+  rangeTag: 0
   usableMinSlotIndex: 0
-  usableMaxSlotIndex: 2
+  usableMaxSlotIndex: 1
   targetMinSlotIndex: 0
-  targetMaxSlotIndex: 2
+  targetMaxSlotIndex: 1
   targetTeam: 0
   targetScope: 0
   resolutionMode: 0
-  cooldownTurns: 1
-  accuracyCoefficientPercent: 90
+  cooldownTurns: 0
+  accuracyCoefficientPercent: 100
   allowCrit: 1
   allowGraze: 1
-  secondaryTargetRule: 1
+  secondaryTargetRule: 0
   secondaryAccuracyCoefficientPercent: 100
-  secondaryDamagePercent: 50
+  secondaryDamagePercent: 0
   secondaryApplyNonDamageEffects: 0
   effects:
   - kind: 0
@@ -43,7 +42,7 @@ MonoBehaviour:
     statModifierType: 0
     successChancePercent: 0
     affectedByResistance: 0
-    powerPercent: 100
+    powerPercent: 120
     flatValue: 0
     durationTurns: 0
     displayIcon: {fileID: 0}

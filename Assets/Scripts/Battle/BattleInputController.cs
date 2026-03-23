@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class BattleInputController : MonoBehaviour
 {
@@ -43,6 +44,9 @@ public class BattleInputController : MonoBehaviour
         battleManager.ShowTargetMarkers(validTargets);
         uiController.HideSkillTooltip();
         uiController.HideTargetPreview();
+
+        ClearUISelection();
+        battleManager.RefreshAllUI();
     }
 
     public void HandleMovePressed()
@@ -59,9 +63,14 @@ public class BattleInputController : MonoBehaviour
 
         battleManager.SelectedSkill = null;
         battleManager.SelectedInventoryIndex = -1;
+        battleManager.SelectedSkillSlotIndex = -1;
         battleManager.SetInputMode(BattleInputMode.WaitingForMoveTarget);
         battleManager.ShowTargetMarkers(validTargets);
         uiController.HideTargetPreview();
+        uiController.HideSkillTooltip();
+
+        ClearUISelection();
+        battleManager.RefreshAllUI();
     }
 
     public void HandleInventorySlotPressed(int inventoryIndex)
@@ -88,9 +97,14 @@ public class BattleInputController : MonoBehaviour
 
         battleManager.SelectedInventoryIndex = inventoryIndex;
         battleManager.SelectedSkill = null;
+        battleManager.SelectedSkillSlotIndex = -1;
         battleManager.SetInputMode(BattleInputMode.WaitingForItemTarget);
         battleManager.ShowTargetMarkers(validTargets);
         uiController.HideTargetPreview();
+        uiController.HideSkillTooltip();
+
+        ClearUISelection();
+        battleManager.RefreshAllUI();
     }
 
     public void CancelCurrentInput()
@@ -100,9 +114,14 @@ public class BattleInputController : MonoBehaviour
 
         battleManager.SelectedSkill = null;
         battleManager.SelectedInventoryIndex = -1;
+        battleManager.SelectedSkillSlotIndex = -1;
         battleManager.SetInputMode(BattleInputMode.WaitingForAction);
         battleManager.ClearTargetMarkers();
         uiController.HideTargetPreview();
+        uiController.HideSkillTooltip();
+
+        ClearUISelection();
+        battleManager.RefreshAllUI();
     }
 
     public void OnUnitViewClicked(BattleUnitView clickedView)
@@ -131,7 +150,32 @@ public class BattleInputController : MonoBehaviour
         battleManager.RefreshAllUI();
     }
 
+    // 기존 BattleClickable과 호환
     public void OnUnitViewHoverEntered(BattleUnitView hoveredView)
+    {
+        if (hoveredView == null)
+            return;
+
+        UpdateTargetPreviewHover(hoveredView, hoveredView.HoverAnchor != null ? hoveredView.HoverAnchor.position : Vector3.zero);
+    }
+
+    // 새 PointerEvent 기반과 호환
+    public void OnUnitViewHoverEntered(BattleUnitView hoveredView, Vector2 pointerScreenPosition)
+    {
+        UpdateTargetPreviewHover(hoveredView, pointerScreenPosition);
+    }
+
+    public void OnUnitViewHoverMoved(BattleUnitView hoveredView, Vector2 pointerScreenPosition)
+    {
+        UpdateTargetPreviewHover(hoveredView, pointerScreenPosition);
+    }
+
+    public void OnUnitViewHoverExited(BattleUnitView hoveredView)
+    {
+        uiController.HideTargetPreview();
+    }
+
+    private void UpdateTargetPreviewHover(BattleUnitView hoveredView, Vector3 screenPosition)
     {
         if (hoveredView == null || hoveredView.Unit == null)
             return;
@@ -160,12 +204,7 @@ public class BattleInputController : MonoBehaviour
             return;
 
         TargetPreviewData data = BattleCalculator.BuildSkillPreview(battleManager.CurrentActingUnit, hoveredUnit, skill);
-        uiController.ShowTargetPreview(data, hoveredView.HoverAnchor.position);
-    }
-
-    public void OnUnitViewHoverExited(BattleUnitView hoveredView)
-    {
-        uiController.HideTargetPreview();
+        uiController.ShowTargetPreview(data, screenPosition);
     }
 
     private void HandleSkillTargetClick(BattleUnit clickedUnit)
@@ -223,5 +262,11 @@ public class BattleInputController : MonoBehaviour
                battleManager.CurrentState == TurnState.PlayerInput &&
                battleManager.CurrentActingUnit != null &&
                battleManager.CurrentActingUnit.Team == TeamType.Ally;
+    }
+
+    private void ClearUISelection()
+    {
+        if (EventSystem.current != null)
+            EventSystem.current.SetSelectedGameObject(null);
     }
 }

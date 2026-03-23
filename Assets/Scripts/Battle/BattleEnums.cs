@@ -91,6 +91,12 @@ public enum SkillResolutionMode
     SuccessOnly
 }
 
+public enum SecondaryTargetRule
+{
+    None,
+    BackOne
+}
+
 public enum BattleEffectKind
 {
     Damage,

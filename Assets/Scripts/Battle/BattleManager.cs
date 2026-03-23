@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class BattleManager : MonoBehaviour
 {
@@ -36,6 +37,8 @@ public class BattleManager : MonoBehaviour
     private bool waitingForPlayerAction;
     private bool battleStarted;
     private int currentRound;
+
+    // 시작 시 인벤토리 패널을 기본 컨텍스트로 사용
     private BottomContextType bottomContextType = BottomContextType.Inventory;
 
     public BattleFormation AllyFormation { get { return allyFormation; } }
@@ -114,6 +117,7 @@ public class BattleManager : MonoBehaviour
 
         battleStarted = true;
         RefreshAllUI();
+        ClearUISelection();
         StartCoroutine(BattleLoopRoutine());
     }
 
@@ -190,6 +194,7 @@ public class BattleManager : MonoBehaviour
                     viewManager.SetTurnMarker(CurrentActingUnit);
                 }
 
+                ClearUISelection();
                 RefreshAllUI();
 
                 if (CurrentActingUnit.Team == TeamType.Ally)
@@ -223,6 +228,7 @@ public class BattleManager : MonoBehaviour
             logController.AppendBattleLog(logController.BuildDefeatLog());
 
         RefreshAllUI();
+        ClearUISelection();
     }
 
     public void RefreshAllUI()
@@ -299,6 +305,8 @@ public class BattleManager : MonoBehaviour
             uiController.HideSkillTooltip();
         }
 
+        ClearUISelection();
+
         CurrentState = TurnState.PlayerInput;
         RefreshAllUI();
 
@@ -374,6 +382,7 @@ public class BattleManager : MonoBehaviour
     public void OnCancelButtonPressed()
     {
         inputController.CancelCurrentInput();
+        ClearUISelection();
         RefreshAllUI();
     }
 
@@ -384,6 +393,10 @@ public class BattleManager : MonoBehaviour
         else
             bottomContextType = BottomContextType.Inventory;
 
+        if (bottomContextType != BottomContextType.EnemyInfo && uiController != null)
+            uiController.HideEnemyDetailPopup();
+
+        ClearUISelection();
         RefreshAllUI();
     }
 
@@ -396,12 +409,16 @@ public class BattleManager : MonoBehaviour
     {
         if (popupLogPanel != null)
             popupLogPanel.SetActive(!popupLogPanel.activeSelf);
+
+        ClearUISelection();
     }
 
     public void OnEnemyDetailPopupButtonPressed()
     {
         if (uiController != null)
             uiController.ToggleEnemyDetailPopup(SelectedEnemyInfoUnit);
+
+        ClearUISelection();
     }
 
     public void OnPlayerSkillButtonHoverEnter(int slotIndex, Vector3 screenPosition)
@@ -435,5 +452,11 @@ public class BattleManager : MonoBehaviour
     {
         if (uiController != null)
             uiController.HideEnemySkillTooltip();
+    }
+
+    private void ClearUISelection()
+    {
+        if (EventSystem.current != null)
+            EventSystem.current.SetSelectedGameObject(null);
     }
 }

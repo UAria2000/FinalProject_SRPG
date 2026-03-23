@@ -33,6 +33,15 @@ public class SkillDefinition : ScriptableObject
     public bool allowCrit = true;
     public bool allowGraze = true;
 
+    [Header("Secondary Hit (Optional)")]
+    public SecondaryTargetRule secondaryTargetRule = SecondaryTargetRule.None;
+    [Tooltip("보조 타격 명중계수(%)")]
+    [Range(0f, 300f)] public float secondaryAccuracyCoefficientPercent = 100f;
+    [Tooltip("보조 타격 DMG 계수(%)")]
+    [Min(0f)] public float secondaryDamagePercent = 0f;
+    [Tooltip("보조 타격에도 비데미지 부가효과를 적용할지 여부")]
+    public bool secondaryApplyNonDamageEffects = false;
+
     [Header("Effects")]
     public List<BattleEffectBlock> effects = new List<BattleEffectBlock>();
 
@@ -67,6 +76,11 @@ public class SkillDefinition : ScriptableObject
     {
         return targetTeam == SkillTargetTeam.Enemy &&
                castType == SkillCastType.Active;
+    }
+
+    public bool HasSecondaryHit()
+    {
+        return secondaryTargetRule != SecondaryTargetRule.None && secondaryDamagePercent > 0f;
     }
 
     public int GetPrimaryPowerPercent()

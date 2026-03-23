@@ -17,12 +17,82 @@ MonoBehaviour:
   - unitDefinition: {fileID: 11400000, guid: 0191383d5bb90ee4fa0ede830a9c3f3a, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: 736ab746e0437e945a2523f73eeba5fa, type: 2}
     startSlotIndex: 0
+    instanceId: enemy_archer_001
+    instanceDisplayNameOverride: "\uAD81\uC218A"
+    fixedEpitaph: 
+    currentLevel: 1
+    originalLevel: 1
+    statVariance:
+      maxHpDelta: 1
+      dmgDelta: 2
+      spdDelta: 1
+      hitDeltaX10: 2
+      acDeltaX10: 1
+      criDelta: 2
+      crdDelta: 1
+      poisonResistDelta: 2
+      bleedResistDelta: 1
+      stunResistDelta: 2
+    learnedSkills:
+    - {fileID: 11400000, guid: a84a7361bb11ca34d9d00d40ff6bdcaf, type: 2}
   - unitDefinition: {fileID: 11400000, guid: 0191383d5bb90ee4fa0ede830a9c3f3a, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: 736ab746e0437e945a2523f73eeba5fa, type: 2}
     startSlotIndex: 1
+    instanceId: enemy_archer_002
+    instanceDisplayNameOverride: "\uAD81\uC218B"
+    fixedEpitaph: 
+    currentLevel: 1
+    originalLevel: 1
+    statVariance:
+      maxHpDelta: 0
+      dmgDelta: 0
+      spdDelta: 0
+      hitDeltaX10: 0
+      acDeltaX10: 0
+      criDelta: 0
+      crdDelta: 0
+      poisonResistDelta: 0
+      bleedResistDelta: 0
+      stunResistDelta: 0
+    learnedSkills: []
   - unitDefinition: {fileID: 11400000, guid: 0191383d5bb90ee4fa0ede830a9c3f3a, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: 736ab746e0437e945a2523f73eeba5fa, type: 2}
     startSlotIndex: 2
+    instanceId: enemy_archer_003
+    instanceDisplayNameOverride: "\uAD81\uC218C"
+    fixedEpitaph: 
+    currentLevel: 1
+    originalLevel: 1
+    statVariance:
+      maxHpDelta: 0
+      dmgDelta: 0
+      spdDelta: 0
+      hitDeltaX10: 0
+      acDeltaX10: 0
+      criDelta: 0
+      crdDelta: 0
+      poisonResistDelta: 0
+      bleedResistDelta: 0
+      stunResistDelta: 0
+    learnedSkills: []
   - unitDefinition: {fileID: 11400000, guid: 0191383d5bb90ee4fa0ede830a9c3f3a, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: 736ab746e0437e945a2523f73eeba5fa, type: 2}
     startSlotIndex: 3
+    instanceId: enemy_archer_004
+    instanceDisplayNameOverride: "\uAD81\uC218D"
+    fixedEpitaph: 
+    currentLevel: 1
+    originalLevel: 1
+    statVariance:
+      maxHpDelta: 0
+      dmgDelta: 0
+      spdDelta: 0
+      hitDeltaX10: 0
+      acDeltaX10: 0
+      criDelta: 0
+      crdDelta: 0
+      poisonResistDelta: 0
+      bleedResistDelta: 0
+      stunResistDelta: 0
+    learnedSkills: []
+  inventory: []
