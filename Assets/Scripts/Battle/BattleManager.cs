@@ -9,9 +9,6 @@ public class BattleManager : MonoBehaviour
     [SerializeField] private PartyDefinition allyPartyDefinition;
     [SerializeField] private PartyDefinition enemyPartyDefinition;
 
-    [Header("Flow")]
-    [SerializeField] private bool autoStartBattleOnStart = true;
-
     [Header("Controllers")]
     [SerializeField] private BattleViewManager viewManager;
     [SerializeField] private BattleUIController uiController;
@@ -84,14 +81,7 @@ public class BattleManager : MonoBehaviour
         if (enemyAIController != null)
             enemyAIController.Initialize(this);
 
-        if (autoStartBattleOnStart)
-            StartBattle();
-    }
-
-
-    public void SetAllyPartyDefinition(PartyDefinition definition)
-    {
-        allyPartyDefinition = definition;
+        StartBattle();
     }
 
     public void SetEnemyPartyDefinition(PartyDefinition definition)
@@ -443,6 +433,11 @@ public class BattleManager : MonoBehaviour
     public void OnFleeButtonPressed()
     {
         inputController.HandleFleePressed();
+    }
+
+    public void OnEndTurnButtonPressed()
+    {
+        inputController.HandleEndTurnPressed();
     }
 
     public void OnCancelButtonPressed()

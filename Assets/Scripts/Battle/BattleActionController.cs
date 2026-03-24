@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class BattleActionController : MonoBehaviour
 {
+    private const int EndTurnGuardPercent = 20;
+
     private BattleManager battleManager;
     private BattleViewManager viewManager;
     private BattleLogController logController;
@@ -61,8 +63,13 @@ public class BattleActionController : MonoBehaviour
                 AttackResult result = BattleCalculator.ResolveAttack(actor, targets[i], skill);
                 if (result.DidHit)
                 {
+                    int originalDamage = result.Damage;
+                    result.Damage = targets[i].ApplyIncomingAttackDamageReduction(result.Damage);
                     targets[i].ApplyDamage(result.Damage);
                     ApplyNonDamageEffects(actor, targets[i], skill.skillName, skill.effects, true);
+
+                    if (result.Damage < originalDamage)
+                        logController.AppendBattleLog(logController.BuildGuardReductionLog(targets[i], originalDamage, result.Damage));
                 }
 
                 logController.AppendBattleLog(logController.BuildAttackLog(actor, targets[i], skill, result));
@@ -205,6 +212,21 @@ public class BattleActionController : MonoBehaviour
             logController.AppendBattleLog(logController.BuildFleeFailureLog(actor, fleeChancePercent));
         }
 
+        battleManager.OnActionExecutionFinished(true);
+    }
+
+    public IEnumerator ExecuteEndTurnGuard(BattleUnit actor)
+    {
+        if (actor == null)
+        {
+            battleManager.OnActionExecutionFinished(true);
+            yield break;
+        }
+
+        battleManager.SetTurnState(TurnState.ExecutingAction);
+        actor.ApplyEndTurnGuard(EndTurnGuardPercent);
+        logController.AppendBattleLog(logController.BuildEndTurnGuardLog(actor, EndTurnGuardPercent));
+        yield return null;
         battleManager.OnActionExecutionFinished(true);
     }
 

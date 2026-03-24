@@ -29,6 +29,7 @@ public class BattleUIController : MonoBehaviour
     [SerializeField] private TMP_Text[] actionCooldownTexts = new TMP_Text[4];
     [SerializeField] private Button moveButton;
     [SerializeField] private Button fleeButton;
+    [SerializeField] private Button endTurnButton;
     [SerializeField] private Button inventoryButton;
     [SerializeField] private Button cancelButton;
     [SerializeField] private Button popupLogButton;
@@ -67,6 +68,7 @@ public class BattleUIController : MonoBehaviour
 
         ApplyButtonNavigationNone(moveButton);
         ApplyButtonNavigationNone(fleeButton);
+        ApplyButtonNavigationNone(endTurnButton);
         ApplyButtonNavigationNone(inventoryButton);
         ApplyButtonNavigationNone(cancelButton);
         ApplyButtonNavigationNone(popupLogButton);
@@ -111,6 +113,12 @@ public class BattleUIController : MonoBehaviour
             if (handler == null)
                 handler = fleeButton.gameObject.AddComponent<FleeButtonHoverHandler>();
             handler.Initialize(battleManager);
+        }
+
+        if (endTurnButton != null)
+        {
+            endTurnButton.onClick.RemoveAllListeners();
+            endTurnButton.onClick.AddListener(battleManager.OnEndTurnButtonPressed);
         }
 
         if (inventoryButton != null)
@@ -214,6 +222,9 @@ public class BattleUIController : MonoBehaviour
         if (fleeButton != null)
             fleeButton.interactable = canAct;
 
+        if (endTurnButton != null)
+            endTurnButton.interactable = canAct;
+
         if (inventoryButton != null)
             inventoryButton.interactable = true;
 
@@ -221,6 +232,8 @@ public class BattleUIController : MonoBehaviour
             cancelButton.interactable = battleManager != null &&
                                         battleManager.CurrentState == TurnState.PlayerInput &&
                                         battleManager.InputMode != BattleInputMode.WaitingForAction;
+
+        RefreshCancelButtonState();
     }
 
     public void RefreshInventory(BattleManager manager, PartyDefinition allyParty, int selectedIndex)

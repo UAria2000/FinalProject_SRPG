@@ -14,6 +14,7 @@ public class BattleUnit
         SlotIndex = data != null ? data.startSlotIndex : 0;
         CurrentHP = MaxHP;
         CurrentShield = 0;
+        endTurnGuardPercent = 0;
     }
 
     public TeamType Team { get; private set; }
@@ -60,6 +61,10 @@ public class BattleUnit
     public int PoisonResist { get { return BasePoisonResist + GetVariance().poisonResistDelta; } }
     public int BleedResist { get { return BaseBleedResist + GetVariance().bleedResistDelta; } }
     public int StunResist { get { return BaseStunResist + GetVariance().stunResistDelta; } }
+
+    private int endTurnGuardPercent;
+    public int EndTurnGuardPercent { get { return endTurnGuardPercent; } }
+    public bool HasEndTurnGuard { get { return endTurnGuardPercent > 0; } }
 
     public UnitInstanceStatVariance GetVariance()
     {
@@ -120,6 +125,8 @@ public class BattleUnit
 
     public void OnOwnTurnStart()
     {
+        ClearEndTurnGuard();
+
         List<string> keys = new List<string>(skillCooldowns.Keys);
         for (int i = 0; i < keys.Count; i++)
         {
@@ -146,6 +153,26 @@ public class BattleUnit
 
         CurrentHP = Mathf.Max(0, CurrentHP - hpDamage);
         return hpDamage;
+    }
+
+    public int ApplyIncomingAttackDamageReduction(int amount)
+    {
+        amount = Mathf.Max(0, amount);
+        if (!HasEndTurnGuard)
+            return amount;
+
+        float multiplier = 1f - (endTurnGuardPercent / 100f);
+        return Mathf.Max(0, Mathf.RoundToInt(amount * multiplier));
+    }
+
+    public void ApplyEndTurnGuard(int guardPercent)
+    {
+        endTurnGuardPercent = Mathf.Clamp(guardPercent, 0, 100);
+    }
+
+    public void ClearEndTurnGuard()
+    {
+        endTurnGuardPercent = 0;
     }
 
     public int Heal(int amount)

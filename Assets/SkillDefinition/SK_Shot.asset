@@ -22,7 +22,7 @@ MonoBehaviour:
   activeRole: 0
   learnTags: 0
   rangeTag: 0
-  usableMinSlotIndex: 1
+  usableMinSlotIndex: 0
   usableMaxSlotIndex: 3
   targetMinSlotIndex: 0
   targetMaxSlotIndex: 3

@@ -10143,7 +10143,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BattleManager
   allyPartyDefinition: {fileID: 11400000, guid: 512e5e2f0489bc2409a8d48ca2729fdd, type: 2}
   enemyPartyDefinition: {fileID: 0}
-  autoStartBattleOnStart: 1
   viewManager: {fileID: 871307117}
   uiController: {fileID: 871307116}
   logController: {fileID: 52438673}
@@ -10258,6 +10257,7 @@ MonoBehaviour:
   - {fileID: 35268586}
   moveButton: {fileID: 1948026199}
   fleeButton: {fileID: 140809287}
+  endTurnButton: {fileID: 1690793694}
   inventoryButton: {fileID: 228446401}
   cancelButton: {fileID: 1176749855}
   popupLogButton: {fileID: 1171765857}

@@ -93,6 +93,24 @@ public class BattleInputController : MonoBehaviour
         battleManager.StartManagedCoroutine(actionController.ExecuteFlee(battleManager.CurrentActingUnit));
     }
 
+    public void HandleEndTurnPressed()
+    {
+        if (!CanAcceptPlayerInput())
+            return;
+
+        battleManager.SelectedSkill = null;
+        battleManager.SelectedInventoryIndex = -1;
+        battleManager.SelectedSkillSlotIndex = -1;
+        battleManager.SetInputMode(BattleInputMode.WaitingForAction);
+        battleManager.ClearTargetMarkers();
+        uiController.HideTargetPreview();
+        uiController.HideSkillTooltip();
+        uiController.HideFleeTooltip();
+
+        ClearUISelection();
+        battleManager.StartManagedCoroutine(actionController.ExecuteEndTurnGuard(battleManager.CurrentActingUnit));
+    }
+
     public void HandleInventorySlotPressed(int inventoryIndex)
     {
         if (!CanAcceptPlayerInput())

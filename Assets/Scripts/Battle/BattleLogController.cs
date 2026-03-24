@@ -113,6 +113,16 @@ public class BattleLogController : MonoBehaviour
         return string.Format("{0} 도주 실패 ({1}%)", actor.Name, chancePercent);
     }
 
+    public string BuildEndTurnGuardLog(BattleUnit actor, int guardPercent)
+    {
+        return string.Format("{0} 턴 종료 → 다음 자기 턴까지 받는 공격 피해 {1}% 감소", actor.Name, guardPercent);
+    }
+
+    public string BuildGuardReductionLog(BattleUnit target, int originalDamage, int reducedDamage)
+    {
+        return string.Format("{0} 방어 태세: 피해 감소 {1} → {2}", target.Name, originalDamage, reducedDamage);
+    }
+
     public string BuildVictoryLog()
     {
         return "전투 승리";
