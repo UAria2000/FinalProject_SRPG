@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c7d82bbe39798b41a6678e937734907, type: 3}
+  m_Name: UD_Alchemist
+  m_EditorClassIdentifier: Assembly-CSharp::UnitDefinition
+  unitId: alchemist
+  unitName: "\uC5F0\uAE08\uC220\uC0AC"
+  rangeType: 2
+  maxHP: 65
+  dmg: 60
+  spd: 65
+  hit: 40
+  ac: 70
+  cri: 5
+  crd: 150
+  poisonResist: 30
+  bleedResist: 5
+  stunResist: 5
+  basicAttack: {fileID: 11400000, guid: e1f80ff6c20ef3f48b465529e72a6225, type: 2}
+  varianceRules:
+    maxHpRange: {x: -3, y: 3}
+    dmgRange: {x: -15, y: 15}
+    spdRange: {x: -5, y: 5}
+    hitRangeX10: {x: -5, y: 5}
+    acRangeX10: {x: -5, y: 5}
+    criRange: {x: -5, y: 5}
+    crdRange: {x: -5, y: 5}
+    poisonResistRange: {x: -5, y: 5}
+    bleedResistRange: {x: -5, y: 5}
+    stunResistRange: {x: -5, y: 5}

@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c6a35d65b0733cf46b1805d33bf861b7, type: 3}
+  m_Name: PD_Incounter
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyEncounterTable
+  minEnemyCount: 2
+  maxEnemyCount: 4
+  allowDuplicates: 1
+  entries:
+  - unitDefinition: {fileID: 11400000, guid: c010b665e92372547b7b8dd0f145d09e, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: 1b438de26f7c55846a7512105f0e9020, type: 2}
+    weight: 2
+    learnedSkills: []
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    enabled: 1
+  - unitDefinition: {fileID: 11400000, guid: ba6135bfc22c35c46bf17a0643ed18f1, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: c89f7e3ce318b1c44b1f9da12e21adc3, type: 2}
+    weight: 3
+    learnedSkills: []
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    enabled: 1
+  - unitDefinition: {fileID: 11400000, guid: 1908a15a55e069c40a2d153303c2f2b4, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: 7c11a47c0fa4b1841b92f06e5d932027, type: 2}
+    weight: 5
+    learnedSkills: []
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    enabled: 1
+  - unitDefinition: {fileID: 11400000, guid: 4ed19b798d1855e4b9d677b81f8760b4, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: efe870fc467569345ad795a5d741c65f, type: 2}
+    weight: 1
+    learnedSkills: []
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    enabled: 1
+  - unitDefinition: {fileID: 11400000, guid: 4fc12e95ea260a640b70631ac7a1e8a4, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: 505a387ba4cce804cb2c0a690bd2bcb1, type: 2}
+    weight: 1
+    learnedSkills: []
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    enabled: 1
+  - unitDefinition: {fileID: 11400000, guid: b9d53ddcc448c084b829774c1c11198c, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: bd16361a5f569b247ac2a772dfd8c60f, type: 2}
+    weight: 4
+    learnedSkills: []
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    enabled: 1

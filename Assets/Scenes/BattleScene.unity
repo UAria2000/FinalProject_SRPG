@@ -10121,6 +10121,7 @@ GameObject:
   - component: {fileID: 871307113}
   - component: {fileID: 871307117}
   - component: {fileID: 871307116}
+  - component: {fileID: 871307118}
   m_Layer: 0
   m_Name: BattleManager
   m_TagString: Untagged
@@ -10141,7 +10142,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BattleManager
   allyPartyDefinition: {fileID: 11400000, guid: 512e5e2f0489bc2409a8d48ca2729fdd, type: 2}
-  enemyPartyDefinition: {fileID: 11400000, guid: 7ef2a93e0cc96df4e9b4327c59b9e536, type: 2}
+  enemyPartyDefinition: {fileID: 0}
+  autoStartBattleOnStart: 1
   viewManager: {fileID: 871307117}
   uiController: {fileID: 871307116}
   logController: {fileID: 52438673}
@@ -10292,6 +10294,22 @@ MonoBehaviour:
   - {fileID: 1988855958}
   - {fileID: 729020803}
   defaultUnitViewPrefab: {fileID: 5061461418041598090, guid: edca2cd44571b8f4c80b0dfce99d6e95, type: 3}
+--- !u!114 &871307118
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 871307110}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b2200a4760939b4a8e98d69d2d9fe3a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RandomEnemyEncounterBootstrapper
+  battleManager: {fileID: 871307111}
+  encounterTable: {fileID: 11400000, guid: ec3bccea2e073e2498101c2136b2b2c8, type: 2}
+  generateOnAwake: 1
+  logGeneratedParty: 0
 --- !u!1 &893746363
 GameObject:
   m_ObjectHideFlags: 0

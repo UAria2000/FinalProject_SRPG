@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c7d82bbe39798b41a6678e937734907, type: 3}
+  m_Name: UD_Farmer
+  m_EditorClassIdentifier: Assembly-CSharp::UnitDefinition
+  unitId: farmer
+  unitName: "\uB18D\uBD80"
+  rangeType: 0
+  maxHP: 80
+  dmg: 30
+  spd: 70
+  hit: 50
+  ac: 50
+  cri: 10
+  crd: 150
+  poisonResist: 10
+  bleedResist: 0
+  stunResist: 0
+  basicAttack: {fileID: 11400000, guid: 4296badfbdac53c44923419eb89d18a3, type: 2}
+  varianceRules:
+    maxHpRange: {x: -10, y: 10}
+    dmgRange: {x: -5, y: 5}
+    spdRange: {x: -5, y: 5}
+    hitRangeX10: {x: -5, y: 5}
+    acRangeX10: {x: -5, y: 5}
+    criRange: {x: -5, y: 5}
+    crdRange: {x: -5, y: 5}
+    poisonResistRange: {x: -5, y: 5}
+    bleedResistRange: {x: 0, y: 0}
+    stunResistRange: {x: 0, y: 0}

@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b0ec0aa42fa160a46a6330d7ff30c770, type: 3}
+  m_Name: SK_Shot
+  m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
+  skillId: shot
+  skillName: "\uC0AC\uACA9"
+  description: "\uB300\uC0C1\uC5D0\uAC8C \uC0AC\uACA9\uD558\uC5EC \uD53C\uD574\uB97C
+    \uC785\uD78C\uB2E4"
+  icon: {fileID: 0}
+  isBasicAttack: 1
+  castType: 0
+  activeRole: 0
+  learnTags: 0
+  rangeTag: 0
+  usableMinSlotIndex: 1
+  usableMaxSlotIndex: 3
+  targetMinSlotIndex: 0
+  targetMaxSlotIndex: 3
+  targetTeam: 0
+  targetScope: 0
+  resolutionMode: 0
+  cooldownTurns: 0
+  accuracyCoefficientPercent: 100
+  allowCrit: 1
+  allowGraze: 1
+  secondaryTargetRule: 0
+  secondaryAccuracyCoefficientPercent: 100
+  secondaryDamagePercent: 0
+  secondaryApplyNonDamageEffects: 0
+  effects:
+  - kind: 0
+    statusType: 0
+    statModifierType: 0
+    successChancePercent: 0
+    affectedByResistance: 0
+    powerPercent: 100
+    flatValue: 0
+    durationTurns: 0
+    displayIcon: {fileID: 0}

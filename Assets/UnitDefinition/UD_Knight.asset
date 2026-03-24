@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c7d82bbe39798b41a6678e937734907, type: 3}
+  m_Name: UD_Knight
+  m_EditorClassIdentifier: Assembly-CSharp::UnitDefinition
+  unitId: knight
+  unitName: "\uAE30\uC0AC"
+  rangeType: 0
+  maxHP: 120
+  dmg: 35
+  spd: 85
+  hit: 60
+  ac: 60
+  cri: 15
+  crd: 150
+  poisonResist: 5
+  bleedResist: 20
+  stunResist: 20
+  basicAttack: {fileID: 11400000, guid: c72a7327518d02941b3b3af2f2491da8, type: 2}
+  varianceRules:
+    maxHpRange: {x: -15, y: 15}
+    dmgRange: {x: -10, y: 10}
+    spdRange: {x: -5, y: 5}
+    hitRangeX10: {x: -5, y: 5}
+    acRangeX10: {x: -5, y: 5}
+    criRange: {x: -5, y: 5}
+    crdRange: {x: -5, y: 5}
+    poisonResistRange: {x: -5, y: 5}
+    bleedResistRange: {x: -10, y: 10}
+    stunResistRange: {x: -10, y: 10}
