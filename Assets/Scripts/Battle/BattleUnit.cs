@@ -6,6 +6,7 @@ public class BattleUnit
     private readonly PartyMemberData memberData;
     private readonly Dictionary<string, int> skillCooldowns = new Dictionary<string, int>();
     private readonly List<BattleStatusInstance> statuses = new List<BattleStatusInstance>();
+    private readonly List<BattleTimedModifierInstance> timedModifiers = new List<BattleTimedModifierInstance>();
 
     public BattleUnit(PartyMemberData data, TeamType team)
     {
@@ -141,6 +142,13 @@ public class BattleUnit
             if (statuses[i].remainingTurns <= 0)
                 statuses.RemoveAt(i);
         }
+
+        for (int i = timedModifiers.Count - 1; i >= 0; i--)
+        {
+            timedModifiers[i].remainingTurns--;
+            if (timedModifiers[i].remainingTurns <= 0)
+                timedModifiers.RemoveAt(i);
+        }
     }
 
     public int ApplyDamage(int amount)
@@ -158,11 +166,21 @@ public class BattleUnit
     public int ApplyIncomingAttackDamageReduction(int amount)
     {
         amount = Mathf.Max(0, amount);
-        if (!HasEndTurnGuard)
-            return amount;
 
-        float multiplier = 1f - (endTurnGuardPercent / 100f);
-        return Mathf.Max(0, Mathf.RoundToInt(amount * multiplier));
+        if (HasEndTurnGuard)
+        {
+            float guardMultiplier = 1f - (endTurnGuardPercent / 100f);
+            amount = Mathf.Max(0, Mathf.RoundToInt(amount * guardMultiplier));
+        }
+
+        int takenModifierPercent = GetTimedModifierMagnitude(StatModifierType.IncomingDamageTakenPercent);
+        if (takenModifierPercent != 0)
+        {
+            float multiplier = 1f + (takenModifierPercent / 100f);
+            amount = Mathf.Max(0, Mathf.RoundToInt(amount * multiplier));
+        }
+
+        return amount;
     }
 
     public void ApplyEndTurnGuard(int guardPercent)
@@ -173,6 +191,77 @@ public class BattleUnit
     public void ClearEndTurnGuard()
     {
         endTurnGuardPercent = 0;
+    }
+
+    public bool TryApplyTimedModifier(StatModifierType statType, int magnitude, int duration)
+    {
+        if (statType == StatModifierType.None || duration <= 0 || magnitude == 0)
+            return false;
+
+        for (int i = 0; i < timedModifiers.Count; i++)
+        {
+            BattleTimedModifierInstance existing = timedModifiers[i];
+            if (existing.statModifierType != statType)
+                continue;
+
+            int newAbs = Mathf.Abs(magnitude);
+            int oldAbs = Mathf.Abs(existing.magnitude);
+
+            if (newAbs > oldAbs)
+            {
+                existing.magnitude = magnitude;
+                existing.remainingTurns = duration;
+                return true;
+            }
+
+            if (newAbs == oldAbs)
+            {
+                existing.magnitude = magnitude;
+                existing.remainingTurns = Mathf.Max(existing.remainingTurns, duration);
+                return true;
+            }
+
+            return false;
+        }
+
+        BattleTimedModifierInstance instance = new BattleTimedModifierInstance();
+        instance.statModifierType = statType;
+        instance.magnitude = magnitude;
+        instance.remainingTurns = duration;
+        timedModifiers.Add(instance);
+        return true;
+    }
+
+    public int GetTimedModifierMagnitude(StatModifierType statType)
+    {
+        for (int i = 0; i < timedModifiers.Count; i++)
+        {
+            if (timedModifiers[i].statModifierType == statType)
+                return timedModifiers[i].magnitude;
+        }
+
+        return 0;
+    }
+
+    public int GetTimedModifierRemainingTurns(StatModifierType statType)
+    {
+        for (int i = 0; i < timedModifiers.Count; i++)
+        {
+            if (timedModifiers[i].statModifierType == statType)
+                return timedModifiers[i].remainingTurns;
+        }
+
+        return 0;
+    }
+
+    public bool HasTimedModifier(StatModifierType statType)
+    {
+        return GetTimedModifierMagnitude(statType) != 0;
+    }
+
+    public bool HasPierceBackOneBuff
+    {
+        get { return GetTimedModifierMagnitude(StatModifierType.PierceBackOne) > 0; }
     }
 
     public int Heal(int amount)

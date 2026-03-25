@@ -90,6 +90,76 @@ public class BattleFormation
         b.SlotIndex = indexA;
     }
 
+    public bool MoveUnitByDelta(BattleUnit unit, int delta)
+    {
+        if (unit == null || delta == 0)
+            return false;
+
+        int currentIndex = -1;
+        for (int i = 0; i < slots.Length; i++)
+        {
+            if (slots[i] == unit)
+            {
+                currentIndex = i;
+                break;
+            }
+        }
+
+        if (currentIndex < 0)
+            return false;
+
+        int targetIndex = currentIndex + delta;
+        if (targetIndex < 0) targetIndex = 0;
+        if (targetIndex >= slots.Length) targetIndex = slots.Length - 1;
+
+        return MoveUnitTo(unit, targetIndex);
+    }
+
+    public bool MoveUnitTo(BattleUnit unit, int targetIndex)
+    {
+        if (unit == null)
+            return false;
+
+        if (targetIndex < 0) targetIndex = 0;
+        if (targetIndex >= slots.Length) targetIndex = slots.Length - 1;
+
+        int currentIndex = -1;
+        for (int i = 0; i < slots.Length; i++)
+        {
+            if (slots[i] == unit)
+            {
+                currentIndex = i;
+                break;
+            }
+        }
+
+        if (currentIndex < 0 || currentIndex == targetIndex)
+            return false;
+
+        if (targetIndex > currentIndex)
+        {
+            for (int i = currentIndex; i < targetIndex; i++)
+            {
+                slots[i] = slots[i + 1];
+                if (slots[i] != null)
+                    slots[i].SlotIndex = i;
+            }
+        }
+        else
+        {
+            for (int i = currentIndex; i > targetIndex; i--)
+            {
+                slots[i] = slots[i - 1];
+                if (slots[i] != null)
+                    slots[i].SlotIndex = i;
+            }
+        }
+
+        slots[targetIndex] = unit;
+        unit.SlotIndex = targetIndex;
+        return true;
+    }
+
     public List<BattleUnit> RemoveDeadAndCompress()
     {
         List<BattleUnit> moved = new List<BattleUnit>();

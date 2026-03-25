@@ -242,6 +242,9 @@ public class EnemyAIController : MonoBehaviour
         {
             StatModifierType statType = GetPrimaryStatModifierType(skill);
 
+            if (statType == StatModifierType.IncomingDamageTakenPercent)
+                return ChooseLowestHpTarget(validTargets);
+
             BattleUnit best = null;
             float bestValue = float.MinValue;
 
@@ -364,7 +367,11 @@ public class EnemyAIController : MonoBehaviour
         if (HasEffectKind(skill, BattleEffectKind.Buff))
         {
             StatModifierType statType = GetPrimaryStatModifierType(skill);
-            score += GetStatValue(target, statType) * 0.5f;
+
+            if (statType == StatModifierType.IncomingDamageTakenPercent)
+                score += Mathf.Max(0, target.MaxHP - target.CurrentHP);
+            else
+                score += GetStatValue(target, statType) * 0.5f;
         }
 
         if (HasEffectKind(skill, BattleEffectKind.Debuff) || HasEffectKind(skill, BattleEffectKind.ApplyStatus))
@@ -451,6 +458,8 @@ public class EnemyAIController : MonoBehaviour
             case StatModifierType.AC: return unit.AC;
             case StatModifierType.CRI: return unit.CRI;
             case StatModifierType.CRD: return unit.CRD;
+            case StatModifierType.PierceBackOne: return unit.DMG;
+            case StatModifierType.IncomingDamageTakenPercent: return Mathf.Max(0, unit.MaxHP - unit.CurrentHP);
             default: return unit.DMG;
         }
     }

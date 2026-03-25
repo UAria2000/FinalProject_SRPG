@@ -33,6 +33,10 @@ public class SkillDefinition : ScriptableObject
     public bool allowCrit = true;
     public bool allowGraze = true;
 
+    [Header("Self Position Move (Optional)")]
+    public SkillSelfMoveDirection selfMoveDirection = SkillSelfMoveDirection.None;
+    [Range(0, 3)] public int selfMoveSteps = 0;
+
     [Header("Secondary Hit (Optional)")]
     public SecondaryTargetRule secondaryTargetRule = SecondaryTargetRule.None;
     [Tooltip("보조 타격 명중계수(%)")]
@@ -83,6 +87,11 @@ public class SkillDefinition : ScriptableObject
         return secondaryTargetRule != SecondaryTargetRule.None && secondaryDamagePercent > 0f;
     }
 
+    public bool HasSelfMoveAfterUse()
+    {
+        return selfMoveDirection != SkillSelfMoveDirection.None && selfMoveSteps > 0;
+    }
+
     public int GetPrimaryPowerPercent()
     {
         if (effects == null) return 100;
@@ -90,7 +99,12 @@ public class SkillDefinition : ScriptableObject
         {
             BattleEffectBlock block = effects[i];
             if (block != null && block.kind == BattleEffectKind.Damage)
+            {
+                if (block.useRandomPowerPercentRange)
+                    return Mathf.RoundToInt((block.GetMinPowerPercent() + block.GetMaxPowerPercent()) * 0.5f);
+
                 return Mathf.RoundToInt(block.powerPercent);
+            }
         }
         return 100;
     }

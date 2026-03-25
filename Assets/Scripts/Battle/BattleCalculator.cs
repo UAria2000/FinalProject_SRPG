@@ -126,9 +126,13 @@ public static class BattleCalculator
             int minBase;
             int maxBase;
             GetDamageVarianceRange(attacker.DMG, out minBase, out maxBase);
-            float multiplier = GetTotalDamageMultiplier(skill, -1f);
-            data.damageMin = Mathf.Max(0, Mathf.FloorToInt(minBase * multiplier));
-            data.damageMax = Mathf.Max(0, Mathf.FloorToInt(maxBase * multiplier));
+
+            int minPercent;
+            int maxPercent;
+            GetSkillDamagePowerPercentRange(skill, out minPercent, out maxPercent);
+
+            data.damageMin = Mathf.Max(0, Mathf.FloorToInt(minBase * (minPercent * 0.01f)));
+            data.damageMax = Mathf.Max(0, Mathf.FloorToInt(maxBase * (maxPercent * 0.01f)));
 
             AppendStatusChances(data, target, skill.effects);
         }
@@ -153,6 +157,56 @@ public static class BattleCalculator
         return data;
     }
 
+    public static int RollSkillDamagePowerPercent(SkillDefinition skill)
+    {
+        if (skill == null || skill.effects == null)
+            return 100;
+
+        int totalPercent = 0;
+        bool hasDamageBlock = false;
+
+        for (int i = 0; i < skill.effects.Count; i++)
+        {
+            BattleEffectBlock block = skill.effects[i];
+            if (block == null || block.kind != BattleEffectKind.Damage)
+                continue;
+
+            totalPercent += block.GetRolledPowerPercent();
+            hasDamageBlock = true;
+        }
+
+        return hasDamageBlock ? totalPercent : 100;
+    }
+
+    public static void GetSkillDamagePowerPercentRange(SkillDefinition skill, out int minPercent, out int maxPercent)
+    {
+        minPercent = 100;
+        maxPercent = 100;
+
+        if (skill == null || skill.effects == null)
+            return;
+
+        int minTotal = 0;
+        int maxTotal = 0;
+        bool hasDamageBlock = false;
+
+        for (int i = 0; i < skill.effects.Count; i++)
+        {
+            BattleEffectBlock block = skill.effects[i];
+            if (block == null || block.kind != BattleEffectKind.Damage)
+                continue;
+
+            minTotal += block.GetMinPowerPercent();
+            maxTotal += block.GetMaxPowerPercent();
+            hasDamageBlock = true;
+        }
+
+        if (hasDamageBlock)
+        {
+            minPercent = minTotal;
+            maxPercent = maxTotal;
+        }
+    }
 
     public static int CalculateFleeChancePercent(BattleUnit actor, BattleFormation enemyFormation)
     {
@@ -251,19 +305,7 @@ public static class BattleCalculator
         if (damagePowerPercentOverride >= 0f)
             return damagePowerPercentOverride * 0.01f;
 
-        if (skill == null || skill.effects == null)
-            return 1f;
-
-        float total = 0f;
-        for (int i = 0; i < skill.effects.Count; i++)
-        {
-            BattleEffectBlock block = skill.effects[i];
-            if (block == null) continue;
-            if (block.kind == BattleEffectKind.Damage)
-                total += block.powerPercent * 0.01f;
-        }
-
-        return total > 0f ? total : 1f;
+        return RollSkillDamagePowerPercent(skill) * 0.01f;
     }
 
     public static void AppendStatusChances(TargetPreviewData data, BattleUnit target, List<BattleEffectBlock> effects)

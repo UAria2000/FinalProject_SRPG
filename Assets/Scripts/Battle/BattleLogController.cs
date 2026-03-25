@@ -56,7 +56,14 @@ public class BattleLogController : MonoBehaviour
 
     public string BuildAttackLog(BattleUnit attacker, BattleUnit target, SkillDefinition skill, AttackResult result)
     {
+        return BuildAttackLog(attacker, target, skill, result, string.Empty);
+    }
+
+    public string BuildAttackLog(BattleUnit attacker, BattleUnit target, SkillDefinition skill, AttackResult result, string skillNameSuffix)
+    {
         string skillName = skill != null ? skill.skillName : "공격";
+        if (!string.IsNullOrEmpty(skillNameSuffix))
+            skillName += skillNameSuffix;
 
         if (result.ResultType == AttackResultType.Miss)
             return string.Format("{0}의 {1} → {2}: 빗나감", attacker.Name, skillName, target.Name);
@@ -81,6 +88,11 @@ public class BattleLogController : MonoBehaviour
     public string BuildMoveLog(BattleUnit actor, BattleUnit target)
     {
         return string.Format("{0}이(가) {1}와 위치를 교체", actor.Name, target.Name);
+    }
+
+    public string BuildSelfSlideLog(BattleUnit actor, int fromSlotIndex, int toSlotIndex)
+    {
+        return string.Format("{0} 위치 이동 {1} → {2}", actor.Name, fromSlotIndex + 1, toSlotIndex + 1);
     }
 
     public string BuildAutoMoveLog(BattleUnit unit)
@@ -120,7 +132,29 @@ public class BattleLogController : MonoBehaviour
 
     public string BuildGuardReductionLog(BattleUnit target, int originalDamage, int reducedDamage)
     {
-        return string.Format("{0} 방어 태세: 피해 감소 {1} → {2}", target.Name, originalDamage, reducedDamage);
+        return string.Format("{0} 방어/피해변조: 피해 감소 {1} → {2}", target.Name, originalDamage, reducedDamage);
+    }
+
+    public string BuildIncomingDamageModifierLog(BattleUnit user, BattleUnit target, string sourceName, int signedPercent, int durationTurns)
+    {
+        string directionText = signedPercent >= 0 ? "증가" : "감소";
+        return string.Format("{0}의 {1} → {2}: 받는 피해 {3}% {4} ({5}턴)",
+            user.Name,
+            sourceName,
+            target.Name,
+            Mathf.Abs(signedPercent),
+            directionText,
+            durationTurns);
+    }
+
+    public string BuildPierceBuffLog(BattleUnit user, BattleUnit target, string sourceName, int durationTurns)
+    {
+        return string.Format("{0}의 {1} → {2}: 관통 부여 ({3}턴)", user.Name, sourceName, target.Name, durationTurns);
+    }
+
+    public string BuildStrongerEffectMaintainedLog(BattleUnit target, string effectName)
+    {
+        return string.Format("{0}: 더 강한 {1} 효과 유지", target.Name, effectName);
     }
 
     public string BuildVictoryLog()

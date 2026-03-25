@@ -56,30 +56,51 @@ public class BattleActionController : MonoBehaviour
                 yield return StartCoroutine(actorView.PlayAttackMove(targetView.transform.position, battleManager.AttackMoveRatio, battleManager.AttackMoveMaxDistance, battleManager.AttackMoveDuration));
         }
 
+        int rolledPrimaryDamagePercent = BattleCalculator.RollSkillDamagePowerPercent(skill);
+
         if (skill.resolutionMode == SkillResolutionMode.Attack && skill.HasDamageEffect())
         {
             for (int i = 0; i < targets.Count; i++)
             {
-                AttackResult result = BattleCalculator.ResolveAttack(actor, targets[i], skill);
-                if (result.DidHit)
-                {
-                    int originalDamage = result.Damage;
-                    result.Damage = targets[i].ApplyIncomingAttackDamageReduction(result.Damage);
-                    targets[i].ApplyDamage(result.Damage);
-                    ApplyNonDamageEffects(actor, targets[i], skill.skillName, skill.effects, true);
+                yield return StartCoroutine(ResolveAndApplyAttack(actor, skill, targets[i], rolledPrimaryDamagePercent, -1f, string.Empty, true));
 
-                    if (result.Damage < originalDamage)
-                        logController.AppendBattleLog(logController.BuildGuardReductionLog(targets[i], originalDamage, result.Damage));
+                if (skill.HasSecondaryHit())
+                {
+                    BattleUnit secondaryTarget = BattleTargeting.GetSecondaryTarget(
+                        actor,
+                        skill,
+                        targets[i],
+                        battleManager.AllyFormation,
+                        battleManager.EnemyFormation);
+
+                    if (secondaryTarget != null && !secondaryTarget.IsDead)
+                    {
+                        yield return StartCoroutine(ResolveAndApplyAttack(
+                            actor,
+                            skill,
+                            secondaryTarget,
+                            skill.secondaryDamagePercent,
+                            skill.secondaryAccuracyCoefficientPercent,
+                            " [추가타격]",
+                            skill.secondaryApplyNonDamageEffects));
+                    }
                 }
 
-                logController.AppendBattleLog(logController.BuildAttackLog(actor, targets[i], skill, result));
-
-                BattleUnitView view = viewManager.GetView(targets[i]);
-                if (view != null)
-                    yield return StartCoroutine(view.AnimateHPChange(0.15f));
-
-                if (targets[i].IsDead)
-                    logController.AppendBattleLog(logController.BuildDeathLog(targets[i]));
+                if (actor.HasPierceBackOneBuff)
+                {
+                    BattleUnit pierceTarget = GetBackUnit(targets[i]);
+                    if (pierceTarget != null && !pierceTarget.IsDead)
+                    {
+                        yield return StartCoroutine(ResolveAndApplyAttack(
+                            actor,
+                            skill,
+                            pierceTarget,
+                            rolledPrimaryDamagePercent,
+                            -1f,
+                            " [관통]",
+                            false));
+                    }
+                }
             }
         }
         else
@@ -95,6 +116,7 @@ public class BattleActionController : MonoBehaviour
 
         actor.ConsumeSkillCooldown(skill);
         yield return StartCoroutine(battleManager.HandleDeathsAndCompressionRoutine());
+        yield return StartCoroutine(HandleSelfMoveAfterSkill(actor, skill));
         battleManager.OnActionExecutionFinished(true);
     }
 
@@ -230,6 +252,107 @@ public class BattleActionController : MonoBehaviour
         battleManager.OnActionExecutionFinished(true);
     }
 
+    private IEnumerator ResolveAndApplyAttack(
+        BattleUnit actor,
+        SkillDefinition skill,
+        BattleUnit target,
+        float damagePowerPercentOverride,
+        float accuracyPercentOverride,
+        string logSuffix,
+        bool applyNonDamageEffects)
+    {
+        if (actor == null || target == null || skill == null)
+            yield break;
+
+        AttackResult result = BattleCalculator.ResolveAttack(
+            actor,
+            target,
+            skill,
+            accuracyPercentOverride,
+            damagePowerPercentOverride);
+
+        if (result.DidHit)
+        {
+            int originalDamage = result.Damage;
+            result.Damage = target.ApplyIncomingAttackDamageReduction(result.Damage);
+            target.ApplyDamage(result.Damage);
+
+            if (applyNonDamageEffects)
+                ApplyNonDamageEffects(actor, target, skill.skillName, skill.effects, true);
+
+            if (result.Damage < originalDamage)
+                logController.AppendBattleLog(logController.BuildGuardReductionLog(target, originalDamage, result.Damage));
+        }
+
+        logController.AppendBattleLog(logController.BuildAttackLog(actor, target, skill, result, logSuffix));
+
+        BattleUnitView view = viewManager.GetView(target);
+        if (view != null)
+            yield return StartCoroutine(view.AnimateHPChange(0.15f));
+
+        if (target.IsDead)
+            logController.AppendBattleLog(logController.BuildDeathLog(target));
+    }
+
+    private IEnumerator HandleSelfMoveAfterSkill(BattleUnit actor, SkillDefinition skill)
+    {
+        if (actor == null || skill == null || !skill.HasSelfMoveAfterUse())
+            yield break;
+
+        BattleFormation ownFormation = actor.Team == TeamType.Ally
+            ? battleManager.AllyFormation
+            : battleManager.EnemyFormation;
+
+        if (ownFormation == null || !ownFormation.Contains(actor))
+            yield break;
+
+        int fromSlot = actor.SlotIndex;
+        int delta = 0;
+
+        switch (skill.selfMoveDirection)
+        {
+            case SkillSelfMoveDirection.Forward:
+                delta = -skill.selfMoveSteps;
+                break;
+            case SkillSelfMoveDirection.Backward:
+                delta = skill.selfMoveSteps;
+                break;
+        }
+
+        bool moved = ownFormation.MoveUnitByDelta(actor, delta);
+        if (!moved)
+            yield break;
+
+        logController.AppendBattleLog(logController.BuildSelfSlideLog(actor, fromSlot, actor.SlotIndex));
+
+        if (viewManager != null)
+        {
+            yield return StartCoroutine(viewManager.AnimateRefreshAllPositions(
+                battleManager.AllyFormation,
+                battleManager.EnemyFormation,
+                battleManager.MoveAnimationDuration));
+        }
+    }
+
+    private BattleUnit GetBackUnit(BattleUnit primaryTarget)
+    {
+        if (primaryTarget == null)
+            return null;
+
+        BattleFormation formation = primaryTarget.Team == TeamType.Ally
+            ? battleManager.AllyFormation
+            : battleManager.EnemyFormation;
+
+        if (formation == null)
+            return null;
+
+        BattleUnit back = formation.GetUnit(primaryTarget.SlotIndex + 1);
+        if (back == null || back.IsDead)
+            return null;
+
+        return back;
+    }
+
     private void ApplyItemEffects(BattleUnit actor, BattleUnit target, ItemDefinition item)
     {
         if (item == null || item.effects == null)
@@ -309,6 +432,12 @@ public class BattleActionController : MonoBehaviour
                     logController.AppendBattleLog(logController.BuildShieldLog(actor, target, sourceName, amount));
                     break;
                 }
+            case BattleEffectKind.Buff:
+            case BattleEffectKind.Debuff:
+                {
+                    ApplyTimedModifierBlock(actor, target, sourceName, block);
+                    break;
+                }
             case BattleEffectKind.ApplyStatus:
                 {
                     target.ApplyStatus(block.statusType, block.durationTurns);
@@ -319,6 +448,51 @@ public class BattleActionController : MonoBehaviour
                 {
                     target.RemoveStatus(block.statusType);
                     logController.AppendBattleLog(logController.BuildEffectSuccessLog(actor, target, sourceName, block.statusType.ToString() + " 해제"));
+                    break;
+                }
+        }
+    }
+
+    private void ApplyTimedModifierBlock(BattleUnit actor, BattleUnit target, string sourceName, BattleEffectBlock block)
+    {
+        if (block == null || target == null)
+            return;
+
+        switch (block.statModifierType)
+        {
+            case StatModifierType.IncomingDamageTakenPercent:
+                {
+                    int basePercent = Mathf.Abs(block.flatValue);
+                    if (basePercent <= 0 || block.durationTurns <= 0)
+                        return;
+
+                    int signedPercent = block.kind == BattleEffectKind.Buff ? -basePercent : basePercent;
+                    bool applied = target.TryApplyTimedModifier(block.statModifierType, signedPercent, block.durationTurns);
+
+                    if (applied)
+                        logController.AppendBattleLog(logController.BuildIncomingDamageModifierLog(actor, target, sourceName, signedPercent, block.durationTurns));
+                    else
+                        logController.AppendBattleLog(logController.BuildStrongerEffectMaintainedLog(target, "받는 피해 변조"));
+
+                    break;
+                }
+            case StatModifierType.PierceBackOne:
+                {
+                    int magnitude = Mathf.Max(1, Mathf.Abs(block.flatValue));
+                    if (block.durationTurns <= 0)
+                        return;
+
+                    bool applied = target.TryApplyTimedModifier(block.statModifierType, magnitude, block.durationTurns);
+                    if (applied)
+                        logController.AppendBattleLog(logController.BuildPierceBuffLog(actor, target, sourceName, block.durationTurns));
+                    else
+                        logController.AppendBattleLog(logController.BuildStrongerEffectMaintainedLog(target, "관통"));
+
+                    break;
+                }
+            default:
+                {
+                    logController.AppendBattleLog(logController.BuildEffectSuccessLog(actor, target, sourceName, block.statModifierType.ToString()));
                     break;
                 }
         }

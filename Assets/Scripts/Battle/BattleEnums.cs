@@ -61,6 +61,13 @@ public enum ActiveSkillRole
     Utility
 }
 
+public enum SkillSelfMoveDirection
+{
+    None,
+    Forward,
+    Backward
+}
+
 [Flags]
 public enum SkillLearnTag
 {
@@ -124,7 +131,9 @@ public enum StatModifierType
     HIT,
     AC,
     CRI,
-    CRD
+    CRD,
+    IncomingDamageTakenPercent,
+    PierceBackOne
 }
 
 public enum AttackResultType

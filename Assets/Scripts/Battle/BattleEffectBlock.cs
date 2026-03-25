@@ -17,6 +17,12 @@ public class BattleEffectBlock
     [Tooltip("DMG 기반 계수(%)")]
     [Min(0f)] public float powerPercent = 100f;
 
+    [Header("Damage Power Range (Optional, Damage only)")]
+    [Tooltip("체크 시 고정 powerPercent 대신 범위 내 무작위 정수 계수를 사용")]
+    public bool useRandomPowerPercentRange = false;
+    [Min(0)] public int randomPowerPercentMin = 100;
+    [Min(0)] public int randomPowerPercentMax = 100;
+
     [Tooltip("고정 수치")]
     public int flatValue = 0;
 
@@ -33,6 +39,41 @@ public class BattleEffectBlock
             return kind == BattleEffectKind.ApplyStatus ||
                    kind == BattleEffectKind.RemoveStatus;
         }
+    }
+
+    public int GetRolledPowerPercent()
+    {
+        if (kind != BattleEffectKind.Damage)
+            return Mathf.RoundToInt(powerPercent);
+
+        if (!useRandomPowerPercentRange)
+            return Mathf.RoundToInt(powerPercent);
+
+        int min = Mathf.Min(randomPowerPercentMin, randomPowerPercentMax);
+        int max = Mathf.Max(randomPowerPercentMin, randomPowerPercentMax);
+        return UnityEngine.Random.Range(min, max + 1);
+    }
+
+    public int GetMinPowerPercent()
+    {
+        if (kind != BattleEffectKind.Damage)
+            return Mathf.RoundToInt(powerPercent);
+
+        if (!useRandomPowerPercentRange)
+            return Mathf.RoundToInt(powerPercent);
+
+        return Mathf.Min(randomPowerPercentMin, randomPowerPercentMax);
+    }
+
+    public int GetMaxPowerPercent()
+    {
+        if (kind != BattleEffectKind.Damage)
+            return Mathf.RoundToInt(powerPercent);
+
+        if (!useRandomPowerPercentRange)
+            return Mathf.RoundToInt(powerPercent);
+
+        return Mathf.Max(randomPowerPercentMin, randomPowerPercentMax);
     }
 }
 
@@ -82,6 +123,14 @@ public class StatVarianceRules
 public class BattleStatusInstance
 {
     public StatusEffectType statusType = StatusEffectType.None;
+    public int remainingTurns = 0;
+}
+
+[Serializable]
+public class BattleTimedModifierInstance
+{
+    public StatModifierType statModifierType = StatModifierType.None;
+    public int magnitude = 0;
     public int remainingTurns = 0;
 }
 
