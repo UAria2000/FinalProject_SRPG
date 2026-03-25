@@ -35,6 +35,7 @@ MonoBehaviour:
     weight: 5
     learnedSkills:
     - {fileID: 11400000, guid: 566ac0660335c3a46b961623a4487e28, type: 2}
+    - {fileID: 11400000, guid: 9f170c3763160a544b2127c66554d02d, type: 2}
     instanceDisplayNameOverride: 
     fixedEpitaph: 
     enabled: 1

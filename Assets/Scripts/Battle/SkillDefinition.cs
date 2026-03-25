@@ -1,6 +1,13 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+
+public enum PassiveSkillGimmick
+{
+    None,
+    FleeNextTurnWhenAlone
+}
+
 [CreateAssetMenu(menuName = "Battle/Skill Definition")]
 public class SkillDefinition : ScriptableObject
 {
@@ -16,6 +23,7 @@ public class SkillDefinition : ScriptableObject
     public ActiveSkillRole activeRole = ActiveSkillRole.Attack;
     public SkillLearnTag learnTags = SkillLearnTag.None;
     public CharacterRangeType rangeTag = CharacterRangeType.Melee;
+    public PassiveSkillGimmick passiveGimmick = PassiveSkillGimmick.None;
 
     [Header("Targeting")]
     [Range(0, 3)] public int usableMinSlotIndex = 0;

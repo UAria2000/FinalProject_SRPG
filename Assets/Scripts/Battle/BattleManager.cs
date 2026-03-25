@@ -16,6 +16,7 @@ public class BattleManager : MonoBehaviour
     [SerializeField] private BattleActionController actionController;
     [SerializeField] private BattleInputController inputController;
     [SerializeField] private EnemyAIController enemyAIController;
+    [SerializeField] private BattlePassiveController passiveController;
 
     [Header("Enemy Skill Hover Targets")]
     [SerializeField] private GameObject[] enemySkillHoverTargets = new GameObject[4];
@@ -81,6 +82,13 @@ public class BattleManager : MonoBehaviour
 
         if (enemyAIController != null)
             enemyAIController.Initialize(this);
+
+        if (passiveController == null)
+            passiveController = GetComponent<BattlePassiveController>();
+        if (passiveController == null)
+            passiveController = gameObject.AddComponent<BattlePassiveController>();
+        if (passiveController != null)
+            passiveController.Initialize(this, logController);
 
         StartBattle();
     }
@@ -186,6 +194,9 @@ public class BattleManager : MonoBehaviour
                 CurrentActingUnit = unit;
                 CurrentActingUnit.OnOwnTurnStart();
 
+                if (passiveController != null)
+                    yield return StartCoroutine(passiveController.ResolveTurnStartPassive(CurrentActingUnit));
+
                 if (CurrentActingUnit.Team == TeamType.Ally)
                     LastShownAllyUnit = CurrentActingUnit;
 
@@ -205,6 +216,15 @@ public class BattleManager : MonoBehaviour
 
                 if (CurrentActingUnit == null || CurrentActingUnit.IsDead || !IsUnitInBattle(CurrentActingUnit) || currentTurnSkippedByStatus)
                 {
+                    if (passiveController != null)
+                        passiveController.EvaluateAfterTurnEnd(unit);
+
+                    CheckBattleResult();
+                    RefreshAllUI();
+
+                    if (BattleResult != BattleResultType.None)
+                        break;
+
                     yield return new WaitForSeconds(turnDelay);
                     continue;
                 }
@@ -235,6 +255,15 @@ public class BattleManager : MonoBehaviour
                 {
                     yield return StartCoroutine(enemyAIController.ExecuteTurn(CurrentActingUnit));
                 }
+
+                CheckBattleResult();
+                RefreshAllUI();
+
+                if (BattleResult != BattleResultType.None)
+                    break;
+
+                if (passiveController != null)
+                    passiveController.EvaluateAfterTurnEnd(unit);
 
                 CheckBattleResult();
                 RefreshAllUI();

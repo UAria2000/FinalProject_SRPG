@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b0ec0aa42fa160a46a6330d7ff30c770, type: 3}
+  m_Name: SK_Run
+  m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
+  skillId: run
+  skillName: "\uC904\uD589\uB791"
+  description: "\uD63C\uC790 \uB0A8\uC558\uB2E4\uBA74 \uB2E4\uC74C \uC790\uC2E0\uC758
+    \uCC28\uB840\uC5D0 \uC804\uD22C\uC5D0\uC11C \uB3C4\uB9DD\uCE5C\uB2E4"
+  icon: {fileID: 0}
+  isBasicAttack: 0
+  castType: 1
+  activeRole: 3
+  learnTags: 0
+  rangeTag: 0
+  passiveGimmick: 1
+  usableMinSlotIndex: 0
+  usableMaxSlotIndex: 3
+  targetMinSlotIndex: 0
+  targetMaxSlotIndex: 3
+  targetTeam: 0
+  targetScope: 0
+  resolutionMode: 0
+  cooldownTurns: 0
+  accuracyCoefficientPercent: 100
+  allowCrit: 1
+  allowGraze: 1
+  selfMoveDirection: 0
+  selfMoveSteps: 0
+  secondaryTargetRule: 0
+  secondaryAccuracyCoefficientPercent: 100
+  secondaryDamagePercent: 0
+  secondaryApplyNonDamageEffects: 0
+  effects: []

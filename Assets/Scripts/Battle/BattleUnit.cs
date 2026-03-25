@@ -8,6 +8,8 @@ public class BattleUnit
     private readonly List<BattleStatusInstance> statuses = new List<BattleStatusInstance>();
     private readonly List<BattleTimedModifierInstance> timedModifiers = new List<BattleTimedModifierInstance>();
 
+    private SkillDefinition pendingPassiveSkill;
+
     public BattleUnit(PartyMemberData data, TeamType team)
     {
         memberData = data;
@@ -101,10 +103,68 @@ public class BattleUnit
         if (skill == null || IsDead)
             return false;
 
+        if (skill.castType == SkillCastType.Passive)
+            return false;
+
         if (!skill.CanBeUsedFromSlot(SlotIndex))
             return false;
 
         return GetRemainingCooldown(skill) <= 0;
+    }
+
+    public bool TryGetPassiveSkillByGimmick(PassiveSkillGimmick gimmick, out SkillDefinition skill)
+    {
+        skill = null;
+
+        if (gimmick == PassiveSkillGimmick.None || memberData == null || memberData.learnedSkills == null)
+            return false;
+
+        for (int i = 0; i < memberData.learnedSkills.Count; i++)
+        {
+            SkillDefinition candidate = memberData.learnedSkills[i];
+            if (candidate == null)
+                continue;
+
+            if (candidate.castType != SkillCastType.Passive)
+                continue;
+
+            if (candidate.passiveGimmick != gimmick)
+                continue;
+
+            skill = candidate;
+            return true;
+        }
+
+        return false;
+    }
+
+    public bool HasPendingPassiveSkill
+    {
+        get { return pendingPassiveSkill != null; }
+    }
+
+    public SkillDefinition PeekPendingPassiveSkill()
+    {
+        return pendingPassiveSkill;
+    }
+
+    public bool TryArmPendingPassiveSkill(SkillDefinition passiveSkill)
+    {
+        if (passiveSkill == null || passiveSkill.castType != SkillCastType.Passive)
+            return false;
+
+        if (pendingPassiveSkill != null)
+            return false;
+
+        pendingPassiveSkill = passiveSkill;
+        return true;
+    }
+
+    public SkillDefinition ConsumePendingPassiveSkill()
+    {
+        SkillDefinition consumed = pendingPassiveSkill;
+        pendingPassiveSkill = null;
+        return consumed;
     }
 
     public int GetRemainingCooldown(SkillDefinition skill)
