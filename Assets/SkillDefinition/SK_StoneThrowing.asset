@@ -12,23 +12,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b0ec0aa42fa160a46a6330d7ff30c770, type: 3}
   m_Name: SK_StoneThrowing
   m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
-  skillId: 
-  skillName: 
-  description: 
+  skillId: stone_throwing
+  skillName: "\uD22C\uC11D"
+  description: "\uB3CC\uC744 \uB358\uC838 \uB300\uC0C1\uC5D0\uAC8C \uD53C\uD574\uB97C
+    \uC785\uD788\uACE0 \uB0AE\uC740 \uD655\uB960\uB85C \uAE30\uC808\uC2DC\uD0A8\uB2E4"
   icon: {fileID: 0}
   isBasicAttack: 0
   castType: 0
   activeRole: 0
   learnTags: 0
   rangeTag: 0
-  usableMinSlotIndex: 0
+  usableMinSlotIndex: 2
   usableMaxSlotIndex: 3
   targetMinSlotIndex: 0
-  targetMaxSlotIndex: 3
+  targetMaxSlotIndex: 2
   targetTeam: 0
   targetScope: 0
   resolutionMode: 0
-  cooldownTurns: 0
+  cooldownTurns: 2
   accuracyCoefficientPercent: 100
   allowCrit: 1
   allowGraze: 1
@@ -38,4 +39,28 @@ MonoBehaviour:
   secondaryAccuracyCoefficientPercent: 100
   secondaryDamagePercent: 0
   secondaryApplyNonDamageEffects: 0
-  effects: []
+  effects:
+  - kind: 0
+    statusType: 0
+    statModifierType: 0
+    successChancePercent: 0
+    affectedByResistance: 0
+    powerPercent: 0
+    useRandomPowerPercentRange: 1
+    randomPowerPercentMin: 20
+    randomPowerPercentMax: 60
+    flatValue: 0
+    durationTurns: 0
+    displayIcon: {fileID: 0}
+  - kind: 5
+    statusType: 3
+    statModifierType: 0
+    successChancePercent: 10
+    affectedByResistance: 1
+    powerPercent: 0
+    useRandomPowerPercentRange: 0
+    randomPowerPercentMin: 0
+    randomPowerPercentMax: 0
+    flatValue: 0
+    durationTurns: 1
+    displayIcon: {fileID: 0}

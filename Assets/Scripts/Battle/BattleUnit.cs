@@ -136,13 +136,6 @@ public class BattleUnit
                 skillCooldowns[key]--;
         }
 
-        for (int i = statuses.Count - 1; i >= 0; i--)
-        {
-            statuses[i].remainingTurns--;
-            if (statuses[i].remainingTurns <= 0)
-                statuses.RemoveAt(i);
-        }
-
         for (int i = timedModifiers.Count - 1; i >= 0; i--)
         {
             timedModifiers[i].remainingTurns--;
@@ -279,6 +272,43 @@ public class BattleUnit
         return amount;
     }
 
+
+    public BattleTurnStartStatusResult ResolveTurnStartStatuses()
+    {
+        BattleTurnStartStatusResult result = new BattleTurnStartStatusResult();
+        if (IsDead)
+            return result;
+
+        int hpAtTurnStart = CurrentHP;
+
+        if (HasStatus(StatusEffectType.Poison))
+        {
+            int poisonDamage = Mathf.Max(1, Mathf.FloorToInt(MaxHP * 0.03f));
+            result.poisonDamage = ApplyDamage(poisonDamage);
+        }
+
+        if (!IsDead && HasStatus(StatusEffectType.Bleed))
+        {
+            int bleedDamage = Mathf.Max(1, Mathf.FloorToInt(hpAtTurnStart * 0.05f));
+            result.bleedDamage = ApplyDamage(bleedDamage);
+        }
+
+        if (!IsDead && HasStatus(StatusEffectType.Stun))
+            result.wasStunned = true;
+
+        for (int i = statuses.Count - 1; i >= 0; i--)
+        {
+            statuses[i].remainingTurns--;
+            if (statuses[i].remainingTurns <= 0)
+            {
+                result.expiredStatuses.Add(statuses[i].statusType);
+                statuses.RemoveAt(i);
+            }
+        }
+
+        return result;
+    }
+
     public void ApplyStatus(StatusEffectType statusType, int duration)
     {
         if (statusType == StatusEffectType.None || duration <= 0)
@@ -334,4 +364,13 @@ public class BattleUnit
 
         return skill.name;
     }
+}
+
+
+public class BattleTurnStartStatusResult
+{
+    public int poisonDamage;
+    public int bleedDamage;
+    public bool wasStunned;
+    public readonly List<StatusEffectType> expiredStatuses = new List<StatusEffectType>();
 }

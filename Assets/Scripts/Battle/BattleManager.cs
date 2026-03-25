@@ -37,6 +37,7 @@ public class BattleManager : MonoBehaviour
     private bool waitingForPlayerAction;
     private bool battleStarted;
     private int currentRound;
+    private bool currentTurnSkippedByStatus;
 
     private BottomContextType bottomContextType = BottomContextType.Inventory;
 
@@ -105,6 +106,7 @@ public class BattleManager : MonoBehaviour
         LastShownAllyUnit = null;
         SelectedEnemyInfoUnit = null;
         currentRound = 0;
+        currentTurnSkippedByStatus = false;
 
         if (popupLogPanel != null)
             popupLogPanel.SetActive(false);
@@ -187,6 +189,26 @@ public class BattleManager : MonoBehaviour
                 if (CurrentActingUnit.Team == TeamType.Ally)
                     LastShownAllyUnit = CurrentActingUnit;
 
+                if (viewManager != null)
+                {
+                    viewManager.ClearAllMarkers();
+                    viewManager.SetTurnMarker(CurrentActingUnit);
+                }
+
+                currentTurnSkippedByStatus = false;
+                yield return StartCoroutine(ResolveTurnStartStatusesRoutine(CurrentActingUnit));
+                CheckBattleResult();
+                RefreshAllUI();
+
+                if (BattleResult != BattleResultType.None)
+                    break;
+
+                if (CurrentActingUnit == null || CurrentActingUnit.IsDead || !IsUnitInBattle(CurrentActingUnit) || currentTurnSkippedByStatus)
+                {
+                    yield return new WaitForSeconds(turnDelay);
+                    continue;
+                }
+
                 SetInputMode(BattleInputMode.WaitingForAction);
                 SelectedSkill = null;
                 SelectedInventoryIndex = -1;
@@ -200,12 +222,6 @@ public class BattleManager : MonoBehaviour
                 else
                 {
                     CurrentState = TurnState.EnemyThinking;
-                }
-
-                if (viewManager != null)
-                {
-                    viewManager.ClearAllMarkers();
-                    viewManager.SetTurnMarker(CurrentActingUnit);
                 }
 
                 RefreshAllUI();
@@ -238,6 +254,38 @@ public class BattleManager : MonoBehaviour
 
         RefreshAllUI();
         ClearUISelection();
+    }
+
+    private IEnumerator ResolveTurnStartStatusesRoutine(BattleUnit unit)
+    {
+        if (unit == null || unit.IsDead || !IsUnitInBattle(unit))
+            yield break;
+
+        BattleTurnStartStatusResult result = unit.ResolveTurnStartStatuses();
+
+        if (result.poisonDamage > 0)
+            logController.AppendBattleLog(logController.BuildTurnStartPoisonLog(unit, result.poisonDamage));
+
+        if (result.bleedDamage > 0)
+            logController.AppendBattleLog(logController.BuildTurnStartBleedLog(unit, result.bleedDamage));
+
+        if (unit.IsDead)
+        {
+            logController.AppendBattleLog(logController.BuildDeathLog(unit));
+            yield return StartCoroutine(HandleDeathsAndCompressionRoutine());
+            yield break;
+        }
+
+        if (result.wasStunned)
+        {
+            logController.AppendBattleLog(logController.BuildTurnStartStunLog(unit));
+            waitingForPlayerAction = false;
+            CurrentState = TurnState.TurnEnding;
+            currentTurnSkippedByStatus = true;
+        }
+
+        for (int i = 0; i < result.expiredStatuses.Count; i++)
+            logController.AppendBattleLog(logController.BuildStatusExpiredLog(unit, result.expiredStatuses[i]));
     }
 
     public void RefreshAllUI()

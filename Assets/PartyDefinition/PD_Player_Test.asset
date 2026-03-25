@@ -53,7 +53,8 @@ MonoBehaviour:
       poisonResistDelta: -3
       bleedResistDelta: -4
       stunResistDelta: -5
-    learnedSkills: []
+    learnedSkills:
+    - {fileID: 11400000, guid: 566ac0660335c3a46b961623a4487e28, type: 2}
   - unitDefinition: {fileID: 11400000, guid: f8f9adbf09c124c4f841e0510acbe903, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: db5ea6affc7c81a4ab640be9675790dd, type: 2}
     startSlotIndex: 2
@@ -73,5 +74,6 @@ MonoBehaviour:
       poisonResistDelta: 2
       bleedResistDelta: 3
       stunResistDelta: 4
-    learnedSkills: []
+    learnedSkills:
+    - {fileID: 11400000, guid: 566ac0660335c3a46b961623a4487e28, type: 2}
   inventory: []

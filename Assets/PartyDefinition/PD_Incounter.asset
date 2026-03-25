@@ -33,7 +33,8 @@ MonoBehaviour:
   - unitDefinition: {fileID: 11400000, guid: 1908a15a55e069c40a2d153303c2f2b4, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: 7c11a47c0fa4b1841b92f06e5d932027, type: 2}
     weight: 5
-    learnedSkills: []
+    learnedSkills:
+    - {fileID: 11400000, guid: 566ac0660335c3a46b961623a4487e28, type: 2}
     instanceDisplayNameOverride: 
     fixedEpitaph: 
     enabled: 1

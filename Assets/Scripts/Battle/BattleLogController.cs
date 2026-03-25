@@ -135,6 +135,27 @@ public class BattleLogController : MonoBehaviour
         return string.Format("{0} 방어/피해변조: 피해 감소 {1} → {2}", target.Name, originalDamage, reducedDamage);
     }
 
+    public string BuildTurnStartPoisonLog(BattleUnit unit, int damage)
+    {
+        return string.Format("{0} 중독 피해 {1}", unit.Name, damage);
+    }
+
+    public string BuildTurnStartBleedLog(BattleUnit unit, int damage)
+    {
+        return string.Format("{0} 출혈 피해 {1}", unit.Name, damage);
+    }
+
+    public string BuildTurnStartStunLog(BattleUnit unit)
+    {
+        return string.Format("{0} 기절로 행동 불가", unit.Name);
+    }
+
+    public string BuildStatusExpiredLog(BattleUnit unit, StatusEffectType statusType)
+    {
+        string statusName = GetStatusDisplayName(statusType);
+        return string.Format("{0}의 {1} 해제", unit.Name, statusName);
+    }
+
     public string BuildIncomingDamageModifierLog(BattleUnit user, BattleUnit target, string sourceName, int signedPercent, int durationTurns)
     {
         string directionText = signedPercent >= 0 ? "증가" : "감소";
@@ -165,5 +186,16 @@ public class BattleLogController : MonoBehaviour
     public string BuildDefeatLog()
     {
         return "전투 패배";
+    }
+
+    private string GetStatusDisplayName(StatusEffectType statusType)
+    {
+        switch (statusType)
+        {
+            case StatusEffectType.Poison: return "중독";
+            case StatusEffectType.Bleed: return "출혈";
+            case StatusEffectType.Stun: return "기절";
+            default: return statusType.ToString();
+        }
     }
 }
