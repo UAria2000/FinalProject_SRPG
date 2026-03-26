@@ -37,28 +37,35 @@ MonoBehaviour:
   - unitDefinition: {fileID: 11400000, guid: 4fc12e95ea260a640b70631ac7a1e8a4, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: 505a387ba4cce804cb2c0a690bd2bcb1, type: 2}
     weight: 2
-    learnedSkills: []
+    learnedSkills:
+    - {fileID: 11400000, guid: 815cc480373ff3444af002b42b7dd4da, type: 2}
+    - {fileID: 11400000, guid: e81cd195888035e448b3ef8f4ed7e0ac, type: 2}
     instanceDisplayNameOverride: 
     fixedEpitaph: 
     enabled: 1
   - unitDefinition: {fileID: 11400000, guid: ba6135bfc22c35c46bf17a0643ed18f1, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: c89f7e3ce318b1c44b1f9da12e21adc3, type: 2}
     weight: 4
-    learnedSkills: []
+    learnedSkills:
+    - {fileID: 11400000, guid: 566ac0660335c3a46b961623a4487e28, type: 2}
+    - {fileID: 11400000, guid: 6e470c8dd3e33c041a26e06417ea0465, type: 2}
     instanceDisplayNameOverride: 
     fixedEpitaph: 
     enabled: 1
   - unitDefinition: {fileID: 11400000, guid: c010b665e92372547b7b8dd0f145d09e, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: 1b438de26f7c55846a7512105f0e9020, type: 2}
     weight: 3
-    learnedSkills: []
+    learnedSkills:
+    - {fileID: 11400000, guid: 566ac0660335c3a46b961623a4487e28, type: 2}
+    - {fileID: 11400000, guid: 7228d044f4e12b14ebfc557738f485dc, type: 2}
     instanceDisplayNameOverride: 
     fixedEpitaph: 
     enabled: 1
   - unitDefinition: {fileID: 11400000, guid: 4ed19b798d1855e4b9d677b81f8760b4, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: efe870fc467569345ad795a5d741c65f, type: 2}
     weight: 1
-    learnedSkills: []
+    learnedSkills:
+    - {fileID: 11400000, guid: 1eb281aaf1fb25147a1e63741d0cc51a, type: 2}
     instanceDisplayNameOverride: 
     fixedEpitaph: 
     enabled: 1

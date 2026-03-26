@@ -64,6 +64,9 @@ public class SkillDefinition : ScriptableObject
     [Header("Effects")]
     public List<BattleEffectBlock> effects = new List<BattleEffectBlock>();
 
+    [Tooltip("체크 시 이 스킬은 해당 전투에서 1회 사용 후 다시 사용할 수 없습니다.")]
+    public bool disableAfterUseInBattle = false;
+
     public bool HasDamageEffect()
     {
         if (effects == null) return false;

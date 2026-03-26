@@ -104,6 +104,12 @@ public enum SecondaryTargetRule
     BackOne
 }
 
+public enum EffectValueReference
+{
+    ActorDMG,
+    TargetMaxHP
+}
+
 public enum BattleEffectKind
 {
     Damage,

@@ -12,32 +12,47 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b0ec0aa42fa160a46a6330d7ff30c770, type: 3}
   m_Name: SK_DevoutPray
   m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
-  skillId: 
-  skillName: 
-  description: 
+  skillId: devout_pray
+  skillName: "\uC2E0\uC2E4\uD55C \uAE30\uB3C4"
+  description: "\uC2E0\uC2E4\uD55C \uAE30\uB3C4\uB85C \uB300\uC0C1\uC758 \uCCB4\uB825\uC744
+    \uD68C\uBCF5\uC2DC\uD0A8\uB2E4."
   icon: {fileID: 0}
   isBasicAttack: 0
   castType: 0
-  activeRole: 0
+  activeRole: 3
   learnTags: 0
-  rangeTag: 0
+  rangeTag: 2
   passiveGimmick: 0
   activeGimmick: 0
-  usableMinSlotIndex: 0
+  usableMinSlotIndex: 1
   usableMaxSlotIndex: 3
   targetMinSlotIndex: 0
   targetMaxSlotIndex: 3
-  targetTeam: 0
+  targetTeam: 1
   targetScope: 0
-  resolutionMode: 0
-  cooldownTurns: 0
+  resolutionMode: 1
+  cooldownTurns: 1
   accuracyCoefficientPercent: 100
-  allowCrit: 1
-  allowGraze: 1
+  allowCrit: 0
+  allowGraze: 0
   selfMoveDirection: 0
   selfMoveSteps: 0
   secondaryTargetRule: 0
   secondaryAccuracyCoefficientPercent: 100
   secondaryDamagePercent: 0
   secondaryApplyNonDamageEffects: 0
-  effects: []
+  effects:
+  - kind: 1
+    statusType: 0
+    statModifierType: 0
+    successChancePercent: 100
+    affectedByResistance: 0
+    powerPercent: 10
+    useRandomPowerPercentRange: 0
+    randomPowerPercentMin: 0
+    randomPowerPercentMax: 0
+    flatValue: 0
+    valueReference: 1
+    durationTurns: 0
+    displayIcon: {fileID: 0}
+  disableAfterUseInBattle: 0

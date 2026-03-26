@@ -25,7 +25,7 @@ MonoBehaviour:
   poisonResist: 5
   bleedResist: 20
   stunResist: 20
-  basicAttack: {fileID: 11400000, guid: c72a7327518d02941b3b3af2f2491da8, type: 2}
+  basicAttack: {fileID: 11400000, guid: cfd95283123097d49a502236731c1592, type: 2}
   varianceRules:
     maxHpRange: {x: -15, y: 15}
     dmgRange: {x: -10, y: 10}

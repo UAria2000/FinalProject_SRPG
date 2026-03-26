@@ -26,6 +26,9 @@ public class BattleEffectBlock
     [Tooltip("고정 수치")]
     public int flatValue = 0;
 
+    [Tooltip("flatValue가 0일 때 powerPercent의 기준값")]
+    public EffectValueReference valueReference = EffectValueReference.ActorDMG;
+
     [Tooltip("지속 턴")]
     [Min(0)] public int durationTurns = 0;
 
