@@ -51,8 +51,9 @@ public class BattleSkillGimmickController : MonoBehaviour
         List<PendingReinforcement> ready = new List<PendingReinforcement>();
         for (int i = 0; i < pendingReinforcements.Count; i++)
         {
-            if (pendingReinforcements[i] != null && pendingReinforcements[i].resolveRound <= round)
-                ready.Add(pendingReinforcements[i]);
+            PendingReinforcement pending = pendingReinforcements[i];
+            if (pending != null && pending.resolveRound <= round)
+                ready.Add(pending);
         }
 
         if (ready.Count <= 0)
@@ -115,16 +116,26 @@ public class BattleSkillGimmickController : MonoBehaviour
 
     private void QueueDelayedReinforcement(BattleUnit actor, SkillDefinition skill)
     {
+        if (actor == null || skill == null || battleManager == null)
+            return;
+
         PendingReinforcement pending = new PendingReinforcement();
         pending.team = actor.Team;
         pending.sourceData = ClonePartyMemberData(actor.MemberData);
         pending.sourceSkill = skill;
-        pending.resolveRound = Mathf.Max(1, battleManager.CurrentRound + 2);
+
+        // 라운드 시작 시 증원이 처리되므로,
+        // "2라운드 후"를 구현하려면 현재 라운드 다음의 2개 라운드를 모두 지난 뒤,
+        // 그 다음 라운드 시작에서 소환되도록 +3을 사용한다.
+        pending.resolveRound = Mathf.Max(1, battleManager.CurrentRound + 3);
         pending.sourceUnitName = actor.Name;
         pending.skillName = GetSkillName(skill);
         pendingReinforcements.Add(pending);
 
-        AppendLog(string.Format("{0}의 {1}: 2턴 후 증원 예약", actor.Name, pending.skillName));
+        // 이 스킬은 전투 중 1회만 사용 가능.
+        actor.DisableSkill(skill);
+
+        AppendLog(string.Format("{0}의 {1}: 2라운드 후 증원 예약", actor.Name, pending.skillName));
     }
 
     private IEnumerator SpawnPendingReinforcement(PendingReinforcement pending)
@@ -148,7 +159,10 @@ public class BattleSkillGimmickController : MonoBehaviour
 
         PartyMemberData member = CreateReinforcementMemberData(pending.sourceData, emptySlot, pending.team);
         BattleUnit newUnit = new BattleUnit(member, pending.team);
+
+        // 증원으로 소환된 개체는 동일한 증원 스킬을 처음부터 사용할 수 없게 한다.
         newUnit.DisableSkill(pending.sourceSkill);
+
         formation.SetUnit(emptySlot, newUnit);
 
         if (battleManager.ViewManager != null && battleManager.InputController != null)

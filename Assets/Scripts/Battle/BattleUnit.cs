@@ -247,19 +247,34 @@ public class BattleUnit
 
     public int GetRemainingCooldown(SkillDefinition skill)
     {
-        if (skill == null) return 0;
+        if (skill == null)
+            return 0;
+
         string key = GetSkillKey(skill);
         int value;
         if (skillCooldowns.TryGetValue(key, out value))
             return Mathf.Max(0, value);
+
         return 0;
     }
 
     public void ConsumeSkillCooldown(SkillDefinition skill)
     {
-        if (skill == null) return;
+        if (skill == null)
+            return;
+
         string key = GetSkillKey(skill);
-        skillCooldowns[key] = Mathf.Max(0, skill.cooldownTurns);
+        int configuredCooldown = Mathf.Max(0, skill.cooldownTurns);
+
+        if (configuredCooldown <= 0)
+        {
+            skillCooldowns.Remove(key);
+            return;
+        }
+
+        // 현재 구조는 "자기 턴 시작 시 1 감소"이므로,
+        // 사용 후 N번의 자기 턴 동안 사용 불가를 원하면 N+1로 넣어야 한다.
+        skillCooldowns[key] = configuredCooldown + 1;
     }
 
     public void OnOwnTurnStart()
@@ -272,6 +287,9 @@ public class BattleUnit
             string key = keys[i];
             if (skillCooldowns[key] > 0)
                 skillCooldowns[key]--;
+
+            if (skillCooldowns[key] <= 0)
+                skillCooldowns.Remove(key);
         }
 
         for (int i = timedModifiers.Count - 1; i >= 0; i--)
@@ -410,7 +428,6 @@ public class BattleUnit
         return amount;
     }
 
-
     public BattleTurnStartStatusResult ResolveTurnStartStatuses()
     {
         BattleTurnStartStatusResult result = new BattleTurnStartStatusResult();
@@ -479,8 +496,11 @@ public class BattleUnit
     public bool HasStatus(StatusEffectType statusType)
     {
         for (int i = 0; i < statuses.Count; i++)
+        {
             if (statuses[i].statusType == statusType)
                 return true;
+        }
+
         return false;
     }
 
@@ -492,6 +512,7 @@ public class BattleUnit
             case StatusEffectType.Bleed: return BleedResist;
             case StatusEffectType.Stun: return StunResist;
         }
+
         return 0;
     }
 
@@ -503,7 +524,6 @@ public class BattleUnit
         return skill.name;
     }
 }
-
 
 public class BattleTurnStartStatusResult
 {
