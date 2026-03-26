@@ -17,6 +17,7 @@ public class BattleManager : MonoBehaviour
     [SerializeField] private BattleInputController inputController;
     [SerializeField] private EnemyAIController enemyAIController;
     [SerializeField] private BattlePassiveController passiveController;
+    [SerializeField] private BattleSkillGimmickController skillGimmickController;
 
     [Header("Enemy Skill Hover Targets")]
     [SerializeField] private GameObject[] enemySkillHoverTargets = new GameObject[4];
@@ -39,6 +40,8 @@ public class BattleManager : MonoBehaviour
     private bool battleStarted;
     private int currentRound;
     private bool currentTurnSkippedByStatus;
+    private bool allyDeathOccurredThisTurn;
+    private bool enemyDeathOccurredThisTurn;
 
     private BottomContextType bottomContextType = BottomContextType.Inventory;
 
@@ -47,6 +50,10 @@ public class BattleManager : MonoBehaviour
     public PartyDefinition AllyPartyDefinition { get { return allyPartyDefinition; } }
     public PartyDefinition EnemyPartyDefinition { get { return enemyPartyDefinition; } }
     public BattleActionController ActionController { get { return actionController; } }
+    public BattleInputController InputController { get { return inputController; } }
+    public BattleViewManager ViewManager { get { return viewManager; } }
+    public BattleSkillGimmickController SkillGimmickController { get { return skillGimmickController; } }
+    public int CurrentRound { get { return currentRound; } }
 
     public TurnState CurrentState { get; private set; }
     public BattleResultType BattleResult { get; private set; }
@@ -90,6 +97,13 @@ public class BattleManager : MonoBehaviour
         if (passiveController != null)
             passiveController.Initialize(this, logController);
 
+        if (skillGimmickController == null)
+            skillGimmickController = GetComponent<BattleSkillGimmickController>();
+        if (skillGimmickController == null)
+            skillGimmickController = gameObject.AddComponent<BattleSkillGimmickController>();
+        if (skillGimmickController != null)
+            skillGimmickController.Initialize(this, logController);
+
         StartBattle();
     }
 
@@ -115,6 +129,8 @@ public class BattleManager : MonoBehaviour
         SelectedEnemyInfoUnit = null;
         currentRound = 0;
         currentTurnSkippedByStatus = false;
+        allyDeathOccurredThisTurn = false;
+        enemyDeathOccurredThisTurn = false;
 
         if (popupLogPanel != null)
             popupLogPanel.SetActive(false);
@@ -130,6 +146,8 @@ public class BattleManager : MonoBehaviour
         SelectedEnemyInfoUnit = GetDefaultShownEnemyUnit();
 
         battleStarted = true;
+        if (skillGimmickController != null)
+            skillGimmickController.ResetRuntimeState();
         RefreshAllUI();
         ClearUISelection();
         StartCoroutine(BattleLoopRoutine());
@@ -177,6 +195,17 @@ public class BattleManager : MonoBehaviour
         {
             currentRound++;
             logController.AppendBattleLog(logController.BuildTurnStartLog(currentRound));
+
+            if (skillGimmickController != null)
+            {
+                yield return StartCoroutine(skillGimmickController.ResolveRoundStartGimmicks(currentRound));
+                CheckBattleResult();
+                RefreshAllUI();
+
+                if (BattleResult != BattleResultType.None)
+                    break;
+            }
+
             if (uiController != null)
                 yield return StartCoroutine(uiController.ShowTurnStartTextRoutine(currentRound));
 
@@ -193,6 +222,8 @@ public class BattleManager : MonoBehaviour
 
                 CurrentActingUnit = unit;
                 CurrentActingUnit.OnOwnTurnStart();
+                allyDeathOccurredThisTurn = false;
+                enemyDeathOccurredThisTurn = false;
 
                 if (passiveController != null)
                     yield return StartCoroutine(passiveController.ResolveTurnStartPassive(CurrentActingUnit));
@@ -216,8 +247,7 @@ public class BattleManager : MonoBehaviour
 
                 if (CurrentActingUnit == null || CurrentActingUnit.IsDead || !IsUnitInBattle(CurrentActingUnit) || currentTurnSkippedByStatus)
                 {
-                    if (passiveController != null)
-                        passiveController.EvaluateAfterTurnEnd(unit);
+                    EvaluateEndOfTurnGimmicks(unit);
 
                     CheckBattleResult();
                     RefreshAllUI();
@@ -262,8 +292,7 @@ public class BattleManager : MonoBehaviour
                 if (BattleResult != BattleResultType.None)
                     break;
 
-                if (passiveController != null)
-                    passiveController.EvaluateAfterTurnEnd(unit);
+                EvaluateEndOfTurnGimmicks(unit);
 
                 CheckBattleResult();
                 RefreshAllUI();
@@ -344,6 +373,9 @@ public class BattleManager : MonoBehaviour
 
     public IEnumerator HandleDeathsAndCompressionRoutine()
     {
+        allyDeathOccurredThisTurn |= HasDeadUnits(allyFormation);
+        enemyDeathOccurredThisTurn |= HasDeadUnits(enemyFormation);
+
         List<BattleUnit> movedAllies = allyFormation.RemoveDeadAndCompress();
         List<BattleUnit> movedEnemies = enemyFormation.RemoveDeadAndCompress();
 
@@ -385,6 +417,34 @@ public class BattleManager : MonoBehaviour
 
         for (int i = 0; i < removeTargets.Count; i++)
             viewManager.RemoveView(removeTargets[i]);
+    }
+
+    private void EvaluateEndOfTurnGimmicks(BattleUnit endedTurnUnit)
+    {
+        if (passiveController != null)
+            passiveController.EvaluateAfterTurnEnd(endedTurnUnit);
+
+        if (skillGimmickController != null)
+            skillGimmickController.EvaluateAfterTurnEnd(endedTurnUnit, allyDeathOccurredThisTurn, enemyDeathOccurredThisTurn);
+
+        allyDeathOccurredThisTurn = false;
+        enemyDeathOccurredThisTurn = false;
+    }
+
+    private bool HasDeadUnits(BattleFormation formation)
+    {
+        if (formation == null)
+            return false;
+
+        List<BattleUnit> units = formation.GetAllUnits();
+        for (int i = 0; i < units.Count; i++)
+        {
+            BattleUnit unit = units[i];
+            if (unit != null && unit.IsDead)
+                return true;
+        }
+
+        return false;
     }
 
     public void OnActionExecutionFinished(bool consumeTurn)

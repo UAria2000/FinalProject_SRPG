@@ -23,17 +23,18 @@ MonoBehaviour:
   learnTags: 0
   rangeTag: 0
   passiveGimmick: 1
+  activeGimmick: 0
   usableMinSlotIndex: 0
   usableMaxSlotIndex: 3
   targetMinSlotIndex: 0
   targetMaxSlotIndex: 3
-  targetTeam: 0
+  targetTeam: 2
   targetScope: 0
   resolutionMode: 0
   cooldownTurns: 0
   accuracyCoefficientPercent: 100
-  allowCrit: 1
-  allowGraze: 1
+  allowCrit: 0
+  allowGraze: 0
   selfMoveDirection: 0
   selfMoveSteps: 0
   secondaryTargetRule: 0

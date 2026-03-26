@@ -7,6 +7,8 @@ public class BattleUnit
     private readonly Dictionary<string, int> skillCooldowns = new Dictionary<string, int>();
     private readonly List<BattleStatusInstance> statuses = new List<BattleStatusInstance>();
     private readonly List<BattleTimedModifierInstance> timedModifiers = new List<BattleTimedModifierInstance>();
+    private readonly HashSet<string> armedConditionalSkillKeys = new HashSet<string>();
+    private readonly HashSet<string> disabledSkillKeys = new HashSet<string>();
 
     private SkillDefinition pendingPassiveSkill;
 
@@ -106,6 +108,12 @@ public class BattleUnit
         if (skill.castType == SkillCastType.Passive)
             return false;
 
+        if (IsSkillDisabled(skill))
+            return false;
+
+        if (skill.activeGimmick == ActiveSkillGimmick.DelayedReinforcement && !IsConditionalSkillArmed(skill))
+            return false;
+
         if (!skill.CanBeUsedFromSlot(SlotIndex))
             return false;
 
@@ -136,6 +144,76 @@ public class BattleUnit
         }
 
         return false;
+    }
+
+    public bool TryGetActiveSkillByGimmick(ActiveSkillGimmick gimmick, out SkillDefinition skill)
+    {
+        skill = null;
+
+        if (gimmick == ActiveSkillGimmick.None || memberData == null || memberData.learnedSkills == null)
+            return false;
+
+        for (int i = 0; i < memberData.learnedSkills.Count; i++)
+        {
+            SkillDefinition candidate = memberData.learnedSkills[i];
+            if (candidate == null)
+                continue;
+
+            if (candidate.castType != SkillCastType.Active)
+                continue;
+
+            if (candidate.activeGimmick != gimmick)
+                continue;
+
+            skill = candidate;
+            return true;
+        }
+
+        return false;
+    }
+
+    public bool IsConditionalSkillArmed(SkillDefinition skill)
+    {
+        if (skill == null)
+            return false;
+
+        return armedConditionalSkillKeys.Contains(GetSkillKey(skill));
+    }
+
+    public bool TryArmConditionalSkill(SkillDefinition skill)
+    {
+        if (skill == null || skill.castType != SkillCastType.Active)
+            return false;
+
+        if (IsSkillDisabled(skill))
+            return false;
+
+        return armedConditionalSkillKeys.Add(GetSkillKey(skill));
+    }
+
+    public void ConsumeConditionalSkillArm(SkillDefinition skill)
+    {
+        if (skill == null)
+            return;
+
+        armedConditionalSkillKeys.Remove(GetSkillKey(skill));
+    }
+
+    public bool IsSkillDisabled(SkillDefinition skill)
+    {
+        if (skill == null)
+            return false;
+
+        return disabledSkillKeys.Contains(GetSkillKey(skill));
+    }
+
+    public void DisableSkill(SkillDefinition skill)
+    {
+        if (skill == null)
+            return;
+
+        disabledSkillKeys.Add(GetSkillKey(skill));
+        armedConditionalSkillKeys.Remove(GetSkillKey(skill));
     }
 
     public bool HasPendingPassiveSkill

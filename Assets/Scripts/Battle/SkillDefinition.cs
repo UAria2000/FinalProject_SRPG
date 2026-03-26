@@ -8,6 +8,12 @@ public enum PassiveSkillGimmick
     FleeNextTurnWhenAlone
 }
 
+public enum ActiveSkillGimmick
+{
+    None,
+    DelayedReinforcement
+}
+
 [CreateAssetMenu(menuName = "Battle/Skill Definition")]
 public class SkillDefinition : ScriptableObject
 {
@@ -24,6 +30,7 @@ public class SkillDefinition : ScriptableObject
     public SkillLearnTag learnTags = SkillLearnTag.None;
     public CharacterRangeType rangeTag = CharacterRangeType.Melee;
     public PassiveSkillGimmick passiveGimmick = PassiveSkillGimmick.None;
+    public ActiveSkillGimmick activeGimmick = ActiveSkillGimmick.None;
 
     [Header("Targeting")]
     [Range(0, 3)] public int usableMinSlotIndex = 0;

@@ -1022,7 +1022,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: a8ea207313d91a544a272fc8295a3c72, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 06923a1237abeb0458fb8fd7a5b96332, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -10149,6 +10149,8 @@ MonoBehaviour:
   actionController: {fileID: 871307115}
   inputController: {fileID: 871307114}
   enemyAIController: {fileID: 871307113}
+  passiveController: {fileID: 0}
+  skillGimmickController: {fileID: 0}
   enemySkillHoverTargets:
   - {fileID: 577049873}
   - {fileID: 1086742406}

@@ -21,10 +21,12 @@ MonoBehaviour:
   activeRole: 0
   learnTags: 0
   rangeTag: 0
+  passiveGimmick: 0
+  activeGimmick: 0
   usableMinSlotIndex: 0
   usableMaxSlotIndex: 1
   targetMinSlotIndex: 0
-  targetMaxSlotIndex: 0
+  targetMaxSlotIndex: 1
   targetTeam: 0
   targetScope: 0
   resolutionMode: 0
@@ -32,6 +34,8 @@ MonoBehaviour:
   accuracyCoefficientPercent: 100
   allowCrit: 1
   allowGraze: 1
+  selfMoveDirection: 0
+  selfMoveSteps: 0
   secondaryTargetRule: 0
   secondaryAccuracyCoefficientPercent: 100
   secondaryDamagePercent: 0
@@ -43,6 +47,9 @@ MonoBehaviour:
     successChancePercent: 0
     affectedByResistance: 0
     powerPercent: 100
+    useRandomPowerPercentRange: 1
+    randomPowerPercentMin: 90
+    randomPowerPercentMax: 110
     flatValue: 0
     durationTurns: 0
     displayIcon: {fileID: 0}

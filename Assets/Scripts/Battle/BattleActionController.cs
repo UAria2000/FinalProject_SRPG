@@ -114,6 +114,9 @@ public class BattleActionController : MonoBehaviour
             }
         }
 
+        if (battleManager.SkillGimmickController != null)
+            battleManager.SkillGimmickController.OnSkillExecuted(actor, skill);
+
         actor.ConsumeSkillCooldown(skill);
         yield return StartCoroutine(battleManager.HandleDeathsAndCompressionRoutine());
         yield return StartCoroutine(HandleSelfMoveAfterSkill(actor, skill));
