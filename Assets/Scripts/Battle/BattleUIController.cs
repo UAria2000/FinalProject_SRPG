@@ -33,6 +33,7 @@ public class BattleUIController : MonoBehaviour
     [SerializeField] private Button inventoryButton;
     [SerializeField] private Button cancelButton;
     [SerializeField] private Button popupLogButton;
+    [SerializeField] private Button mapButton;
     [SerializeField] private Button enemyDetailPopupButton;
 
     [Header("Round UI")]
@@ -72,6 +73,7 @@ public class BattleUIController : MonoBehaviour
         ApplyButtonNavigationNone(inventoryButton);
         ApplyButtonNavigationNone(cancelButton);
         ApplyButtonNavigationNone(popupLogButton);
+        ApplyButtonNavigationNone(mapButton);
         ApplyButtonNavigationNone(enemyDetailPopupButton);
 
         for (int i = 0; i < actionButtons.Length; i++)
@@ -137,6 +139,12 @@ public class BattleUIController : MonoBehaviour
         {
             popupLogButton.onClick.RemoveAllListeners();
             popupLogButton.onClick.AddListener(battleManager.OnPopupLogButtonPressed);
+        }
+
+        if (mapButton != null)
+        {
+            mapButton.onClick.RemoveAllListeners();
+            mapButton.onClick.AddListener(battleManager.OnMapButtonPressed);
         }
 
         if (enemyDetailPopupButton != null)
@@ -246,20 +254,42 @@ public class BattleUIController : MonoBehaviour
 
     public void SetBottomContext(BottomContextType mode)
     {
+        bool showEnemyInfo = mode == BottomContextType.EnemyInfo;
+        bool showInventory = mode == BottomContextType.Inventory;
+        bool showMap = mode == BottomContextType.Map;
+
+        if (enemyInfoContextRoot != null)
+            enemyInfoContextRoot.SetActive(showEnemyInfo);
+
+        if (inventoryContextRoot != null)
+            inventoryContextRoot.SetActive(showInventory);
+
+        if (mapContextRoot != null)
+            mapContextRoot.SetActive(showMap);
+
+        if (inventoryPanelUI != null)
+            inventoryPanelUI.Show(showInventory);
+
+        if (!showEnemyInfo && enemyDetailPopupUI != null && enemyDetailPopupUI.IsOpen())
+            enemyDetailPopupUI.Hide();
+    }
+
+    public void ShowEnemyDetailPopup(BattleUnit enemy)
+    {
         if (enemyInfoContextRoot != null)
             enemyInfoContextRoot.SetActive(true);
 
         if (inventoryContextRoot != null)
-            inventoryContextRoot.SetActive(mode == BottomContextType.Inventory);
+            inventoryContextRoot.SetActive(false);
 
         if (mapContextRoot != null)
-            mapContextRoot.SetActive(mode == BottomContextType.Map);
+            mapContextRoot.SetActive(false);
 
         if (inventoryPanelUI != null)
-            inventoryPanelUI.Show(mode == BottomContextType.Inventory);
+            inventoryPanelUI.Show(false);
 
-        if (mode != BottomContextType.EnemyInfo && enemyDetailPopupUI != null && enemyDetailPopupUI.IsOpen())
-            enemyDetailPopupUI.Hide();
+        if (enemyDetailPopupUI != null)
+            enemyDetailPopupUI.Show(enemy);
     }
 
     public void ToggleEnemyDetailPopup(BattleUnit enemy)
@@ -268,28 +298,23 @@ public class BattleUIController : MonoBehaviour
             return;
 
         if (enemyDetailPopupUI.IsOpen())
-        {
-            enemyDetailPopupUI.Hide();
-        }
+            HideEnemyDetailPopup();
         else
-        {
-            if (inventoryContextRoot != null)
-                inventoryContextRoot.SetActive(false);
-
-            if (mapContextRoot != null)
-                mapContextRoot.SetActive(false);
-
-            if (inventoryPanelUI != null)
-                inventoryPanelUI.Show(false);
-
-            enemyDetailPopupUI.Show(enemy);
-        }
+            ShowEnemyDetailPopup(enemy);
     }
 
     public void HideEnemyDetailPopup()
     {
         if (enemyDetailPopupUI != null)
             enemyDetailPopupUI.Hide();
+
+        if (enemyInfoContextRoot != null)
+            enemyInfoContextRoot.SetActive(false);
+    }
+
+    public bool IsEnemyDetailPopupOpen()
+    {
+        return enemyDetailPopupUI != null && enemyDetailPopupUI.IsOpen();
     }
 
     public void ShowPlayerSkillTooltip(SkillDefinition skill, Vector3 screenPosition)

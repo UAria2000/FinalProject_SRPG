@@ -586,12 +586,20 @@ public class BattleManager : MonoBehaviour
 
     public void OnInventoryTogglePressed()
     {
-        if (bottomContextType == BottomContextType.Inventory)
-            bottomContextType = BottomContextType.EnemyInfo;
-        else
-            bottomContextType = BottomContextType.Inventory;
+        bottomContextType = BottomContextType.Inventory;
 
-        if (bottomContextType != BottomContextType.EnemyInfo && uiController != null)
+        if (uiController != null)
+            uiController.HideEnemyDetailPopup();
+
+        ClearUISelection();
+        RefreshAllUI();
+    }
+
+    public void OnMapButtonPressed()
+    {
+        bottomContextType = BottomContextType.Map;
+
+        if (uiController != null)
             uiController.HideEnemyDetailPopup();
 
         ClearUISelection();
@@ -613,10 +621,23 @@ public class BattleManager : MonoBehaviour
 
     public void OnEnemyDetailPopupButtonPressed()
     {
-        if (uiController != null)
-            uiController.ToggleEnemyDetailPopup(SelectedEnemyInfoUnit);
+        if (uiController == null)
+            return;
+
+        bool isClosingCurrentPopup = bottomContextType == BottomContextType.EnemyInfo && uiController.IsEnemyDetailPopupOpen();
+        if (isClosingCurrentPopup)
+        {
+            uiController.HideEnemyDetailPopup();
+            bottomContextType = BottomContextType.Inventory;
+        }
+        else
+        {
+            bottomContextType = BottomContextType.EnemyInfo;
+            uiController.ShowEnemyDetailPopup(SelectedEnemyInfoUnit);
+        }
 
         ClearUISelection();
+        RefreshAllUI();
     }
 
     public void OnPlayerSkillButtonHoverEnter(int slotIndex, Vector3 screenPosition)
