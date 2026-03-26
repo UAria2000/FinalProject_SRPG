@@ -1,27 +1,27 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-public class PrisonerUI : MonoBehaviour
+public class BarracksUI : MonoBehaviour
 {
-    [Header("Prisoner Settings")]
+    [Header("Barracks Settings")]
     [SerializeField] private GameObject slotPrefab;
     [SerializeField] private Transform contentParent;
     [SerializeField] private int totalSlots = 32;
 
     void OnEnable()
     {
-        if (PrisonerManager.Instance != null)
+        if (KeeperManager.Instance != null)
         {
-            PrisonerManager.Instance.OnPrisonerListChanged += RefreshUI;
+            KeeperManager.Instance.OnKeeperListChanged += RefreshUI;
         }
         RefreshUI();
     }
 
     void OnDisable()
     {
-        if (PrisonerManager.Instance != null)
+        if (KeeperManager.Instance != null)
         {
-            PrisonerManager.Instance.OnPrisonerListChanged -= RefreshUI;
+            KeeperManager.Instance.OnKeeperListChanged -= RefreshUI;
         }
     }
 
@@ -36,20 +36,18 @@ public class PrisonerUI : MonoBehaviour
 
             if (slotScript != null)
             {
-                // 첫 줄 해금 및 드래그 금지 설정
                 slotScript.SetLocked(i >= 8);
                 slotScript.canDrag = false;
-                slotScript.enabled = true;
 
-                if (i < PrisonerManager.Instance.allPrisoners.Count)
+                if (i < KeeperManager.Instance.allKeepers.Count)
                 {
-                    var data = PrisonerManager.Instance.allPrisoners[i];
-                    slotScript.myData = data;
+                    var data = KeeperManager.Instance.allKeepers[i];
+                    slotScript.myKeeperData = data;
                     slotScript.SetItem(data.portrait);
                 }
                 else
                 {
-                    slotScript.myData = null;
+                    slotScript.myKeeperData = null;
                     slotScript.SetItem(null);
                 }
             }
