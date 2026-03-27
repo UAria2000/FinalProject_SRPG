@@ -23,8 +23,9 @@ public class EnemyInfoPanel : MonoBehaviour
     {
         currentEnemy = enemy;
 
+        // 전투 중에는 패널 틀은 항상 보이게 유지
         if (root != null)
-            root.SetActive(enemy != null);
+            root.SetActive(true);
 
         if (enemy == null)
         {
@@ -84,16 +85,21 @@ public class EnemyInfoPanel : MonoBehaviour
 
         for (int i = 0; i < 4; i++)
         {
+            if (i < skillSlotRoots.Length && skillSlotRoots[i] != null)
+                skillSlotRoots[i].SetActive(true);
+
             if (i < skillIcons.Length && skillIcons[i] != null)
             {
                 skillIcons[i].sprite = null;
                 skillIcons[i].color = new Color(1f, 1f, 1f, 0.2f);
             }
+
             if (i < cooldownOverlays.Length && cooldownOverlays[i] != null)
             {
                 cooldownOverlays[i].gameObject.SetActive(false);
                 cooldownOverlays[i].fillAmount = 0f;
             }
+
             if (i < cooldownTexts.Length && cooldownTexts[i] != null)
                 cooldownTexts[i].text = string.Empty;
         }

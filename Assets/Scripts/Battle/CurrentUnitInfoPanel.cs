@@ -23,16 +23,22 @@ public class CurrentUnitInfoPanel : MonoBehaviour
 
     public void Show(BattleUnit unit)
     {
+        // 전투 중에는 패널 틀은 항상 보이게 유지
         if (root != null)
-            root.SetActive(unit != null);
+            root.SetActive(true);
 
         if (unit == null)
+        {
+            Clear();
             return;
+        }
 
         if (portraitImage != null)
         {
             portraitImage.sprite = unit.PortraitSprite;
-            portraitImage.color = unit.PortraitSprite != null ? Color.white : new Color(1f, 1f, 1f, 0f);
+            portraitImage.color = unit.PortraitSprite != null
+                ? Color.white
+                : new Color(1f, 1f, 1f, 0f);
         }
 
         UnitInstanceStatVariance variance = unit.GetVariance();
@@ -51,6 +57,30 @@ public class CurrentUnitInfoPanel : MonoBehaviour
         if (bleedResistValueText != null) bleedResistValueText.text = BattleStatFormatter.FormatPercent(unit.BleedResist);
         if (stunResistValueText != null) stunResistValueText.text = BattleStatFormatter.FormatPercent(unit.StunResist);
         if (epitaphText != null) epitaphText.text = unit.Epitaph;
+    }
+
+    private void Clear()
+    {
+        if (portraitImage != null)
+        {
+            portraitImage.sprite = null;
+            portraitImage.color = new Color(1f, 1f, 1f, 0f);
+        }
+
+        if (nameValueText != null) nameValueText.text = string.Empty;
+        if (currentLevelValueText != null) currentLevelValueText.text = string.Empty;
+        if (originalLevelValueText != null) originalLevelValueText.text = string.Empty;
+        if (hpValueText != null) hpValueText.text = string.Empty;
+        if (dmgValueText != null) dmgValueText.text = string.Empty;
+        if (spdValueText != null) spdValueText.text = string.Empty;
+        if (hitValueText != null) hitValueText.text = string.Empty;
+        if (acValueText != null) acValueText.text = string.Empty;
+        if (criValueText != null) criValueText.text = string.Empty;
+        if (crdValueText != null) crdValueText.text = string.Empty;
+        if (poisonResistValueText != null) poisonResistValueText.text = string.Empty;
+        if (bleedResistValueText != null) bleedResistValueText.text = string.Empty;
+        if (stunResistValueText != null) stunResistValueText.text = string.Empty;
+        if (epitaphText != null) epitaphText.text = string.Empty;
     }
 
     public void Hide()

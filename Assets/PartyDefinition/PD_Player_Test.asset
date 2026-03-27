@@ -76,7 +76,7 @@ MonoBehaviour:
     learnedSkills: []
   - unitDefinition: {fileID: 11400000, guid: c3a62349039360b4e8b840de022ccf36, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: 9a9cea643cf1ac947b7117d79b5e806f, type: 2}
-    startSlotIndex: 2
+    startSlotIndex: 3
     instanceId: main_character
     instanceDisplayNameOverride: "\uC8FC\uC778\uACF5"
     fixedEpitaph: 
@@ -97,3 +97,7 @@ MonoBehaviour:
   inventory:
   - item: {fileID: 11400000, guid: dc8e2206841c82046aa61dcee0403866, type: 2}
     amount: 10
+  - item: {fileID: 11400000, guid: 46952be8aa2e48645b359b084a4dca5d, type: 2}
+    amount: 1
+  - item: {fileID: 11400000, guid: 8f03032dd35fbe04e8a76cfc5d0e08bb, type: 2}
+    amount: 1

@@ -15,7 +15,7 @@ MonoBehaviour:
   itemId: item_sister_captured
   itemName: "\uBD99\uC7A1\uD78C \uC218\uB140"
   description: 
-  icon: {fileID: 21300000, guid: 921426ea5dd0621449c3ca437a778383, type: 3}
+  icon: {fileID: 21300000, guid: 011caacaa95ed08428d417071d5d81aa, type: 3}
   targetTeam: 1
   targetScope: 0
   usableInBattle: 0

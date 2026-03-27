@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 61f1fb06c31e02446a44ea0f1253b30c, type: 3}
   m_Name: Item_KnightCaptured
   m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
-  itemId: item_sister_captured
-  itemName: "\uBD99\uC7A1\uD78C \uC218\uB140"
+  itemId: item_knight_captured
+  itemName: "\uBD99\uC7A1\uD78C \uAE30\uC0AC"
   description: 
-  icon: {fileID: 21300000, guid: 921426ea5dd0621449c3ca437a778383, type: 3}
+  icon: {fileID: 21300000, guid: c59b9745dbd3a4449b269f36c6d858d9, type: 3}
   targetTeam: 1
   targetScope: 0
   usableInBattle: 0

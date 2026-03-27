@@ -39,4 +39,4 @@ MonoBehaviour:
     stunResistRange: {x: -10, y: 10}
   isMainPlayerCharacter: 0
   canBeCaptured: 1
-  captureRewardItem: {fileID: 0}
+  captureRewardItem: {fileID: 11400000, guid: 46952be8aa2e48645b359b084a4dca5d, type: 2}

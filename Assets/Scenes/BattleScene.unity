@@ -10127,6 +10127,24 @@ MonoBehaviour:
   attackMoveMaxDistance: 260
   attackMoveDuration: 0.55
   popupLogPanel: {fileID: 907927938}
+  inventoryMaxSlotCount: 8
+  maxCaptureAttemptsPerEnemyInstance: 3
+  captureChanceRanges:
+  - minHpPercentExclusive: 0
+    maxHpPercentInclusive: 20
+    chancePercent: 70
+  - minHpPercentExclusive: 20
+    maxHpPercentInclusive: 40
+    chancePercent: 55
+  - minHpPercentExclusive: 40
+    maxHpPercentInclusive: 60
+    chancePercent: 40
+  - minHpPercentExclusive: 60
+    maxHpPercentInclusive: 80
+    chancePercent: 25
+  - minHpPercentExclusive: 80
+    maxHpPercentInclusive: 100
+    chancePercent: 10
 --- !u!4 &871307112
 Transform:
   m_ObjectHideFlags: 0
@@ -10224,6 +10242,12 @@ MonoBehaviour:
   - {fileID: 1497836686}
   - {fileID: 35268586}
   moveButton: {fileID: 1948026199}
+  captureButton: {fileID: 1846571874}
+  captureButtonImage: {fileID: 1846571875}
+  captureEnabledSprite: {fileID: 21300000, guid: 8a4c4aa9256c5614eb73e23dc929a597, type: 3}
+  captureDisabledSprite: {fileID: 21300000, guid: bc70ff3fc2b523d44ac5db2712941d90, type: 3}
+  captureEnabledEffectRoot: {fileID: 0}
+  captureDisabledEffectRoot: {fileID: 0}
   fleeButton: {fileID: 140809287}
   endTurnButton: {fileID: 1690793694}
   inventoryButton: {fileID: 228446401}
