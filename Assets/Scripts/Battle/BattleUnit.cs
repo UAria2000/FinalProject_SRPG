@@ -56,12 +56,60 @@ public class BattleUnit
     public int BaseStunResist { get { return Definition != null ? Definition.stunResist : 0; } }
 
     public int MaxHP { get { return Mathf.Max(1, BaseMaxHP + GetVariance().maxHpDelta); } }
-    public int DMG { get { return Mathf.Max(0, BaseDMG + GetVariance().dmgDelta); } }
-    public int SPD { get { return Mathf.Max(0, BaseSPD + GetVariance().spdDelta); } }
-    public float HIT { get { return Mathf.Max(0f, BaseHIT + GetVariance().hitDeltaX10); } }
-    public float AC { get { return Mathf.Max(0f, BaseAC + GetVariance().acDeltaX10); } }
-    public int CRI { get { return Mathf.Max(0, BaseCRI + GetVariance().criDelta); } }
-    public int CRD { get { return Mathf.Max(0, BaseCRD + GetVariance().crdDelta); } }
+
+    public int DMG
+    {
+        get
+        {
+            int baseValue = Mathf.Max(0, BaseDMG + GetVariance().dmgDelta);
+            return ApplyPercentTimedModifierToInt(baseValue, StatModifierType.DMG);
+        }
+    }
+
+    public int SPD
+    {
+        get
+        {
+            int baseValue = Mathf.Max(0, BaseSPD + GetVariance().spdDelta);
+            return ApplyPercentTimedModifierToInt(baseValue, StatModifierType.SPD);
+        }
+    }
+
+    public float HIT
+    {
+        get
+        {
+            float baseValue = Mathf.Max(0f, BaseHIT + GetVariance().hitDeltaX10);
+            return ApplyPercentTimedModifierToFloat(baseValue, StatModifierType.HIT);
+        }
+    }
+
+    public float AC
+    {
+        get
+        {
+            float baseValue = Mathf.Max(0f, BaseAC + GetVariance().acDeltaX10);
+            return ApplyPercentTimedModifierToFloat(baseValue, StatModifierType.AC);
+        }
+    }
+
+    public int CRI
+    {
+        get
+        {
+            int baseValue = Mathf.Max(0, BaseCRI + GetVariance().criDelta);
+            return ApplyPercentTimedModifierToInt(baseValue, StatModifierType.CRI);
+        }
+    }
+
+    public int CRD
+    {
+        get
+        {
+            int baseValue = Mathf.Max(0, BaseCRD + GetVariance().crdDelta);
+            return ApplyPercentTimedModifierToInt(baseValue, StatModifierType.CRD);
+        }
+    }
 
     public int PoisonResist { get { return BasePoisonResist + GetVariance().poisonResistDelta; } }
     public int BleedResist { get { return BaseBleedResist + GetVariance().bleedResistDelta; } }
@@ -379,6 +427,24 @@ public class BattleUnit
         instance.remainingTurns = duration;
         timedModifiers.Add(instance);
         return true;
+    }
+
+    private int ApplyPercentTimedModifierToInt(int baseValue, StatModifierType statType)
+    {
+        int modifierPercent = GetTimedModifierMagnitude(statType);
+        if (modifierPercent == 0)
+            return baseValue;
+
+        return Mathf.Max(0, Mathf.RoundToInt(baseValue * (1f + modifierPercent / 100f)));
+    }
+
+    private float ApplyPercentTimedModifierToFloat(float baseValue, StatModifierType statType)
+    {
+        int modifierPercent = GetTimedModifierMagnitude(statType);
+        if (modifierPercent == 0)
+            return baseValue;
+
+        return Mathf.Max(0f, baseValue * (1f + modifierPercent / 100f));
     }
 
     public int GetTimedModifierMagnitude(StatModifierType statType)
