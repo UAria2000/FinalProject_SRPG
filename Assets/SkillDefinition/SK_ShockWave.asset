@@ -1,0 +1,71 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b0ec0aa42fa160a46a6330d7ff30c770, type: 3}
+  m_Name: SK_ShockWave
+  m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
+  skillId: shock_wave
+  skillName: "\uC1FC\uD06C\uC6E8\uC774\uBE0C"
+  description: "\uCDA9\uACA9\uD30C\uB97C \uBC29\uCD9C\uD574 \uB300\uC0C1\uC744 \uACF5\uACA9\uD55C\uB2E4.\n\uAE30\uC808\uC2DC\uD0AC
+    \uB54C\uAC00 \uC788\uB2E4"
+  icon: {fileID: 21300000, guid: b8da3a060f05d4d4f8a2aaa4ed39ab17, type: 3}
+  isBasicAttack: 0
+  castType: 0
+  activeRole: 0
+  learnTags: 0
+  rangeTag: 0
+  passiveGimmick: 0
+  activeGimmick: 0
+  usableMinSlotIndex: 0
+  usableMaxSlotIndex: 3
+  targetMinSlotIndex: 0
+  targetMaxSlotIndex: 3
+  targetTeam: 0
+  targetScope: 1
+  resolutionMode: 0
+  cooldownTurns: 3
+  accuracyCoefficientPercent: 80
+  allowCrit: 1
+  allowGraze: 1
+  selfMoveDirection: 0
+  selfMoveSteps: 0
+  secondaryTargetRule: 0
+  secondaryAccuracyCoefficientPercent: 100
+  secondaryDamagePercent: 0
+  secondaryApplyNonDamageEffects: 0
+  effects:
+  - kind: 0
+    statusType: 0
+    statModifierType: 0
+    successChancePercent: 0
+    affectedByResistance: 0
+    powerPercent: 0
+    useRandomPowerPercentRange: 1
+    randomPowerPercentMin: 50
+    randomPowerPercentMax: 100
+    flatValue: 0
+    valueReference: 0
+    durationTurns: 0
+    displayIcon: {fileID: 0}
+  - kind: 5
+    statusType: 3
+    statModifierType: 0
+    successChancePercent: 35
+    affectedByResistance: 1
+    powerPercent: 0
+    useRandomPowerPercentRange: 0
+    randomPowerPercentMin: 0
+    randomPowerPercentMax: 0
+    flatValue: 0
+    valueReference: 0
+    durationTurns: 0
+    displayIcon: {fileID: 0}
+  disableAfterUseInBattle: 0

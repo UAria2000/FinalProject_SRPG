@@ -93,7 +93,10 @@ MonoBehaviour:
       poisonResistDelta: 0
       bleedResistDelta: 0
       stunResistDelta: 0
-    learnedSkills: []
+    learnedSkills:
+    - {fileID: 11400000, guid: 91227cc56e2295344bcfa20488328adb, type: 2}
+    - {fileID: 11400000, guid: c524e58eee4670d4087a63de4ad74b66, type: 2}
+    - {fileID: 11400000, guid: bbecd59581b088c4393e6d8ebdec3d8c, type: 2}
   inventory:
   - item: {fileID: 11400000, guid: dc8e2206841c82046aa61dcee0403866, type: 2}
     amount: 10

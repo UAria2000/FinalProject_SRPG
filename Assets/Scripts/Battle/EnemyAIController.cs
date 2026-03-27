@@ -14,6 +14,7 @@ public class EnemyAIController : MonoBehaviour
         public string debugText;
     }
 
+    private const int PRIORITY_TAUNT_GUARD_SKILL = 5000;
     private const int PRIORITY_ATTACK_SKILL = 4000;
     private const int PRIORITY_UTILITY_SKILL = 3000;
     private const int PRIORITY_BASIC_ATTACK = 2000;
@@ -44,6 +45,7 @@ public class EnemyAIController : MonoBehaviour
         {
             if (debugLog)
                 Debug.Log($"[EnemyAI] {actor.Name} has no valid action.");
+
             battleManager.OnActionExecutionFinished(true);
             yield break;
         }
@@ -61,6 +63,7 @@ public class EnemyAIController : MonoBehaviour
 
     private List<AiCandidate> BuildCandidates(BattleUnit actor)
     {
+        List<AiCandidate> tauntGuardSkills = new List<AiCandidate>();
         List<AiCandidate> attackSkills = new List<AiCandidate>();
         List<AiCandidate> utilitySkills = new List<AiCandidate>();
         List<AiCandidate> basicAttacks = new List<AiCandidate>();
@@ -91,6 +94,26 @@ public class EnemyAIController : MonoBehaviour
 
             if (validTargets == null || validTargets.Count == 0)
                 continue;
+
+            if (IsTauntGuardSelfSkill(skill) && ShouldPreferTauntGuard(actor))
+            {
+                BattleUnit target = validTargets[0];
+                if (target != null)
+                {
+                    float score = ScoreTauntGuard(actor);
+                    tauntGuardSkills.Add(new AiCandidate
+                    {
+                        priority = PRIORITY_TAUNT_GUARD_SKILL,
+                        score = score,
+                        skill = skill,
+                        target = target,
+                        isMove = false,
+                        debugText = $"TauntGuard [{skill.skillName}] -> {target.Name} score={score:0.##}"
+                    });
+                }
+
+                continue;
+            }
 
             if (skill.isBasicAttack)
             {
@@ -147,6 +170,9 @@ public class EnemyAIController : MonoBehaviour
             }
         }
 
+        if (tauntGuardSkills.Count > 0)
+            return tauntGuardSkills;
+
         if (attackSkills.Count > 0)
             return attackSkills;
 
@@ -181,23 +207,31 @@ public class EnemyAIController : MonoBehaviour
     {
         int bestPriority = int.MinValue;
         for (int i = 0; i < candidates.Count; i++)
+        {
             if (candidates[i].priority > bestPriority)
                 bestPriority = candidates[i].priority;
+        }
 
         List<AiCandidate> samePriority = new List<AiCandidate>();
         for (int i = 0; i < candidates.Count; i++)
+        {
             if (candidates[i].priority == bestPriority)
                 samePriority.Add(candidates[i]);
+        }
 
         float bestScore = float.MinValue;
         for (int i = 0; i < samePriority.Count; i++)
+        {
             if (samePriority[i].score > bestScore)
                 bestScore = samePriority[i].score;
+        }
 
         List<AiCandidate> bestCandidates = new List<AiCandidate>();
         for (int i = 0; i < samePriority.Count; i++)
+        {
             if (Mathf.Abs(samePriority[i].score - bestScore) < 0.01f)
                 bestCandidates.Add(samePriority[i]);
+        }
 
         return bestCandidates[Random.Range(0, bestCandidates.Count)];
     }
@@ -481,7 +515,7 @@ public class EnemyAIController : MonoBehaviour
             if (block.statusType == StatusEffectType.None)
                 continue;
 
-            // Poison은 스택형이므로 이미 걸려 있어도 "중복 적용 가치 있음"
+            // Poison은 스택형으로 쓰므로 이미 걸려 있어도 재적용 가치가 있음
             if (block.statusType == StatusEffectType.Poison)
                 continue;
 
@@ -490,5 +524,66 @@ public class EnemyAIController : MonoBehaviour
         }
 
         return false;
+    }
+
+    private bool IsTauntGuardSelfSkill(SkillDefinition skill)
+    {
+        if (skill == null ||
+            skill.castType != SkillCastType.Active ||
+            skill.targetTeam != SkillTargetTeam.Self ||
+            skill.resolutionMode != SkillResolutionMode.SuccessOnly ||
+            skill.effects == null)
+            return false;
+
+        bool hasTaunt = false;
+        bool hasDamageReduction = false;
+
+        for (int i = 0; i < skill.effects.Count; i++)
+        {
+            BattleEffectBlock block = skill.effects[i];
+            if (block == null)
+                continue;
+
+            if (block.kind == BattleEffectKind.ApplyStatus &&
+                block.statusType == StatusEffectType.Taunt &&
+                block.durationTurns > 0)
+            {
+                hasTaunt = true;
+            }
+
+            if (block.kind == BattleEffectKind.Buff &&
+                block.statModifierType == StatModifierType.IncomingDamageTakenPercent &&
+                block.flatValue > 0 &&
+                block.durationTurns > 0)
+            {
+                hasDamageReduction = true;
+            }
+        }
+
+        return hasTaunt && hasDamageReduction;
+    }
+
+    private bool ShouldPreferTauntGuard(BattleUnit actor)
+    {
+        if (actor == null || actor.IsDead)
+            return false;
+
+        bool hasTaunt = actor.HasStatus(StatusEffectType.Taunt);
+        bool hasDamageReduction =
+            actor.GetTimedModifierRemainingTurns(StatModifierType.IncomingDamageTakenPercent) > 0 &&
+            actor.GetTimedModifierMagnitude(StatModifierType.IncomingDamageTakenPercent) < 0;
+
+        return !hasTaunt || !hasDamageReduction;
+    }
+
+    private float ScoreTauntGuard(BattleUnit actor)
+    {
+        if (actor == null)
+            return 0f;
+
+        float score = 1000f;
+        score += Mathf.Max(0, actor.MaxHP - actor.CurrentHP);
+        score += Mathf.Max(0, 3 - actor.SlotIndex) * 25f;
+        return score;
     }
 }

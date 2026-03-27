@@ -19,6 +19,9 @@ public static class BattleTargeting
         }
 
         BattleFormation formation = skill.targetTeam == SkillTargetTeam.Ally ? allyFormation : enemyFormation;
+        if (formation == null)
+            return result;
+
         List<BattleUnit> candidates = formation.GetAliveUnits();
 
         for (int i = 0; i < candidates.Count; i++)
@@ -29,6 +32,12 @@ public static class BattleTargeting
             if (skill.targetTeam == SkillTargetTeam.Ally && unit.Team != actor.Team) continue;
             if (skill.targetTeam == SkillTargetTeam.Enemy && unit.Team == actor.Team) continue;
             result.Add(unit);
+        }
+
+        if (skill.targetTeam == SkillTargetTeam.Enemy &&
+            skill.targetScope == TargetScope.Single)
+        {
+            RestrictToTauntingUnitsIfNeeded(result, formation);
         }
 
         return result;
@@ -90,6 +99,9 @@ public static class BattleTargeting
         }
 
         BattleFormation formation = item.targetTeam == SkillTargetTeam.Ally ? allyFormation : enemyFormation;
+        if (formation == null)
+            return result;
+
         List<BattleUnit> candidates = formation.GetAliveUnits();
 
         for (int i = 0; i < candidates.Count; i++)
@@ -99,6 +111,12 @@ public static class BattleTargeting
             if (item.targetTeam == SkillTargetTeam.Ally && unit.Team != actor.Team) continue;
             if (item.targetTeam == SkillTargetTeam.Enemy && unit.Team == actor.Team) continue;
             result.Add(unit);
+        }
+
+        if (item.targetTeam == SkillTargetTeam.Enemy &&
+            item.targetScope == TargetScope.Single)
+        {
+            RestrictToTauntingUnitsIfNeeded(result, formation);
         }
 
         return result;
@@ -127,7 +145,6 @@ public static class BattleTargeting
         return result;
     }
 
-
     public static List<BattleUnit> GetValidCaptureTargets(
         BattleUnit actor,
         BattleFormation enemyFormation,
@@ -150,6 +167,7 @@ public static class BattleTargeting
             result.Add(unit);
         }
 
+        RestrictToTauntingUnitsIfNeeded(result, enemyFormation);
         return result;
     }
 
@@ -173,14 +191,43 @@ public static class BattleTargeting
         switch (skill.secondaryTargetRule)
         {
             case SecondaryTargetRule.BackOne:
-            {
-                BattleUnit back = targetFormation.GetUnit(primaryTarget.SlotIndex + 1);
-                if (back == null || back.IsDead)
-                    return null;
-                return back;
-            }
+                {
+                    BattleUnit back = targetFormation.GetUnit(primaryTarget.SlotIndex + 1);
+                    if (back == null || back.IsDead)
+                        return null;
+                    return back;
+                }
         }
 
         return null;
+    }
+
+    private static void RestrictToTauntingUnitsIfNeeded(List<BattleUnit> candidates, BattleFormation targetFormation)
+    {
+        if (candidates == null || candidates.Count == 0 || targetFormation == null)
+            return;
+
+        bool hasTauntingUnit = false;
+        List<BattleUnit> aliveUnits = targetFormation.GetAliveUnits();
+
+        for (int i = 0; i < aliveUnits.Count; i++)
+        {
+            BattleUnit unit = aliveUnits[i];
+            if (unit != null && !unit.IsDead && unit.HasStatus(StatusEffectType.Taunt))
+            {
+                hasTauntingUnit = true;
+                break;
+            }
+        }
+
+        if (!hasTauntingUnit)
+            return;
+
+        for (int i = candidates.Count - 1; i >= 0; i--)
+        {
+            BattleUnit unit = candidates[i];
+            if (unit == null || !unit.HasStatus(StatusEffectType.Taunt))
+                candidates.RemoveAt(i);
+        }
     }
 }

@@ -526,18 +526,29 @@ public class BattleActionController : MonoBehaviour
             case BattleEffectKind.ApplyStatus:
                 {
                     target.ApplyStatus(block.statusType, block.durationTurns);
-                    logController.AppendBattleLog(logController.BuildEffectSuccessLog(actor, target, sourceName, block.statusType.ToString()));
+                    logController.AppendBattleLog(logController.BuildEffectSuccessLog(actor, target, sourceName, GetStatusDisplayName(block.statusType)));
                     break;
                 }
             case BattleEffectKind.RemoveStatus:
                 {
                     target.RemoveStatus(block.statusType);
-                    logController.AppendBattleLog(logController.BuildEffectSuccessLog(actor, target, sourceName, block.statusType.ToString() + " 해제"));
+                    logController.AppendBattleLog(logController.BuildEffectSuccessLog(actor, target, sourceName, GetStatusDisplayName(block.statusType) + " 해제"));
                     break;
                 }
         }
     }
 
+    private string GetStatusDisplayName(StatusEffectType statusType)
+    {
+        switch (statusType)
+        {
+            case StatusEffectType.Poison: return "중독";
+            case StatusEffectType.Bleed: return "출혈";
+            case StatusEffectType.Stun: return "기절";
+            case StatusEffectType.Taunt: return "도발";
+            default: return statusType.ToString();
+        }
+    }
     private void ApplyTimedModifierBlock(BattleUnit actor, BattleUnit target, string sourceName, BattleEffectBlock block)
     {
         if (block == null || target == null)

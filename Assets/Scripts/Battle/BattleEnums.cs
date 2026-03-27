@@ -127,7 +127,8 @@ public enum StatusEffectType
     None,
     Poison,
     Bleed,
-    Stun
+    Stun,
+    Taunt
 }
 
 public enum StatModifierType

@@ -211,6 +211,7 @@ public class BattleLogController : MonoBehaviour
             case StatusEffectType.Poison: return "중독";
             case StatusEffectType.Bleed: return "출혈";
             case StatusEffectType.Stun: return "기절";
+            case StatusEffectType.Taunt: return "도발";
             default: return statusType.ToString();
         }
     }
