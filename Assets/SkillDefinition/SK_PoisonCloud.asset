@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
   skillId: poison_cloud
   skillName: 
-  description: "\uB9F9\uB3C5\uC131 \uAD6C\uB984"
+  description: "\uB9F9\uB3C5\uC131 \uAD6C\uB984\uC744 \uC0DD\uC131\uD574 \uB300\uC0C1\uACFC
+    \uADF8 \uD6C4\uC5F4\uC744 \uC911\uB3C5\uC2DC\uD0A8\uB2E4"
   icon: {fileID: 21300000, guid: 7c1cc824cd74fe04e8b9a1494c64218e, type: 3}
   isBasicAttack: 0
   castType: 0
