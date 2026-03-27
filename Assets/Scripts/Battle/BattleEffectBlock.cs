@@ -80,6 +80,20 @@ public class BattleEffectBlock
     }
 }
 
+
+[Serializable]
+public class CaptureChanceRange
+{
+    [Range(0f, 100f)] public float minHpPercentExclusive = 0f;
+    [Range(0f, 100f)] public float maxHpPercentInclusive = 20f;
+    [Range(0f, 100f)] public float chancePercent = 70f;
+
+    public bool IsInRange(float hpPercent)
+    {
+        return hpPercent > minHpPercentExclusive && hpPercent <= maxHpPercentInclusive;
+    }
+}
+
 [Serializable]
 public class InventoryStackData
 {

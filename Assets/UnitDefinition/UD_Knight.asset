@@ -37,3 +37,6 @@ MonoBehaviour:
     poisonResistRange: {x: -5, y: 5}
     bleedResistRange: {x: -10, y: 10}
     stunResistRange: {x: -10, y: 10}
+  isMainPlayerCharacter: 0
+  canBeCaptured: 1
+  captureRewardItem: {fileID: 0}

@@ -28,6 +28,12 @@ public class BattleUIController : MonoBehaviour
     [SerializeField] private Image[] actionCooldownOverlays = new Image[4];
     [SerializeField] private TMP_Text[] actionCooldownTexts = new TMP_Text[4];
     [SerializeField] private Button moveButton;
+    [SerializeField] private Button captureButton;
+    [SerializeField] private Image captureButtonImage;
+    [SerializeField] private Sprite captureEnabledSprite;
+    [SerializeField] private Sprite captureDisabledSprite;
+    [SerializeField] private GameObject captureEnabledEffectRoot;
+    [SerializeField] private GameObject captureDisabledEffectRoot;
     [SerializeField] private Button fleeButton;
     [SerializeField] private Button endTurnButton;
     [SerializeField] private Button inventoryButton;
@@ -68,6 +74,7 @@ public class BattleUIController : MonoBehaviour
         SetBottomContext(BottomContextType.Inventory);
 
         ApplyButtonNavigationNone(moveButton);
+        ApplyButtonNavigationNone(captureButton);
         ApplyButtonNavigationNone(fleeButton);
         ApplyButtonNavigationNone(endTurnButton);
         ApplyButtonNavigationNone(inventoryButton);
@@ -104,6 +111,12 @@ public class BattleUIController : MonoBehaviour
         {
             moveButton.onClick.RemoveAllListeners();
             moveButton.onClick.AddListener(battleManager.OnMoveButtonPressed);
+        }
+
+        if (captureButton != null)
+        {
+            captureButton.onClick.RemoveAllListeners();
+            captureButton.onClick.AddListener(battleManager.OnCaptureButtonPressed);
         }
 
         if (fleeButton != null)
@@ -226,6 +239,25 @@ public class BattleUIController : MonoBehaviour
 
         if (moveButton != null)
             moveButton.interactable = canAct;
+
+        bool canCapture = canAct && battleManager != null && battleManager.CanActorUseCaptureCommand(unit);
+
+        if (captureButton != null)
+            captureButton.interactable = canCapture;
+
+        if (captureButtonImage != null)
+        {
+            if (canCapture && captureEnabledSprite != null)
+                captureButtonImage.sprite = captureEnabledSprite;
+            else if (!canCapture && captureDisabledSprite != null)
+                captureButtonImage.sprite = captureDisabledSprite;
+        }
+
+        if (captureEnabledEffectRoot != null)
+            captureEnabledEffectRoot.SetActive(canCapture);
+
+        if (captureDisabledEffectRoot != null)
+            captureDisabledEffectRoot.SetActive(!canCapture);
 
         if (fleeButton != null)
             fleeButton.interactable = canAct;
@@ -385,7 +417,8 @@ public class BattleUIController : MonoBehaviour
             battleManager.CurrentState == TurnState.PlayerInput &&
             (battleManager.InputMode == BattleInputMode.WaitingForSkillTarget ||
              battleManager.InputMode == BattleInputMode.WaitingForMoveTarget ||
-             battleManager.InputMode == BattleInputMode.WaitingForItemTarget);
+             battleManager.InputMode == BattleInputMode.WaitingForItemTarget ||
+             battleManager.InputMode == BattleInputMode.WaitingForCaptureTarget);
 
         cancelButton.interactable = canCancel;
 

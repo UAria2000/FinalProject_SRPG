@@ -127,6 +127,32 @@ public static class BattleTargeting
         return result;
     }
 
+
+    public static List<BattleUnit> GetValidCaptureTargets(
+        BattleUnit actor,
+        BattleFormation enemyFormation,
+        System.Func<BattleUnit, bool> predicate)
+    {
+        List<BattleUnit> result = new List<BattleUnit>();
+        if (actor == null || actor.IsDead || enemyFormation == null || predicate == null)
+            return result;
+
+        List<BattleUnit> candidates = enemyFormation.GetAliveUnits();
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            BattleUnit unit = candidates[i];
+            if (unit == null || unit.IsDead)
+                continue;
+
+            if (!predicate(unit))
+                continue;
+
+            result.Add(unit);
+        }
+
+        return result;
+    }
+
     public static BattleUnit GetSecondaryTarget(
         BattleUnit actor,
         SkillDefinition skill,

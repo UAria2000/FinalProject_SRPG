@@ -211,6 +211,61 @@ public class BattleActionController : MonoBehaviour
         battleManager.OnActionExecutionFinished(item.consumeTurnOnUse);
     }
 
+    public IEnumerator ExecuteCapture(BattleUnit actor, BattleUnit target)
+    {
+        if (actor == null || target == null)
+        {
+            battleManager.OnActionExecutionFinished(false);
+            yield break;
+        }
+
+        if (!battleManager.CanActorUseCaptureCommand(actor) || !battleManager.CanTargetBeCaptured(actor, target))
+        {
+            battleManager.OnActionExecutionFinished(false);
+            yield break;
+        }
+
+        battleManager.SetTurnState(TurnState.ExecutingAction);
+
+        if (!battleManager.TryConsumeCaptureAttempt(target))
+        {
+            battleManager.OnActionExecutionFinished(false);
+            yield break;
+        }
+
+        int chancePercent = battleManager.GetCaptureChancePercent(target);
+        bool success = Random.Range(0f, 100f) < chancePercent;
+
+        if (!success)
+        {
+            logController.AppendBattleLog(logController.BuildCaptureFailureLog(actor, target, chancePercent));
+            battleManager.OnActionExecutionFinished(true);
+            yield break;
+        }
+
+        ItemDefinition capturedItem;
+        if (!battleManager.TryAddCapturedRewardToInventory(target, out capturedItem))
+        {
+            battleManager.RefundCaptureAttempt(target);
+            battleManager.OnActionExecutionFinished(false);
+            yield break;
+        }
+
+        logController.AppendBattleLog(logController.BuildCaptureSuccessLog(actor, target, chancePercent));
+        logController.AppendBattleLog(logController.BuildCaptureAcquiredLog(capturedItem));
+
+        BattleFormation enemyFormation = actor.Team == TeamType.Ally
+            ? battleManager.EnemyFormation
+            : battleManager.AllyFormation;
+
+        if (enemyFormation != null)
+            enemyFormation.RemoveUnit(target);
+
+        battleManager.NotifyUnitLeftBattle(target);
+        yield return StartCoroutine(battleManager.HandleDeathsAndCompressionRoutine());
+        battleManager.OnActionExecutionFinished(true);
+    }
+
     public IEnumerator ExecuteFlee(BattleUnit actor)
     {
         if (actor == null)

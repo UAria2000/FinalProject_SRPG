@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e662b7d56d718594a8e435db9e994010, type: 3}
+  m_Name: UV_MainCharacter
+  m_EditorClassIdentifier: Assembly-CSharp::UnitViewDefinition
+  portrait: {fileID: 21300000, guid: 3f6cc2cb029276e4490981bb65ae160e, type: 3}
+  bodySprite: {fileID: 21300000, guid: 3f6cc2cb029276e4490981bb65ae160e, type: 3}
+  viewPrefab: {fileID: 5061461418041598090, guid: edca2cd44571b8f4c80b0dfce99d6e95, type: 3}

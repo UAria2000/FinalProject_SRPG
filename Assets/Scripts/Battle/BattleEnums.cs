@@ -37,7 +37,8 @@ public enum BattleInputMode
     WaitingForAction,
     WaitingForSkillTarget,
     WaitingForMoveTarget,
-    WaitingForItemTarget
+    WaitingForItemTarget,
+    WaitingForCaptureTarget
 }
 
 public enum BottomContextType

@@ -125,6 +125,22 @@ public class BattleLogController : MonoBehaviour
         return string.Format("{0} 도주 실패 ({1}%)", actor.Name, chancePercent);
     }
 
+
+    public string BuildCaptureSuccessLog(BattleUnit actor, BattleUnit target, int chancePercent)
+    {
+        return string.Format("{0}의 포획 → {1}: 성공 ({2}%)", actor.Name, target.Name, chancePercent);
+    }
+
+    public string BuildCaptureFailureLog(BattleUnit actor, BattleUnit target, int chancePercent)
+    {
+        return string.Format("{0}의 포획 → {1}: 실패 ({2}%)", actor.Name, target.Name, chancePercent);
+    }
+
+    public string BuildCaptureAcquiredLog(ItemDefinition item)
+    {
+        return string.Format("포획물 획득: {0}", item != null ? item.itemName : "Unknown");
+    }
+
     public string BuildEndTurnGuardLog(BattleUnit actor, int guardPercent)
     {
         return string.Format("{0} 턴 종료 → 다음 자기 턴까지 받는 공격 피해 {1}% 감소", actor.Name, guardPercent);

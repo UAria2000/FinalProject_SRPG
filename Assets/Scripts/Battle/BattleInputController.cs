@@ -75,6 +75,32 @@ public class BattleInputController : MonoBehaviour
         battleManager.RefreshAllUI();
     }
 
+    public void HandleCapturePressed()
+    {
+        if (!CanAcceptPlayerInput())
+            return;
+
+        BattleUnit actor = battleManager.CurrentActingUnit;
+        if (!battleManager.CanActorUseCaptureCommand(actor))
+            return;
+
+        List<BattleUnit> validTargets = battleManager.GetValidCaptureTargets(actor);
+        if (validTargets.Count <= 0)
+            return;
+
+        battleManager.SelectedSkill = null;
+        battleManager.SelectedInventoryIndex = -1;
+        battleManager.SelectedSkillSlotIndex = -1;
+        battleManager.SetInputMode(BattleInputMode.WaitingForCaptureTarget);
+        battleManager.ShowTargetMarkers(validTargets);
+        uiController.HideTargetPreview();
+        uiController.HideSkillTooltip();
+        uiController.HideFleeTooltip();
+
+        ClearUISelection();
+        battleManager.RefreshAllUI();
+    }
+
     public void HandleFleePressed()
     {
         if (!CanAcceptPlayerInput())
@@ -185,6 +211,9 @@ public class BattleInputController : MonoBehaviour
             case BattleInputMode.WaitingForItemTarget:
                 HandleItemTargetClick(clickedUnit);
                 break;
+            case BattleInputMode.WaitingForCaptureTarget:
+                HandleCaptureTargetClick(clickedUnit);
+                break;
         }
 
         battleManager.RefreshAllUI();
@@ -248,7 +277,8 @@ public class BattleInputController : MonoBehaviour
     private void HandleSkillTargetClick(BattleUnit clickedUnit)
     {
         SkillDefinition skill = battleManager.SelectedSkill;
-        if (skill == null) return;
+        if (skill == null)
+            return;
 
         List<BattleUnit> validTargets = BattleTargeting.GetValidSkillTargets(
             battleManager.CurrentActingUnit,
@@ -292,6 +322,16 @@ public class BattleInputController : MonoBehaviour
             return;
 
         battleManager.StartManagedCoroutine(actionController.ExecuteItem(battleManager.CurrentActingUnit, index, clickedUnit));
+    }
+
+    private void HandleCaptureTargetClick(BattleUnit clickedUnit)
+    {
+        BattleUnit actor = battleManager.CurrentActingUnit;
+        List<BattleUnit> validTargets = battleManager.GetValidCaptureTargets(actor);
+        if (!validTargets.Contains(clickedUnit))
+            return;
+
+        battleManager.StartManagedCoroutine(actionController.ExecuteCapture(actor, clickedUnit));
     }
 
     private bool CanAcceptPlayerInput()

@@ -24,7 +24,7 @@ public class InventorySlotUI : MonoBehaviour
         }
 
         if (amountText != null)
-            amountText.text = stack != null ? stack.amount.ToString() : string.Empty;
+            amountText.text = stack != null && stack.amount > 1 ? stack.amount.ToString() : string.Empty;
 
         if (selectedOutline != null)
             selectedOutline.gameObject.SetActive(selected);

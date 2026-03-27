@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61f1fb06c31e02446a44ea0f1253b30c, type: 3}
+  m_Name: Item_KnightCaptured
+  m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
+  itemId: item_sister_captured
+  itemName: "\uBD99\uC7A1\uD78C \uC218\uB140"
+  description: 
+  icon: {fileID: 21300000, guid: 921426ea5dd0621449c3ca437a778383, type: 3}
+  targetTeam: 1
+  targetScope: 0
+  usableInBattle: 0
+  consumeOnUse: 0
+  consumeTurnOnUse: 0
+  effects: []
