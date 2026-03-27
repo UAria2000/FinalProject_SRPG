@@ -1,56 +1,70 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
 
 public class CorruptUI : MonoBehaviour
 {
     [Header("Left Slots (Status)")]
-    [SerializeField] private List<CorruptSlot> statusSlots; // 왼쪽 타락 진행 슬롯들
+    [SerializeField] private List<CorruptSlot> statusSlots;
 
-    [Header("Right Inventory")]
-    [SerializeField] private GameObject itemSlotPrefab; // 자물쇠 있는 프리팹도 괜찮고 없는 것도 괜찮아요
+    [Header("Right Inventory Settings")]
+    [SerializeField] private GameObject itemSlotPrefab; // Prisoners_Prefab 연결
     [SerializeField] private Transform contentParent;
+    [SerializeField] private int totalSlots = 32;
 
     void OnEnable()
     {
-        // 선배! 장부가 바뀔 때마다(예: 타락 시작해서 목록에서 사라질 때) 다시 그려야 해요.
         if (PrisonerManager.Instance != null)
         {
             PrisonerManager.Instance.OnPrisonerListChanged += RefreshInventory;
         }
-
         RefreshInventory();
     }
 
     void OnDisable()
     {
-        // 꺼질 때 예약 취소 안 하면 에러 나는 거, 이제 선배도 상식이죠?
         if (PrisonerManager.Instance != null)
         {
             PrisonerManager.Instance.OnPrisonerListChanged -= RefreshInventory;
         }
     }
 
-    // 오른쪽 포로 목록을 두뇌(Manager)에서 가져와서 다시 그립니다.
     public void RefreshInventory()
     {
+        // 기존 슬롯 제거
         foreach (Transform child in contentParent) Destroy(child.gameObject);
 
-        foreach (var data in PrisonerManager.Instance.allPrisoners)
-        {
-            if (!data.isCorrupting)
-            {
-                GameObject slotObj = Instantiate(itemSlotPrefab, contentParent);
-                ItemSlot slotScript = slotObj.GetComponent<ItemSlot>();
+        // 타락 중이 아닌 포로 데이터 추출
+        var availablePrisoners = PrisonerManager.Instance.allPrisoners
+            .Where(p => !p.isCorrupting)
+            .ToList();
 
-                if (slotScript != null)
+        for (int i = 0; i < totalSlots; i++)
+        {
+            GameObject slotObj = Instantiate(itemSlotPrefab, contentParent);
+            ItemSlot slotScript = slotObj.GetComponent<ItemSlot>();
+
+            if (slotScript != null)
+            {
+                // 첫 줄(index 0~7)만 자물쇠 해제 및 드래그 허용
+                bool isLocked = (i >= 8);
+                slotScript.SetLocked(isLocked);
+                slotScript.canDrag = !isLocked;
+                slotScript.enabled = true;
+
+                // 데이터가 존재하는 경우에만 UI 갱신
+                if (i < availablePrisoners.Count)
                 {
+                    var data = availablePrisoners[i];
                     slotScript.myData = data;
                     slotScript.SetItem(data.portrait);
-
-                    // ★ 선배! 타락 창은 드래그를 '진짜로' 허용해줘야죠!
-                    slotScript.SetLocked(false);
-                    slotScript.canDrag = true;   // 드래그 ON!
-                    slotScript.enabled = true;   // 스크립트 ON!
+                    slotObj.name = $"CorruptInvSlot_{i} ({data.prisonerName})";
+                }
+                else
+                {
+                    slotScript.myData = null;
+                    slotScript.SetItem(null);
+                    slotObj.name = $"CorruptInvSlot_{i} (Empty)";
                 }
             }
         }
