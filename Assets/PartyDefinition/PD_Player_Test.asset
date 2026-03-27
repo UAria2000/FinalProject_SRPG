@@ -54,26 +54,6 @@ MonoBehaviour:
       bleedResistDelta: -4
       stunResistDelta: -5
     learnedSkills: []
-  - unitDefinition: {fileID: 11400000, guid: f8f9adbf09c124c4f841e0510acbe903, type: 2}
-    unitViewDefinition: {fileID: 11400000, guid: db5ea6affc7c81a4ab640be9675790dd, type: 2}
-    startSlotIndex: 2
-    instanceId: player_darkelf_002
-    instanceDisplayNameOverride: "\uB2E4\uD06C\uC5D8\uD504B"
-    fixedEpitaph: 
-    currentLevel: 1
-    originalLevel: 1
-    statVariance:
-      maxHpDelta: 5
-      dmgDelta: 4
-      spdDelta: 3
-      hitDeltaX10: 2
-      acDeltaX10: 1
-      criDelta: 0
-      crdDelta: 1
-      poisonResistDelta: 2
-      bleedResistDelta: 3
-      stunResistDelta: 4
-    learnedSkills: []
   - unitDefinition: {fileID: 11400000, guid: c3a62349039360b4e8b840de022ccf36, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: 9a9cea643cf1ac947b7117d79b5e806f, type: 2}
     startSlotIndex: 3

@@ -445,8 +445,7 @@ public class BattleUnit
         if (instance == null)
             return 0;
 
-        // 현재 구조에서는 Poison만 스택형으로 사용
-        if (statusType == StatusEffectType.Poison)
+        if (statusType == StatusEffectType.Poison || statusType == StatusEffectType.Bleed)
             return Mathf.Max(0, instance.remainingTurns);
 
         return 1;
@@ -467,10 +466,12 @@ public class BattleUnit
             result.poisonDamage = ApplyDamage(totalPoisonDamage);
         }
 
-        if (!IsDead && HasStatus(StatusEffectType.Bleed))
+        int bleedStacks = GetStatusStackCount(StatusEffectType.Bleed);
+        if (!IsDead && bleedStacks > 0)
         {
-            int bleedDamage = Mathf.Max(1, Mathf.FloorToInt(hpAtTurnStart * 0.05f));
-            result.bleedDamage = ApplyDamage(bleedDamage);
+            int bleedDamagePerStack = Mathf.Max(1, Mathf.FloorToInt(hpAtTurnStart * 0.05f));
+            int totalBleedDamage = bleedDamagePerStack * bleedStacks;
+            result.bleedDamage = ApplyDamage(totalBleedDamage);
         }
 
         if (!IsDead && HasStatus(StatusEffectType.Stun))
@@ -497,8 +498,7 @@ public class BattleUnit
         BattleStatusInstance existing = FindStatusInstance(statusType);
         if (existing != null)
         {
-            // Poison은 durationTurns를 "부여 스택 수"로 사용
-            if (statusType == StatusEffectType.Poison)
+            if (statusType == StatusEffectType.Poison || statusType == StatusEffectType.Bleed)
                 existing.remainingTurns += duration;
             else
                 existing.remainingTurns = Mathf.Max(existing.remainingTurns, duration);

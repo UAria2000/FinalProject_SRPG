@@ -11,7 +11,8 @@ public enum PassiveSkillGimmick
 public enum ActiveSkillGimmick
 {
     None,
-    DelayedReinforcement
+    DelayedReinforcement,
+    BleedDrainStrike
 }
 
 [CreateAssetMenu(menuName = "Battle/Skill Definition")]

@@ -515,8 +515,9 @@ public class EnemyAIController : MonoBehaviour
             if (block.statusType == StatusEffectType.None)
                 continue;
 
-            // Poison은 스택형으로 쓰므로 이미 걸려 있어도 재적용 가치가 있음
-            if (block.statusType == StatusEffectType.Poison)
+            // Poison / Bleed 는 스택형이므로 이미 걸려 있어도 재적용 가치가 있음
+            if (block.statusType == StatusEffectType.Poison ||
+                block.statusType == StatusEffectType.Bleed)
                 continue;
 
             if (target.HasStatus(block.statusType))

@@ -338,13 +338,13 @@ public class BattleActionController : MonoBehaviour
     }
 
     private IEnumerator ResolveAndApplyAttack(
-        BattleUnit actor,
-        SkillDefinition skill,
-        BattleUnit target,
-        float damagePowerPercentOverride,
-        float accuracyPercentOverride,
-        string logSuffix,
-        bool applyNonDamageEffects)
+    BattleUnit actor,
+    SkillDefinition skill,
+    BattleUnit target,
+    float damagePowerPercentOverride,
+    float accuracyPercentOverride,
+    string logSuffix,
+    bool applyNonDamageEffects)
     {
         if (actor == null || target == null || skill == null)
             yield break;
@@ -360,10 +360,16 @@ public class BattleActionController : MonoBehaviour
         {
             int originalDamage = result.Damage;
             result.Damage = target.ApplyIncomingAttackDamageReduction(result.Damage);
-            target.ApplyDamage(result.Damage);
+
+            int hpDamageDealt = target.ApplyDamage(result.Damage);
 
             if (applyNonDamageEffects)
-                ApplyNonDamageEffects(actor, target, skill.skillName, skill.effects, true);
+            {
+                if (skill.activeGimmick == ActiveSkillGimmick.BleedDrainStrike)
+                    ApplyBleedDrainStrikeEffects(actor, target, skill, hpDamageDealt);
+                else
+                    ApplyNonDamageEffects(actor, target, skill.skillName, skill.effects, true);
+            }
 
             if (result.Damage < originalDamage)
                 logController.AppendBattleLog(logController.BuildGuardReductionLog(target, originalDamage, result.Damage));
@@ -499,6 +505,67 @@ public class BattleActionController : MonoBehaviour
         }
     }
 
+    private void ApplyBleedDrainStrikeEffects(BattleUnit actor, BattleUnit target, SkillDefinition skill, int hpDamageDealt)
+    {
+        if (actor == null || target == null || skill == null || skill.effects == null)
+            return;
+
+        for (int i = 0; i < skill.effects.Count; i++)
+        {
+            BattleEffectBlock block = skill.effects[i];
+            if (block == null)
+                continue;
+
+            if (block.kind == BattleEffectKind.ApplyStatus &&
+                block.statusType == StatusEffectType.Bleed)
+            {
+                int finalChance = BattleCalculator.CalculateEffectSuccessChance(block, target);
+                bool success = Random.Range(0f, 100f) < finalChance;
+
+                if (!success)
+                {
+                    logController.AppendBattleLog(
+                        logController.BuildEffectFailureLog(actor, target, skill.skillName, GetStatusDisplayName(StatusEffectType.Bleed)));
+                    continue;
+                }
+
+                target.ApplyStatus(StatusEffectType.Bleed, block.durationTurns);
+                logController.AppendBattleLog(
+                    logController.BuildEffectSuccessLog(actor, target, skill.skillName, GetStatusDisplayName(StatusEffectType.Bleed)));
+                continue;
+            }
+
+            if (block.kind == BattleEffectKind.Heal)
+            {
+                int drainPercent = GetBleedDrainHealPercent(block);
+                if (drainPercent <= 0 || hpDamageDealt <= 0)
+                    continue;
+
+                int healAmount = Mathf.Max(0, Mathf.FloorToInt(hpDamageDealt * (drainPercent * 0.01f)));
+                int healed = actor.Heal(healAmount);
+
+                if (healed > 0)
+                    logController.AppendBattleLog(
+                        logController.BuildHealLog(actor, actor, skill.skillName + " [흡혈]", healed));
+            }
+        }
+    }
+
+    private int GetBleedDrainHealPercent(BattleEffectBlock block)
+    {
+        if (block == null)
+            return 0;
+
+        // 이 gimmick에서는 Heal 블록의 powerPercent를 "흡혈 비율(%)"로 사용
+        if (block.powerPercent > 0f)
+            return Mathf.RoundToInt(block.powerPercent);
+
+        // 혹시 인스펙터에서 flatValue로 넣었어도 보조적으로 허용
+        if (block.flatValue > 0)
+            return block.flatValue;
+
+        return 0;
+    }
     private void ApplyBlock(BattleUnit actor, BattleUnit target, string sourceName, BattleEffectBlock block)
     {
         switch (block.kind)
