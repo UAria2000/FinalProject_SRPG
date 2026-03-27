@@ -39,6 +39,16 @@ public class BattleViewManager : MonoBehaviour
         unitViews[unit] = view;
     }
 
+
+    public void ClearAllViews()
+    {
+        List<BattleUnit> keys = new List<BattleUnit>(unitViews.Keys);
+        for (int i = 0; i < keys.Count; i++)
+            RemoveView(keys[i]);
+
+        unitViews.Clear();
+    }
+
     public BattleUnitView GetView(BattleUnit unit)
     {
         if (unit == null) return null;

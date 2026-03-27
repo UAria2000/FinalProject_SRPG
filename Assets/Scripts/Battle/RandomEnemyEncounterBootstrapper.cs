@@ -27,7 +27,17 @@ public class RandomEnemyEncounterBootstrapper : MonoBehaviour
     }
 
     [ContextMenu("Generate And Apply Enemy Party")]
+    public void GenerateAndApplyEnemyPartyContextMenu()
+    {
+        GenerateAndApplyEnemyParty();
+    }
+
     public void GenerateAndApplyEnemyParty()
+    {
+        GenerateAndApplyEnemyParty(encounterTable);
+    }
+
+    public void GenerateAndApplyEnemyParty(EnemyEncounterTable tableOverride)
     {
         if (battleManager == null)
             battleManager = GetComponent<BattleManager>();
@@ -38,9 +48,12 @@ public class RandomEnemyEncounterBootstrapper : MonoBehaviour
             return;
         }
 
-        PartyDefinition generated = GenerateRuntimeEnemyParty();
+        PartyDefinition generated = GenerateRuntimeEnemyParty(tableOverride);
         if (generated == null)
             return;
+
+        if (runtimeGeneratedEnemyParty != null)
+            Destroy(runtimeGeneratedEnemyParty);
 
         runtimeGeneratedEnemyParty = generated;
         battleManager.SetEnemyPartyDefinition(runtimeGeneratedEnemyParty);
@@ -51,14 +64,21 @@ public class RandomEnemyEncounterBootstrapper : MonoBehaviour
 
     public PartyDefinition GenerateRuntimeEnemyParty()
     {
-        List<EnemyEncounterEntry> validEntries = CollectValidEntries();
+        return GenerateRuntimeEnemyParty(encounterTable);
+    }
+
+    public PartyDefinition GenerateRuntimeEnemyParty(EnemyEncounterTable tableOverride)
+    {
+        EnemyEncounterTable table = tableOverride != null ? tableOverride : encounterTable;
+
+        List<EnemyEncounterEntry> validEntries = CollectValidEntries(table);
         if (validEntries.Count == 0)
         {
             Debug.LogWarning("[RandomEnemyEncounterBootstrapper] No valid encounter entries found.");
             return null;
         }
 
-        int enemyCount = encounterTable != null ? encounterTable.GetRandomEnemyCount() : 0;
+        int enemyCount = table != null ? table.GetRandomEnemyCount() : 0;
         if (enemyCount <= 0)
         {
             Debug.LogWarning("[RandomEnemyEncounterBootstrapper] Enemy count resolved to 0.");
@@ -82,7 +102,7 @@ public class RandomEnemyEncounterBootstrapper : MonoBehaviour
             PartyMemberData member = CreatePartyMember(picked, slot);
             party.members.Add(member);
 
-            bool allowDuplicates = encounterTable == null || encounterTable.allowDuplicates;
+            bool allowDuplicates = table == null || table.allowDuplicates;
             if (!allowDuplicates)
                 drawPool.Remove(picked);
 
@@ -100,15 +120,15 @@ public class RandomEnemyEncounterBootstrapper : MonoBehaviour
         return party;
     }
 
-    private List<EnemyEncounterEntry> CollectValidEntries()
+    private List<EnemyEncounterEntry> CollectValidEntries(EnemyEncounterTable table)
     {
         List<EnemyEncounterEntry> result = new List<EnemyEncounterEntry>();
-        if (encounterTable == null || encounterTable.entries == null)
+        if (table == null || table.entries == null)
             return result;
 
-        for (int i = 0; i < encounterTable.entries.Count; i++)
+        for (int i = 0; i < table.entries.Count; i++)
         {
-            EnemyEncounterEntry entry = encounterTable.entries[i];
+            EnemyEncounterEntry entry = table.entries[i];
             if (entry == null || !entry.enabled)
                 continue;
             if (entry.unitDefinition == null || entry.unitViewDefinition == null)

@@ -1,0 +1,104 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8af626abda79b6544ab9c5c5fcc17370, type: 3}
+  m_Name: PD_Village_1_Boss
+  m_EditorClassIdentifier: Assembly-CSharp::PartyDefinition
+  partyName: village_1_boss
+  members:
+  - unitDefinition: {fileID: 11400000, guid: 4ed19b798d1855e4b9d677b81f8760b4, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: efe870fc467569345ad795a5d741c65f, type: 2}
+    startSlotIndex: 0
+    instanceId: 
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    currentLevel: 0
+    originalLevel: 0
+    statVariance:
+      maxHpDelta: 0
+      dmgDelta: 0
+      spdDelta: 0
+      hitDeltaX10: 0
+      acDeltaX10: 0
+      criDelta: 0
+      crdDelta: 0
+      poisonResistDelta: 0
+      bleedResistDelta: 0
+      stunResistDelta: 0
+    learnedSkills:
+    - {fileID: 11400000, guid: 1eb281aaf1fb25147a1e63741d0cc51a, type: 2}
+  - unitDefinition: {fileID: 11400000, guid: 4fc12e95ea260a640b70631ac7a1e8a4, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: 505a387ba4cce804cb2c0a690bd2bcb1, type: 2}
+    startSlotIndex: 1
+    instanceId: 
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    currentLevel: 0
+    originalLevel: 0
+    statVariance:
+      maxHpDelta: 0
+      dmgDelta: 0
+      spdDelta: 0
+      hitDeltaX10: 0
+      acDeltaX10: 0
+      criDelta: 0
+      crdDelta: 0
+      poisonResistDelta: 0
+      bleedResistDelta: 0
+      stunResistDelta: 0
+    learnedSkills:
+    - {fileID: 11400000, guid: 815cc480373ff3444af002b42b7dd4da, type: 2}
+    - {fileID: 11400000, guid: e81cd195888035e448b3ef8f4ed7e0ac, type: 2}
+  - unitDefinition: {fileID: 11400000, guid: 4fc12e95ea260a640b70631ac7a1e8a4, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: 505a387ba4cce804cb2c0a690bd2bcb1, type: 2}
+    startSlotIndex: 2
+    instanceId: 
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    currentLevel: 0
+    originalLevel: 0
+    statVariance:
+      maxHpDelta: 0
+      dmgDelta: 0
+      spdDelta: 0
+      hitDeltaX10: 0
+      acDeltaX10: 0
+      criDelta: 0
+      crdDelta: 0
+      poisonResistDelta: 0
+      bleedResistDelta: 0
+      stunResistDelta: 0
+    learnedSkills:
+    - {fileID: 11400000, guid: 815cc480373ff3444af002b42b7dd4da, type: 2}
+    - {fileID: 11400000, guid: e81cd195888035e448b3ef8f4ed7e0ac, type: 2}
+  - unitDefinition: {fileID: 11400000, guid: 4fc12e95ea260a640b70631ac7a1e8a4, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: 505a387ba4cce804cb2c0a690bd2bcb1, type: 2}
+    startSlotIndex: 3
+    instanceId: 
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    currentLevel: 0
+    originalLevel: 0
+    statVariance:
+      maxHpDelta: 0
+      dmgDelta: 0
+      spdDelta: 0
+      hitDeltaX10: 0
+      acDeltaX10: 0
+      criDelta: 0
+      crdDelta: 0
+      poisonResistDelta: 0
+      bleedResistDelta: 0
+      stunResistDelta: 0
+    learnedSkills:
+    - {fileID: 11400000, guid: 815cc480373ff3444af002b42b7dd4da, type: 2}
+    - {fileID: 11400000, guid: e81cd195888035e448b3ef8f4ed7e0ac, type: 2}
+  inventory: []

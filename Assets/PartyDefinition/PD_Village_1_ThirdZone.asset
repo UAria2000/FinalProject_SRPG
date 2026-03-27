@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c6a35d65b0733cf46b1805d33bf861b7, type: 3}
-  m_Name: PD_Incounter
+  m_Name: PD_Village_1_ThirdZone
   m_EditorClassIdentifier: Assembly-CSharp::EnemyEncounterTable
   minEnemyCount: 2
   maxEnemyCount: 4
@@ -18,7 +18,7 @@ MonoBehaviour:
   entries:
   - unitDefinition: {fileID: 11400000, guid: 1908a15a55e069c40a2d153303c2f2b4, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: 7c11a47c0fa4b1841b92f06e5d932027, type: 2}
-    weight: 5
+    weight: 1
     learnedSkills:
     - {fileID: 11400000, guid: 566ac0660335c3a46b961623a4487e28, type: 2}
     - {fileID: 11400000, guid: 9f170c3763160a544b2127c66554d02d, type: 2}
@@ -27,7 +27,7 @@ MonoBehaviour:
     enabled: 1
   - unitDefinition: {fileID: 11400000, guid: b9d53ddcc448c084b829774c1c11198c, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: bd16361a5f569b247ac2a772dfd8c60f, type: 2}
-    weight: 4
+    weight: 2
     learnedSkills:
     - {fileID: 11400000, guid: 26ff3362a818ef645becb31dbafab0e6, type: 2}
     - {fileID: 11400000, guid: 10eec545a6ce8d84b83583d730483ce4, type: 2}
@@ -36,7 +36,7 @@ MonoBehaviour:
     enabled: 1
   - unitDefinition: {fileID: 11400000, guid: 4fc12e95ea260a640b70631ac7a1e8a4, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: 505a387ba4cce804cb2c0a690bd2bcb1, type: 2}
-    weight: 2
+    weight: 4
     learnedSkills:
     - {fileID: 11400000, guid: 815cc480373ff3444af002b42b7dd4da, type: 2}
     - {fileID: 11400000, guid: e81cd195888035e448b3ef8f4ed7e0ac, type: 2}
@@ -45,7 +45,7 @@ MonoBehaviour:
     enabled: 1
   - unitDefinition: {fileID: 11400000, guid: ba6135bfc22c35c46bf17a0643ed18f1, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: c89f7e3ce318b1c44b1f9da12e21adc3, type: 2}
-    weight: 4
+    weight: 5
     learnedSkills:
     - {fileID: 11400000, guid: ccc8e47a9d87135409baabc6bc667f82, type: 2}
     - {fileID: 11400000, guid: 6e470c8dd3e33c041a26e06417ea0465, type: 2}
@@ -63,7 +63,7 @@ MonoBehaviour:
     enabled: 1
   - unitDefinition: {fileID: 11400000, guid: 4ed19b798d1855e4b9d677b81f8760b4, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: efe870fc467569345ad795a5d741c65f, type: 2}
-    weight: 1
+    weight: 5
     learnedSkills:
     - {fileID: 11400000, guid: 1eb281aaf1fb25147a1e63741d0cc51a, type: 2}
     instanceDisplayNameOverride: 

@@ -268,6 +268,9 @@ public class BattleUIController : MonoBehaviour
         if (inventoryButton != null)
             inventoryButton.interactable = true;
 
+        if (mapButton != null)
+            mapButton.interactable = battleManager == null || !battleManager.IsBattleInProgress;
+
         if (cancelButton != null)
             cancelButton.interactable = battleManager != null &&
                                         battleManager.CurrentState == TurnState.PlayerInput &&
