@@ -17,13 +17,12 @@ public class EnemyInfoPanel : MonoBehaviour
 
     private BattleUnit currentEnemy;
 
-    public BattleUnit CurrentEnemy { get { return currentEnemy; } }
+    public BattleUnit CurrentEnemy => currentEnemy;
 
     public void Show(BattleUnit enemy)
     {
         currentEnemy = enemy;
 
-        // 전투 중에는 패널 틀은 항상 보이게 유지
         if (root != null)
             root.SetActive(true);
 
@@ -59,7 +58,7 @@ public class EnemyInfoPanel : MonoBehaviour
                 if (hasSkill && remaining > 0)
                 {
                     float divisor = Mathf.Max(1f, skill.cooldownTurns);
-                    cooldownOverlays[i].fillAmount = divisor > 0f ? Mathf.Clamp01(remaining / divisor) : 0f;
+                    cooldownOverlays[i].fillAmount = Mathf.Clamp01(remaining / divisor);
                 }
                 else
                 {
@@ -79,9 +78,9 @@ public class EnemyInfoPanel : MonoBehaviour
 
     private void Clear()
     {
-        if (nameValueText != null) nameValueText.text = string.Empty;
-        if (levelValueText != null) levelValueText.text = string.Empty;
-        if (hpValueText != null) hpValueText.text = string.Empty;
+        if (nameValueText != null) nameValueText.text = "-";
+        if (levelValueText != null) levelValueText.text = "-";
+        if (hpValueText != null) hpValueText.text = "-";
 
         for (int i = 0; i < 4; i++)
         {

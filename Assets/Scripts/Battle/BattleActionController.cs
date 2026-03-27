@@ -107,10 +107,34 @@ public class BattleActionController : MonoBehaviour
         {
             for (int i = 0; i < targets.Count; i++)
             {
-                ApplySuccessOnlyEffects(actor, targets[i], skill.skillName, skill.effects);
-                BattleUnitView view = viewManager.GetView(targets[i]);
-                if (view != null)
-                    yield return StartCoroutine(view.AnimateHPChange(0.1f));
+                BattleUnit primaryTarget = targets[i];
+
+                ApplySuccessOnlyEffects(actor, primaryTarget, skill.skillName, skill.effects);
+
+                BattleUnitView primaryView = viewManager.GetView(primaryTarget);
+                if (primaryView != null)
+                    yield return StartCoroutine(primaryView.AnimateHPChange(0.1f));
+
+                // 성공판정형 스킬도 "대상 뒤 1칸" 적용 가능하게 처리
+                if (skill.targetScope == TargetScope.Single &&
+                    skill.secondaryTargetRule != SecondaryTargetRule.None)
+                {
+                    BattleUnit secondaryTarget = BattleTargeting.GetSecondaryTarget(
+                        actor,
+                        skill,
+                        primaryTarget,
+                        battleManager.AllyFormation,
+                        battleManager.EnemyFormation);
+
+                    if (secondaryTarget != null && !secondaryTarget.IsDead)
+                    {
+                        ApplySuccessOnlyEffects(actor, secondaryTarget, skill.skillName + " [후열]", skill.effects);
+
+                        BattleUnitView secondaryView = viewManager.GetView(secondaryTarget);
+                        if (secondaryView != null)
+                            yield return StartCoroutine(secondaryView.AnimateHPChange(0.1f));
+                    }
+                }
             }
         }
 

@@ -16,7 +16,7 @@ MonoBehaviour:
   skillName: "\uD638\uAC01"
   description: "\uC544\uAD70\uC774 \uC8FD\uC73C\uBA74 \uD638\uAC01\uC744 \uBD88\uC5B4
     2\uD134 \uD6C4 \uB3D9\uB8CC\uB97C \uBD80\uB978\uB2E4."
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 59b2f051f7676e945b74b635da07f292, type: 3}
   isBasicAttack: 0
   castType: 0
   activeRole: 0
@@ -42,3 +42,4 @@ MonoBehaviour:
   secondaryDamagePercent: 0
   secondaryApplyNonDamageEffects: 0
   effects: []
+  disableAfterUseInBattle: 0

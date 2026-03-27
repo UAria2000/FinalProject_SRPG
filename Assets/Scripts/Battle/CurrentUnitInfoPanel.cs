@@ -23,7 +23,6 @@ public class CurrentUnitInfoPanel : MonoBehaviour
 
     public void Show(BattleUnit unit)
     {
-        // 전투 중에는 패널 틀은 항상 보이게 유지
         if (root != null)
             root.SetActive(true);
 
@@ -56,7 +55,7 @@ public class CurrentUnitInfoPanel : MonoBehaviour
         if (poisonResistValueText != null) poisonResistValueText.text = BattleStatFormatter.FormatPercent(unit.PoisonResist);
         if (bleedResistValueText != null) bleedResistValueText.text = BattleStatFormatter.FormatPercent(unit.BleedResist);
         if (stunResistValueText != null) stunResistValueText.text = BattleStatFormatter.FormatPercent(unit.StunResist);
-        if (epitaphText != null) epitaphText.text = unit.Epitaph;
+        if (epitaphText != null) epitaphText.text = string.IsNullOrEmpty(unit.Epitaph) ? "-" : unit.Epitaph;
     }
 
     private void Clear()
@@ -67,20 +66,20 @@ public class CurrentUnitInfoPanel : MonoBehaviour
             portraitImage.color = new Color(1f, 1f, 1f, 0f);
         }
 
-        if (nameValueText != null) nameValueText.text = string.Empty;
-        if (currentLevelValueText != null) currentLevelValueText.text = string.Empty;
-        if (originalLevelValueText != null) originalLevelValueText.text = string.Empty;
-        if (hpValueText != null) hpValueText.text = string.Empty;
-        if (dmgValueText != null) dmgValueText.text = string.Empty;
-        if (spdValueText != null) spdValueText.text = string.Empty;
-        if (hitValueText != null) hitValueText.text = string.Empty;
-        if (acValueText != null) acValueText.text = string.Empty;
-        if (criValueText != null) criValueText.text = string.Empty;
-        if (crdValueText != null) crdValueText.text = string.Empty;
-        if (poisonResistValueText != null) poisonResistValueText.text = string.Empty;
-        if (bleedResistValueText != null) bleedResistValueText.text = string.Empty;
-        if (stunResistValueText != null) stunResistValueText.text = string.Empty;
-        if (epitaphText != null) epitaphText.text = string.Empty;
+        if (nameValueText != null) nameValueText.text = "-";
+        if (currentLevelValueText != null) currentLevelValueText.text = "-";
+        if (originalLevelValueText != null) originalLevelValueText.text = "-";
+        if (hpValueText != null) hpValueText.text = "-";
+        if (dmgValueText != null) dmgValueText.text = "-";
+        if (spdValueText != null) spdValueText.text = "-";
+        if (hitValueText != null) hitValueText.text = "-";
+        if (acValueText != null) acValueText.text = "-";
+        if (criValueText != null) criValueText.text = "-";
+        if (crdValueText != null) crdValueText.text = "-";
+        if (poisonResistValueText != null) poisonResistValueText.text = "-";
+        if (bleedResistValueText != null) bleedResistValueText.text = "-";
+        if (stunResistValueText != null) stunResistValueText.text = "-";
+        if (epitaphText != null) epitaphText.text = "-";
     }
 
     public void Hide()

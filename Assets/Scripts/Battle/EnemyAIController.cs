@@ -475,9 +475,17 @@ public class EnemyAIController : MonoBehaviour
             if (block == null)
                 continue;
 
-            if (block.kind == BattleEffectKind.ApplyStatus &&
-                block.statusType != StatusEffectType.None &&
-                target.HasStatus(block.statusType))
+            if (block.kind != BattleEffectKind.ApplyStatus)
+                continue;
+
+            if (block.statusType == StatusEffectType.None)
+                continue;
+
+            // Poison은 스택형이므로 이미 걸려 있어도 "중복 적용 가치 있음"
+            if (block.statusType == StatusEffectType.Poison)
+                continue;
+
+            if (target.HasStatus(block.statusType))
                 return true;
         }
 

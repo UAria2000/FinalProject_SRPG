@@ -1,0 +1,58 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b0ec0aa42fa160a46a6330d7ff30c770, type: 3}
+  m_Name: SK_PierceShot
+  m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
+  skillId: pierce_shot
+  skillName: "\uAFF0\uB6AB\uAE30"
+  description: "\uB300\uC0C1\uC744 \uAFF0\uB6AB\uC5B4 \uD6C4\uBC29\uC758 \uC801\uC5D0\uAC8C\uB3C4
+    \uD53C\uD574\uB97C \uC785\uD78C\uB2E4."
+  icon: {fileID: 21300000, guid: 76f93c81cc1279a428d6324672476a3c, type: 3}
+  isBasicAttack: 0
+  castType: 0
+  activeRole: 0
+  learnTags: 0
+  rangeTag: 2
+  passiveGimmick: 0
+  activeGimmick: 0
+  usableMinSlotIndex: 0
+  usableMaxSlotIndex: 3
+  targetMinSlotIndex: 0
+  targetMaxSlotIndex: 3
+  targetTeam: 0
+  targetScope: 0
+  resolutionMode: 0
+  cooldownTurns: 2
+  accuracyCoefficientPercent: 100
+  allowCrit: 1
+  allowGraze: 1
+  selfMoveDirection: 0
+  selfMoveSteps: 0
+  secondaryTargetRule: 1
+  secondaryAccuracyCoefficientPercent: 100
+  secondaryDamagePercent: 100
+  secondaryApplyNonDamageEffects: 0
+  effects:
+  - kind: 0
+    statusType: 0
+    statModifierType: 0
+    successChancePercent: 0
+    affectedByResistance: 0
+    powerPercent: 0
+    useRandomPowerPercentRange: 1
+    randomPowerPercentMin: 90
+    randomPowerPercentMax: 110
+    flatValue: 0
+    valueReference: 0
+    durationTurns: 0
+    displayIcon: {fileID: 0}
+  disableAfterUseInBattle: 0

@@ -16,12 +16,14 @@ MonoBehaviour:
   skillName: "\uD22C\uC11D"
   description: "\uB3CC\uC744 \uB358\uC838 \uB300\uC0C1\uC5D0\uAC8C \uD53C\uD574\uB97C
     \uC785\uD788\uACE0 \uB0AE\uC740 \uD655\uB960\uB85C \uAE30\uC808\uC2DC\uD0A8\uB2E4"
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: c7aff0025a030c14dab80ffcdf0307a8, type: 3}
   isBasicAttack: 0
   castType: 0
   activeRole: 0
   learnTags: 0
   rangeTag: 0
+  passiveGimmick: 0
+  activeGimmick: 0
   usableMinSlotIndex: 2
   usableMaxSlotIndex: 3
   targetMinSlotIndex: 0
@@ -50,6 +52,7 @@ MonoBehaviour:
     randomPowerPercentMin: 20
     randomPowerPercentMax: 60
     flatValue: 0
+    valueReference: 0
     durationTurns: 0
     displayIcon: {fileID: 0}
   - kind: 5
@@ -62,5 +65,7 @@ MonoBehaviour:
     randomPowerPercentMin: 0
     randomPowerPercentMax: 0
     flatValue: 0
+    valueReference: 0
     durationTurns: 1
     displayIcon: {fileID: 0}
+  disableAfterUseInBattle: 0

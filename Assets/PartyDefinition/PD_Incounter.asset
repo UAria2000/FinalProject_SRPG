@@ -47,7 +47,7 @@ MonoBehaviour:
     unitViewDefinition: {fileID: 11400000, guid: c89f7e3ce318b1c44b1f9da12e21adc3, type: 2}
     weight: 4
     learnedSkills:
-    - {fileID: 11400000, guid: 566ac0660335c3a46b961623a4487e28, type: 2}
+    - {fileID: 11400000, guid: ccc8e47a9d87135409baabc6bc667f82, type: 2}
     - {fileID: 11400000, guid: 6e470c8dd3e33c041a26e06417ea0465, type: 2}
     instanceDisplayNameOverride: 
     fixedEpitaph: 
@@ -56,7 +56,7 @@ MonoBehaviour:
     unitViewDefinition: {fileID: 11400000, guid: 1b438de26f7c55846a7512105f0e9020, type: 2}
     weight: 3
     learnedSkills:
-    - {fileID: 11400000, guid: 566ac0660335c3a46b961623a4487e28, type: 2}
+    - {fileID: 11400000, guid: 3ab1800b8ec691b4a82b496746746c9f, type: 2}
     - {fileID: 11400000, guid: 7228d044f4e12b14ebfc557738f485dc, type: 2}
     instanceDisplayNameOverride: 
     fixedEpitaph: 
