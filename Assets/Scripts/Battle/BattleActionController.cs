@@ -115,7 +115,6 @@ public class BattleActionController : MonoBehaviour
                 if (primaryView != null)
                     yield return StartCoroutine(primaryView.AnimateHPChange(0.1f));
 
-                // 성공판정형 스킬도 "대상 뒤 1칸" 적용 가능하게 처리
                 if (skill.targetScope == TargetScope.Single &&
                     skill.secondaryTargetRule != SecondaryTargetRule.None)
                 {
@@ -338,13 +337,13 @@ public class BattleActionController : MonoBehaviour
     }
 
     private IEnumerator ResolveAndApplyAttack(
-    BattleUnit actor,
-    SkillDefinition skill,
-    BattleUnit target,
-    float damagePowerPercentOverride,
-    float accuracyPercentOverride,
-    string logSuffix,
-    bool applyNonDamageEffects)
+        BattleUnit actor,
+        SkillDefinition skill,
+        BattleUnit target,
+        float damagePowerPercentOverride,
+        float accuracyPercentOverride,
+        string logSuffix,
+        bool applyNonDamageEffects)
     {
         if (actor == null || target == null || skill == null)
             yield break;
@@ -382,7 +381,14 @@ public class BattleActionController : MonoBehaviour
             yield return StartCoroutine(view.AnimateHPChange(0.15f));
 
         if (target.IsDead)
+        {
             logController.AppendBattleLog(logController.BuildDeathLog(target));
+            yield break;
+        }
+
+        // 주 타격에만 강제 위치 이동 적용
+        if (result.DidHit && string.IsNullOrEmpty(logSuffix))
+            yield return StartCoroutine(HandleForcedTargetMoveAfterHit(actor, skill, target));
     }
 
     private IEnumerator HandleSelfMoveAfterSkill(BattleUnit actor, SkillDefinition skill)
@@ -415,6 +421,46 @@ public class BattleActionController : MonoBehaviour
             yield break;
 
         logController.AppendBattleLog(logController.BuildSelfSlideLog(actor, fromSlot, actor.SlotIndex));
+
+        if (viewManager != null)
+        {
+            yield return StartCoroutine(viewManager.AnimateRefreshAllPositions(
+                battleManager.AllyFormation,
+                battleManager.EnemyFormation,
+                battleManager.MoveAnimationDuration));
+        }
+    }
+
+    private IEnumerator HandleForcedTargetMoveAfterHit(BattleUnit actor, SkillDefinition skill, BattleUnit target)
+    {
+        if (actor == null || skill == null || target == null)
+            yield break;
+
+        if (!skill.HasForcedTargetMoveAfterHit())
+            yield break;
+
+        if (target.IsDead || !battleManager.IsUnitInBattle(target))
+            yield break;
+
+        BattleFormation targetFormation = target.Team == TeamType.Ally
+            ? battleManager.AllyFormation
+            : battleManager.EnemyFormation;
+
+        if (targetFormation == null || !targetFormation.Contains(target))
+            yield break;
+
+        int fromSlotIndex = target.SlotIndex;
+        int toSlotIndex = skill.GetForcedTargetMoveTargetSlotIndex();
+
+        if (fromSlotIndex == toSlotIndex)
+            yield break;
+
+        bool moved = targetFormation.MoveUnitTo(target, toSlotIndex);
+        if (!moved)
+            yield break;
+
+        logController.AppendBattleLog(
+            logController.BuildForcedTargetMoveLog(actor, skill, target, fromSlotIndex, target.SlotIndex));
 
         if (viewManager != null)
         {
@@ -556,16 +602,15 @@ public class BattleActionController : MonoBehaviour
         if (block == null)
             return 0;
 
-        // 이 gimmick에서는 Heal 블록의 powerPercent를 "흡혈 비율(%)"로 사용
         if (block.powerPercent > 0f)
             return Mathf.RoundToInt(block.powerPercent);
 
-        // 혹시 인스펙터에서 flatValue로 넣었어도 보조적으로 허용
         if (block.flatValue > 0)
             return block.flatValue;
 
         return 0;
     }
+
     private void ApplyBlock(BattleUnit actor, BattleUnit target, string sourceName, BattleEffectBlock block)
     {
         switch (block.kind)
@@ -616,6 +661,7 @@ public class BattleActionController : MonoBehaviour
             default: return statusType.ToString();
         }
     }
+
     private void ApplyTimedModifierBlock(BattleUnit actor, BattleUnit target, string sourceName, BattleEffectBlock block)
     {
         if (block == null || target == null)
@@ -650,6 +696,35 @@ public class BattleActionController : MonoBehaviour
                         logController.AppendBattleLog(logController.BuildPierceBuffLog(actor, target, sourceName, block.durationTurns));
                     else
                         logController.AppendBattleLog(logController.BuildStrongerEffectMaintainedLog(target, "관통"));
+
+                    break;
+                }
+            case StatModifierType.DMG:
+                {
+                    int basePercent = Mathf.Abs(block.flatValue);
+                    if (basePercent <= 0 || block.durationTurns <= 0)
+                        return;
+
+                    // Buff면 +, Debuff면 -
+                    int signedPercent = block.kind == BattleEffectKind.Buff ? basePercent : -basePercent;
+
+                    bool applied = target.TryApplyTimedModifier(
+                        block.statModifierType,
+                        signedPercent,
+                        block.durationTurns);
+
+                    if (applied)
+                        logController.AppendBattleLog(
+                            logController.BuildEffectSuccessLog(
+                                actor,
+                                target,
+                                sourceName,
+                                signedPercent >= 0
+                                    ? $"공격력 {signedPercent}% 증가"
+                                    : $"공격력 {Mathf.Abs(signedPercent)}% 감소"));
+                    else
+                        logController.AppendBattleLog(
+                            logController.BuildStrongerEffectMaintainedLog(target, "공격력 변조"));
 
                     break;
                 }

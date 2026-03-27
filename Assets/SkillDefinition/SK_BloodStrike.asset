@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: SK_BloodStrike
   m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
   skillId: blood_strike
-  skillName: "\uBE14\uB7EC\uB4DC\uC2A4\uD06C\uB77C\uC774\uD06C"
-  description: "\uD53C\uB85C \uC801\uC744 \uD0C0\uACA9\uD574 \uD53C\uD574\uB97C \uC785\uD788\uACE0
-    \uD53C\uD574\uB7C9\uC758 \uC77C\uBD80\uB97C \uD68C\uBCF5\uD55C\uB2E4. \uCD9C\uD608\uC744
-    \uC77C\uC73C\uD0AC \uB54C\uAC00 \uC788\uB2E4."
+  skillName: "\uC5ED\uB958"
+  description: "\uD53C\uD574\uB97C \uC785\uD788\uACE0 \uD53C\uD574\uB7C9\uC758 \uC77C\uBD80\uB97C
+    \uD68C\uBCF5\uD55C\uB2E4. \uCD9C\uD608\uC744 \uC77C\uC73C\uD0AC \uB54C\uAC00
+    \uC788\uB2E4."
   icon: {fileID: -6788420573634372030, guid: 946db71cd7a15124a999dfac21b9a998, type: 3}
   isBasicAttack: 0
   castType: 0
@@ -42,6 +42,7 @@ MonoBehaviour:
   secondaryAccuracyCoefficientPercent: 100
   secondaryDamagePercent: 0
   secondaryApplyNonDamageEffects: 0
+  forcedTargetMoveToRank: 1
   effects:
   - kind: 0
     statusType: 0

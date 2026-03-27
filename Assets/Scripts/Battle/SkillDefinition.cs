@@ -12,7 +12,8 @@ public enum ActiveSkillGimmick
 {
     None,
     DelayedReinforcement,
-    BleedDrainStrike
+    BleedDrainStrike,
+    ForceMoveTargetToRankAfterHit
 }
 
 [CreateAssetMenu(menuName = "Battle/Skill Definition")]
@@ -61,6 +62,10 @@ public class SkillDefinition : ScriptableObject
     [Min(0f)] public float secondaryDamagePercent = 0f;
     [Tooltip("보조 타격에도 비데미지 부가효과를 적용할지 여부")]
     public bool secondaryApplyNonDamageEffects = false;
+
+    [Header("Target Forced Move (Optional)")]
+    [Tooltip("명중 시 대상을 이동시킬 대열 번호(1~4)")]
+    [Range(1, 4)] public int forcedTargetMoveToRank = 1;
 
     [Header("Effects")]
     public List<BattleEffectBlock> effects = new List<BattleEffectBlock>();
@@ -136,5 +141,15 @@ public class SkillDefinition : ScriptableObject
     public string GetTargetPositionText()
     {
         return string.Format("{0}~{1}", targetMinSlotIndex + 1, targetMaxSlotIndex + 1);
+    }
+
+    public bool HasForcedTargetMoveAfterHit()
+    {
+        return activeGimmick == ActiveSkillGimmick.ForceMoveTargetToRankAfterHit;
+    }
+
+    public int GetForcedTargetMoveTargetSlotIndex()
+    {
+        return Mathf.Clamp(forcedTargetMoveToRank - 1, 0, 3);
     }
 }

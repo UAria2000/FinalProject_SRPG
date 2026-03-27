@@ -95,6 +95,17 @@ public class BattleLogController : MonoBehaviour
         return string.Format("{0} 위치 이동 {1} → {2}", actor.Name, fromSlotIndex + 1, toSlotIndex + 1);
     }
 
+    public string BuildForcedTargetMoveLog(BattleUnit actor, SkillDefinition skill, BattleUnit target, int fromSlotIndex, int toSlotIndex)
+    {
+        string skillName = skill != null ? skill.skillName : "스킬";
+        return string.Format("{0}의 {1} → {2}: 위치 이동 {3} → {4}",
+            actor.Name,
+            skillName,
+            target.Name,
+            fromSlotIndex + 1,
+            toSlotIndex + 1);
+    }
+
     public string BuildAutoMoveLog(BattleUnit unit)
     {
         return string.Format("{0}이(가) 전열로 당겨짐", unit.Name);
