@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -38,13 +39,53 @@ public class BattleLogController : MonoBehaviour
             System.Text.StringBuilder sb = new System.Text.StringBuilder();
             for (int i = 0; i < entries.Count; i++)
             {
-                if (i > 0) sb.AppendLine();
+                if (i > 0)
+                    sb.AppendLine();
+
                 sb.Append(entries[i].text);
             }
+
             popupLogText.text = sb.ToString();
         }
 
+        ForceScrollPopupToBottomImmediate();
+    }
+
+    public void ScrollPopupToBottom()
+    {
+        StopAllCoroutines();
+        StartCoroutine(CoScrollPopupToBottom());
+    }
+
+    private IEnumerator CoScrollPopupToBottom()
+    {
+        yield return null;
         Canvas.ForceUpdateCanvases();
+
+        if (popupLogText != null)
+            LayoutRebuilder.ForceRebuildLayoutImmediate(popupLogText.rectTransform);
+
+        if (popupLogScrollRect != null && popupLogScrollRect.content != null)
+            LayoutRebuilder.ForceRebuildLayoutImmediate(popupLogScrollRect.content);
+
+        Canvas.ForceUpdateCanvases();
+
+        if (popupLogScrollRect != null)
+            popupLogScrollRect.verticalNormalizedPosition = 0f;
+    }
+
+    private void ForceScrollPopupToBottomImmediate()
+    {
+        Canvas.ForceUpdateCanvases();
+
+        if (popupLogText != null)
+            LayoutRebuilder.ForceRebuildLayoutImmediate(popupLogText.rectTransform);
+
+        if (popupLogScrollRect != null && popupLogScrollRect.content != null)
+            LayoutRebuilder.ForceRebuildLayoutImmediate(popupLogScrollRect.content);
+
+        Canvas.ForceUpdateCanvases();
+
         if (popupLogScrollRect != null)
             popupLogScrollRect.verticalNormalizedPosition = 0f;
     }
@@ -135,7 +176,6 @@ public class BattleLogController : MonoBehaviour
     {
         return string.Format("{0} 도주 실패 ({1}%)", actor.Name, chancePercent);
     }
-
 
     public string BuildCaptureSuccessLog(BattleUnit actor, BattleUnit target, int chancePercent)
     {

@@ -10704,7 +10704,7 @@ MonoBehaviour:
   enemySkillTooltipUI: {fileID: 1452378105}
   targetPreviewHoverUI: {fileID: 340670318}
   fleeTooltipUI: {fileID: 2069252436}
-  enemyInfoContextRoot: {fileID: 907927938}
+  enemyInfoContextRoot: {fileID: 141355957}
   inventoryContextRoot: {fileID: 502087865}
   mapContextRoot: {fileID: 1594094918}
   actionButtons:
