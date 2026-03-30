@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
 public class BattleManager : MonoBehaviour
 {
@@ -22,6 +21,10 @@ public class BattleManager : MonoBehaviour
     [SerializeField] private EnemyAIController enemyAIController;
     [SerializeField] private BattlePassiveController passiveController;
     [SerializeField] private BattleSkillGimmickController skillGimmickController;
+    [SerializeField] private BattleFlowController flowController;
+    [SerializeField] private BattleCaptureController captureController;
+    [SerializeField] private BattlePersistenceController persistenceController;
+    [SerializeField] private BattlePresentationController presentationController;
 
     [Header("Enemy Skill Hover Targets")]
     [SerializeField] private GameObject[] enemySkillHoverTargets = new GameObject[4];
@@ -50,17 +53,13 @@ public class BattleManager : MonoBehaviour
 
     private BattleFormation allyFormation;
     private BattleFormation enemyFormation;
-    private TurnManager turnManager;
-    private readonly Dictionary<BattleUnit, int> remainingCaptureAttemptsByUnit = new Dictionary<BattleUnit, int>();
 
     private bool waitingForPlayerAction;
     private bool battleStarted;
     private int currentRound;
     private bool currentTurnSkippedByStatus;
-    private bool allyDeathOccurredThisTurn;
-    private bool enemyDeathOccurredThisTurn;
-
-    private BottomContextType bottomContextType = BottomContextType.Inventory;
+    private bool allyDeadUnitPresentThisTurn;
+    private bool enemyDeadUnitPresentThisTurn;
     private bool battleEndEventSent;
 
     public event Action<BattleResultType> BattleEnded;
@@ -73,6 +72,7 @@ public class BattleManager : MonoBehaviour
     public BattleInputController InputController { get { return inputController; } }
     public BattleViewManager ViewManager { get { return viewManager; } }
     public BattleSkillGimmickController SkillGimmickController { get { return skillGimmickController; } }
+    public BattlePresentationController PresentationController { get { return presentationController; } }
     public int CurrentRound { get { return currentRound; } }
 
     public TurnState CurrentState { get; private set; }
@@ -84,6 +84,12 @@ public class BattleManager : MonoBehaviour
         get { return battleStarted && BattleResult == BattleResultType.None; }
     }
 
+    public bool WaitingForPlayerAction { get { return waitingForPlayerAction; } }
+    public bool CurrentTurnSkippedByStatus { get { return currentTurnSkippedByStatus; } }
+    public bool AllyDeadUnitPresentThisTurn { get { return allyDeadUnitPresentThisTurn; } }
+    public bool EnemyDeadUnitPresentThisTurn { get { return enemyDeadUnitPresentThisTurn; } }
+    public bool BattleEndEventSent { get { return battleEndEventSent; } }
+
     public BattleUnit CurrentActingUnit { get; private set; }
     public BattleUnit LastShownAllyUnit { get; private set; }
     public BattleUnit SelectedEnemyInfoUnit { get; set; }
@@ -92,6 +98,7 @@ public class BattleManager : MonoBehaviour
     public int SelectedSkillSlotIndex { get; set; } = -1;
     public int SelectedInventoryIndex { get; set; } = -1;
 
+    public float TurnDelay { get { return turnDelay; } }
     public float MoveAnimationDuration { get { return moveAnimationDuration; } }
     public float AttackMoveRatio { get { return attackMoveRatio; } }
     public float AttackMoveMaxDistance { get { return attackMoveMaxDistance; } }
@@ -99,6 +106,19 @@ public class BattleManager : MonoBehaviour
 
     private void Start()
     {
+        if (flowController == null)
+            flowController = GetOrAddComponent<BattleFlowController>();
+        if (captureController == null)
+            captureController = GetOrAddComponent<BattleCaptureController>();
+        if (persistenceController == null)
+            persistenceController = GetOrAddComponent<BattlePersistenceController>();
+        if (presentationController == null)
+            presentationController = GetOrAddComponent<BattlePresentationController>();
+        if (passiveController == null)
+            passiveController = GetOrAddComponent<BattlePassiveController>();
+        if (skillGimmickController == null)
+            skillGimmickController = GetOrAddComponent<BattleSkillGimmickController>();
+
         if (uiController != null)
         {
             uiController.Initialize(this);
@@ -115,19 +135,40 @@ public class BattleManager : MonoBehaviour
         if (enemyAIController != null)
             enemyAIController.Initialize(this);
 
-        if (passiveController == null)
-            passiveController = GetComponent<BattlePassiveController>();
-        if (passiveController == null)
-            passiveController = gameObject.AddComponent<BattlePassiveController>();
         if (passiveController != null)
             passiveController.Initialize(this, logController);
 
-        if (skillGimmickController == null)
-            skillGimmickController = GetComponent<BattleSkillGimmickController>();
-        if (skillGimmickController == null)
-            skillGimmickController = gameObject.AddComponent<BattleSkillGimmickController>();
         if (skillGimmickController != null)
             skillGimmickController.Initialize(this, logController);
+
+        if (captureController != null)
+        {
+            captureController.Initialize(
+                this,
+                inventoryMaxSlotCount,
+                maxCaptureAttemptsPerEnemyInstance,
+                captureChanceRanges);
+        }
+
+        if (persistenceController != null)
+            persistenceController.Initialize(this);
+
+        if (presentationController != null)
+            presentationController.Initialize(this, uiController, popupLogPanel);
+
+        if (flowController != null)
+        {
+            flowController.Initialize(
+                this,
+                viewManager,
+                uiController,
+                logController,
+                enemyAIController,
+                passiveController,
+                skillGimmickController,
+                captureController,
+                persistenceController);
+        }
 
         if (autoStartBattleOnStart)
             StartBattle();
@@ -140,671 +181,107 @@ public class BattleManager : MonoBehaviour
 
     public void StartBattle()
     {
-        StopAllCoroutines();
-
-        if (viewManager != null)
-            viewManager.ClearAllViews();
-
-        battleStarted = false;
-        battleEndEventSent = false;
-        allyFormation = new BattleFormation();
-        enemyFormation = new BattleFormation();
-        turnManager = new TurnManager();
-
-        CurrentState = TurnState.Waiting;
-        BattleResult = BattleResultType.None;
-        InputMode = BattleInputMode.None;
-        SelectedSkill = null;
-        SelectedInventoryIndex = -1;
-        SelectedSkillSlotIndex = -1;
-        CurrentActingUnit = null;
-        LastShownAllyUnit = null;
-        SelectedEnemyInfoUnit = null;
-        currentRound = 0;
-        currentTurnSkippedByStatus = false;
-        allyDeathOccurredThisTurn = false;
-        enemyDeathOccurredThisTurn = false;
-        remainingCaptureAttemptsByUnit.Clear();
-
-        if (popupLogPanel != null)
-            popupLogPanel.SetActive(false);
-
-        logController.ClearBattleLog();
-        SpawnPartyIntoFormation(allyPartyDefinition, TeamType.Ally, allyFormation);
-        SpawnPartyIntoFormation(enemyPartyDefinition, TeamType.Enemy, enemyFormation);
-
-        allyFormation.RemoveDeadAndCompress();
-        enemyFormation.RemoveDeadAndCompress();
-        RemoveDeadViews();
-
-        InitializeCaptureAttempts();
-
-        if (viewManager != null)
-            viewManager.RefreshAllPositionsInstant(allyFormation, enemyFormation);
-
-        LastShownAllyUnit = GetDefaultShownAllyUnit();
-        SelectedEnemyInfoUnit = GetDefaultShownEnemyUnit();
-
-        battleStarted = true;
-        battleEndEventSent = false;
-        if (skillGimmickController != null)
-            skillGimmickController.ResetRuntimeState();
-        RefreshAllUI();
-        ClearUISelection();
-        StartCoroutine(BattleLoopRoutine());
-    }
-
-    private void SpawnPartyIntoFormation(PartyDefinition partyDefinition, TeamType team, BattleFormation formation)
-    {
-        if (partyDefinition == null || formation == null)
-            return;
-
-        if (!partyDefinition.IsValidMemberCount())
-        {
-            Debug.LogWarning("[BattleManager] Party member count must be 1~4.");
-            return;
-        }
-
-        if (partyDefinition.HasDuplicateSlotIndex())
-        {
-            Debug.LogWarning("[BattleManager] Duplicate start slot index.");
-            return;
-        }
-
-        if (partyDefinition.HasNullDefinitions())
-        {
-            Debug.LogWarning("[BattleManager] Null unit/view definition found.");
-            return;
-        }
-
-        for (int i = 0; i < partyDefinition.members.Count; i++)
-        {
-            PartyMemberData data = partyDefinition.members[i];
-            if (data == null) continue;
-
-            BattleUnit unit = new BattleUnit(data, team);
-            formation.SetUnit(data.startSlotIndex, unit);
-
-            if (viewManager != null && inputController != null)
-                viewManager.CreateView(unit, inputController);
-        }
-    }
-
-    private IEnumerator BattleLoopRoutine()
-    {
-        while (battleStarted && BattleResult == BattleResultType.None)
-        {
-            currentRound++;
-            logController.AppendBattleLog(logController.BuildTurnStartLog(currentRound));
-
-            if (skillGimmickController != null)
-            {
-                yield return StartCoroutine(skillGimmickController.ResolveRoundStartGimmicks(currentRound));
-                CheckBattleResult();
-                RefreshAllUI();
-
-                if (BattleResult != BattleResultType.None)
-                    break;
-            }
-
-            if (uiController != null)
-                yield return StartCoroutine(uiController.ShowTurnStartTextRoutine(currentRound));
-
-            List<BattleUnit> alive = new List<BattleUnit>();
-            alive.AddRange(allyFormation.GetAliveUnits());
-            alive.AddRange(enemyFormation.GetAliveUnits());
-            turnManager.BuildTurnQueue(alive);
-
-            while (turnManager.HasNextTurn() && BattleResult == BattleResultType.None)
-            {
-                BattleUnit unit = turnManager.GetNextUnit();
-                if (unit == null || unit.IsDead || !IsUnitInBattle(unit))
-                    continue;
-
-                CurrentActingUnit = unit;
-                CurrentActingUnit.OnOwnTurnStart();
-                allyDeathOccurredThisTurn = false;
-                enemyDeathOccurredThisTurn = false;
-
-                if (passiveController != null)
-                    yield return StartCoroutine(passiveController.ResolveTurnStartPassive(CurrentActingUnit));
-
-                if (CurrentActingUnit.Team == TeamType.Ally)
-                    LastShownAllyUnit = CurrentActingUnit;
-
-                if (viewManager != null)
-                {
-                    viewManager.ClearAllMarkers();
-                    viewManager.SetTurnMarker(CurrentActingUnit);
-                }
-
-                currentTurnSkippedByStatus = false;
-                yield return StartCoroutine(ResolveTurnStartStatusesRoutine(CurrentActingUnit));
-                CheckBattleResult();
-                RefreshAllUI();
-
-                if (BattleResult != BattleResultType.None)
-                    break;
-
-                if (CurrentActingUnit == null || CurrentActingUnit.IsDead || !IsUnitInBattle(CurrentActingUnit) || currentTurnSkippedByStatus)
-                {
-                    EvaluateEndOfTurnGimmicks(unit);
-
-                    CheckBattleResult();
-                    RefreshAllUI();
-
-                    if (BattleResult != BattleResultType.None)
-                        break;
-
-                    yield return new WaitForSeconds(turnDelay);
-                    continue;
-                }
-
-                SetInputMode(BattleInputMode.WaitingForAction);
-                SelectedSkill = null;
-                SelectedInventoryIndex = -1;
-                SelectedSkillSlotIndex = -1;
-
-                if (CurrentActingUnit.Team == TeamType.Ally)
-                {
-                    CurrentState = TurnState.PlayerInput;
-                    waitingForPlayerAction = true;
-                }
-                else
-                {
-                    CurrentState = TurnState.EnemyThinking;
-                }
-
-                RefreshAllUI();
-
-                if (CurrentActingUnit.Team == TeamType.Ally)
-                {
-                    while (waitingForPlayerAction && BattleResult == BattleResultType.None)
-                        yield return null;
-                }
-                else
-                {
-                    yield return StartCoroutine(enemyAIController.ExecuteTurn(CurrentActingUnit));
-                }
-
-                CheckBattleResult();
-                RefreshAllUI();
-
-                if (BattleResult != BattleResultType.None)
-                    break;
-
-                EvaluateEndOfTurnGimmicks(unit);
-
-                CheckBattleResult();
-                RefreshAllUI();
-
-                if (BattleResult != BattleResultType.None)
-                    break;
-
-                yield return new WaitForSeconds(turnDelay);
-            }
-        }
-
-        CurrentState = TurnState.BattleEnded;
-        if (BattleResult == BattleResultType.Victory)
-            logController.AppendBattleLog(logController.BuildVictoryLog());
-        else if (BattleResult == BattleResultType.Defeat)
-            logController.AppendBattleLog(logController.BuildDefeatLog());
-
-        RefreshAllUI();
-        ClearUISelection();
-        NotifyBattleEndedIfNeeded();
-    }
-
-    private IEnumerator ResolveTurnStartStatusesRoutine(BattleUnit unit)
-    {
-        if (unit == null || unit.IsDead || !IsUnitInBattle(unit))
-            yield break;
-
-        BattleTurnStartStatusResult result = unit.ResolveTurnStartStatuses();
-
-        if (result.poisonDamage > 0)
-            logController.AppendBattleLog(logController.BuildTurnStartPoisonLog(unit, result.poisonDamage));
-
-        if (result.bleedDamage > 0)
-            logController.AppendBattleLog(logController.BuildTurnStartBleedLog(unit, result.bleedDamage));
-
-        if (unit.IsDead)
-        {
-            logController.AppendBattleLog(logController.BuildDeathLog(unit));
-            yield return StartCoroutine(HandleDeathsAndCompressionRoutine());
-            yield break;
-        }
-
-        if (result.wasStunned)
-        {
-            logController.AppendBattleLog(logController.BuildTurnStartStunLog(unit));
-            waitingForPlayerAction = false;
-            CurrentState = TurnState.TurnEnding;
-            currentTurnSkippedByStatus = true;
-        }
-
-        for (int i = 0; i < result.expiredStatuses.Count; i++)
-            logController.AppendBattleLog(logController.BuildStatusExpiredLog(unit, result.expiredStatuses[i]));
+        if (flowController != null)
+            flowController.StartBattle();
     }
 
     public void RefreshAllUI()
     {
-        BattleUnit shownAlly = IsUnitInBattle(LastShownAllyUnit) ? LastShownAllyUnit : GetDefaultShownAllyUnit();
-        BattleUnit shownEnemy = IsUnitInBattle(SelectedEnemyInfoUnit) ? SelectedEnemyInfoUnit : GetDefaultShownEnemyUnit();
-        BattleUnit actionOwner = CurrentActingUnit != null && CurrentActingUnit.Team == TeamType.Ally && IsUnitInBattle(CurrentActingUnit)
-            ? CurrentActingUnit
-            : shownAlly;
-        bool canPlayerAct = CurrentState == TurnState.PlayerInput &&
-                            CurrentActingUnit != null &&
-                            CurrentActingUnit.Team == TeamType.Ally &&
-                            IsUnitInBattle(CurrentActingUnit);
-
-        LastShownAllyUnit = shownAlly;
-        SelectedEnemyInfoUnit = shownEnemy;
-
-        if (uiController != null)
-        {
-            uiController.RefreshCurrentUnitPanel(shownAlly);
-            uiController.RefreshEnemyPanels(shownEnemy);
-            uiController.RefreshActionButtons(actionOwner, canPlayerAct);
-            uiController.RefreshInventory(this, allyPartyDefinition, SelectedInventoryIndex);
-            uiController.SetBottomContext(bottomContextType);
-        }
+        if (presentationController != null)
+            presentationController.RefreshAllUI();
     }
 
     public IEnumerator HandleDeathsAndCompressionRoutine()
     {
-        allyDeathOccurredThisTurn |= HasDeadUnits(allyFormation);
-        enemyDeathOccurredThisTurn |= HasDeadUnits(enemyFormation);
+        if (flowController != null)
+            return flowController.HandleDeathsAndCompressionRoutine();
 
-        List<BattleUnit> movedAllies = allyFormation.RemoveDeadAndCompress();
-        List<BattleUnit> movedEnemies = enemyFormation.RemoveDeadAndCompress();
-
-        for (int i = 0; i < movedAllies.Count; i++)
-            logController.AppendBattleLog(logController.BuildAutoMoveLog(movedAllies[i]));
-
-        for (int i = 0; i < movedEnemies.Count; i++)
-            logController.AppendBattleLog(logController.BuildAutoMoveLog(movedEnemies[i]));
-
-        if (viewManager != null)
-        {
-            RemoveDeadViews();
-            yield return StartCoroutine(viewManager.AnimateRefreshAllPositions(allyFormation, enemyFormation, moveAnimationDuration));
-        }
-
-        if (!IsUnitInBattle(SelectedEnemyInfoUnit))
-            SelectedEnemyInfoUnit = GetDefaultShownEnemyUnit();
-
-        if (!IsUnitInBattle(LastShownAllyUnit))
-            LastShownAllyUnit = GetDefaultShownAllyUnit();
-    }
-
-    private void RemoveDeadViews()
-    {
-        List<BattleUnit> allyUnits = allyFormation.GetAllUnits();
-        List<BattleUnit> enemyUnits = enemyFormation.GetAllUnits();
-
-        HashSet<BattleUnit> aliveSet = new HashSet<BattleUnit>();
-        for (int i = 0; i < allyUnits.Count; i++) aliveSet.Add(allyUnits[i]);
-        for (int i = 0; i < enemyUnits.Count; i++) aliveSet.Add(enemyUnits[i]);
-
-        List<BattleUnit> removeTargets = new List<BattleUnit>();
-        foreach (BattleUnitView view in viewManager.GetAllViews())
-        {
-            if (view == null || view.Unit == null) continue;
-            if (!aliveSet.Contains(view.Unit) || view.Unit.IsDead)
-                removeTargets.Add(view.Unit);
-        }
-
-        for (int i = 0; i < removeTargets.Count; i++)
-            viewManager.RemoveView(removeTargets[i]);
-    }
-
-    private void EvaluateEndOfTurnGimmicks(BattleUnit endedTurnUnit)
-    {
-        if (passiveController != null)
-            passiveController.EvaluateAfterTurnEnd(endedTurnUnit);
-
-        if (skillGimmickController != null)
-            skillGimmickController.EvaluateAfterTurnEnd(endedTurnUnit, allyDeathOccurredThisTurn, enemyDeathOccurredThisTurn);
-
-        allyDeathOccurredThisTurn = false;
-        enemyDeathOccurredThisTurn = false;
-    }
-
-    private bool HasDeadUnits(BattleFormation formation)
-    {
-        if (formation == null)
-            return false;
-
-        List<BattleUnit> units = formation.GetAllUnits();
-        for (int i = 0; i < units.Count; i++)
-        {
-            BattleUnit unit = units[i];
-            if (unit != null && unit.IsDead)
-                return true;
-        }
-
-        return false;
+        return EmptyRoutine();
     }
 
     public void OnActionExecutionFinished(bool consumeTurn)
     {
-        SelectedSkill = null;
-        SelectedInventoryIndex = -1;
-        SelectedSkillSlotIndex = -1;
-        SetInputMode(BattleInputMode.WaitingForAction);
-        ClearTargetMarkers();
-
-        if (uiController != null)
-        {
-            uiController.HideTargetPreview();
-            uiController.HideSkillTooltip();
-            uiController.HideFleeTooltip();
-        }
-
-        ClearUISelection();
-
-        CurrentState = TurnState.PlayerInput;
-        RefreshAllUI();
-
-        if (CurrentActingUnit == null || CurrentActingUnit.Team == TeamType.Enemy || consumeTurn)
-        {
-            waitingForPlayerAction = false;
-            CurrentState = TurnState.TurnEnding;
-        }
+        if (flowController != null)
+            flowController.OnActionExecutionFinished(consumeTurn);
     }
 
     public void NotifyUnitLeftBattle(BattleUnit unit)
     {
-        if (unit == null)
-            return;
-
-        ClearTargetMarkers();
-        remainingCaptureAttemptsByUnit.Remove(unit);
-
-        if (LastShownAllyUnit == unit)
-            LastShownAllyUnit = GetDefaultShownAllyUnit();
-
-        if (SelectedEnemyInfoUnit == unit)
-            SelectedEnemyInfoUnit = GetDefaultShownEnemyUnit();
-
-        if (uiController != null)
-        {
-            uiController.HideTargetPreview();
-            uiController.HideSkillTooltip();
-            uiController.HideEnemySkillTooltip();
-            uiController.HideFleeTooltip();
-        }
+        if (flowController != null)
+            flowController.NotifyUnitLeftBattle(unit);
     }
 
     public bool IsUnitInBattle(BattleUnit unit)
     {
-        if (unit == null)
-            return false;
-
-        return (allyFormation != null && allyFormation.Contains(unit)) ||
-               (enemyFormation != null && enemyFormation.Contains(unit));
+        return flowController != null && flowController.IsUnitInBattle(unit);
     }
 
-
-    private void InitializeCaptureAttempts()
+    public void ResetPersistentAllyPartyHPForNewMap()
     {
-        remainingCaptureAttemptsByUnit.Clear();
-
-        List<BattleUnit> enemies = enemyFormation != null ? enemyFormation.GetAllUnits() : null;
-        if (enemies == null)
-            return;
-
-        for (int i = 0; i < enemies.Count; i++)
-        {
-            BattleUnit enemy = enemies[i];
-            if (enemy == null)
-                continue;
-
-            remainingCaptureAttemptsByUnit[enemy] = Mathf.Max(0, maxCaptureAttemptsPerEnemyInstance);
-        }
+        if (persistenceController != null)
+            persistenceController.ResetPersistentAllyPartyHPForNewMap();
     }
 
     public bool IsMainPlayerCharacter(BattleUnit unit)
     {
-        return unit != null &&
-               unit.Team == TeamType.Ally &&
-               unit.Definition != null &&
-               unit.Definition.isMainPlayerCharacter;
-    }
-
-    private bool HasConfiguredMainPlayerCharacter()
-    {
-        if (allyPartyDefinition == null || allyPartyDefinition.members == null)
-            return false;
-
-        for (int i = 0; i < allyPartyDefinition.members.Count; i++)
-        {
-            PartyMemberData member = allyPartyDefinition.members[i];
-            if (member == null || member.unitDefinition == null)
-                continue;
-
-            if (member.unitDefinition.isMainPlayerCharacter)
-                return true;
-        }
-
-        return false;
-    }
-
-    private bool IsMainPlayerAliveInBattle()
-    {
-        if (allyFormation == null)
-            return false;
-
-        bool hasConfiguredMain = HasConfiguredMainPlayerCharacter();
-        List<BattleUnit> allies = allyFormation.GetAllUnits();
-        for (int i = 0; i < allies.Count; i++)
-        {
-            BattleUnit ally = allies[i];
-            if (ally == null)
-                continue;
-
-            if (IsMainPlayerCharacter(ally))
-                return !ally.IsDead;
-        }
-
-        return !hasConfiguredMain && allyFormation.HasLivingUnits();
+        return captureController != null && captureController.IsMainPlayerCharacter(unit);
     }
 
     public int GetInventoryCapacity()
     {
-        return Mathf.Max(1, inventoryMaxSlotCount);
+        return captureController != null ? captureController.GetInventoryCapacity() : 1;
     }
 
     public bool HasInventorySpaceForCapture()
     {
-        return allyPartyDefinition != null &&
-               allyPartyDefinition.inventory != null &&
-               allyPartyDefinition.inventory.Count < GetInventoryCapacity();
+        return captureController != null && captureController.HasInventorySpaceForCapture();
     }
 
     public bool CanActorUseCaptureCommand(BattleUnit actor)
     {
-        return actor != null &&
-               actor.Team == TeamType.Ally &&
-               IsUnitInBattle(actor) &&
-               !actor.IsDead &&
-               IsMainPlayerCharacter(actor) &&
-               HasAnyCaptureTarget(actor);
+        return captureController != null && captureController.CanActorUseCaptureCommand(actor);
     }
 
     public List<BattleUnit> GetValidCaptureTargets(BattleUnit actor)
     {
-        return BattleTargeting.GetValidCaptureTargets(
-            actor,
-            enemyFormation,
-            delegate (BattleUnit target)
-            {
-                return CanTargetBeCaptured(actor, target);
-            });
+        return captureController != null ? captureController.GetValidCaptureTargets(actor) : new List<BattleUnit>();
     }
 
     public bool HasAnyCaptureTarget(BattleUnit actor)
     {
-        List<BattleUnit> validTargets = GetValidCaptureTargets(actor);
-        return validTargets != null && validTargets.Count > 0;
+        return captureController != null && captureController.HasAnyCaptureTarget(actor);
     }
 
     public bool CanTargetBeCaptured(BattleUnit actor, BattleUnit target)
     {
-        if (actor == null || target == null)
-            return false;
-
-        if (!IsMainPlayerCharacter(actor))
-            return false;
-
-        if (actor.IsDead || target.IsDead)
-            return false;
-
-        if (!IsUnitInBattle(actor) || !IsUnitInBattle(target))
-            return false;
-
-        if (target.Team != TeamType.Enemy)
-            return false;
-
-        if (target.Definition == null || !target.Definition.canBeCaptured)
-            return false;
-
-        if (target.Definition.captureRewardItem == null)
-            return false;
-
-        if (!HasInventorySpaceForCapture())
-            return false;
-
-        return GetRemainingCaptureAttempts(target) > 0;
+        return captureController != null && captureController.CanTargetBeCaptured(actor, target);
     }
 
     public int GetRemainingCaptureAttempts(BattleUnit target)
     {
-        if (target == null)
-            return 0;
-
-        int remaining;
-        if (remainingCaptureAttemptsByUnit.TryGetValue(target, out remaining))
-            return Mathf.Max(0, remaining);
-
-        return Mathf.Max(0, maxCaptureAttemptsPerEnemyInstance);
+        return captureController != null ? captureController.GetRemainingCaptureAttempts(target) : 0;
     }
 
     public bool TryConsumeCaptureAttempt(BattleUnit target)
     {
-        if (target == null)
-            return false;
-
-        int remaining = GetRemainingCaptureAttempts(target);
-        if (remaining <= 0)
-            return false;
-
-        remainingCaptureAttemptsByUnit[target] = remaining - 1;
-        return true;
+        return captureController != null && captureController.TryConsumeCaptureAttempt(target);
     }
 
     public void RefundCaptureAttempt(BattleUnit target)
     {
-        if (target == null)
-            return;
-
-        int remaining = GetRemainingCaptureAttempts(target);
-        int restored = Mathf.Min(Mathf.Max(0, maxCaptureAttemptsPerEnemyInstance), remaining + 1);
-        remainingCaptureAttemptsByUnit[target] = restored;
+        if (captureController != null)
+            captureController.RefundCaptureAttempt(target);
     }
 
     public int GetCaptureChancePercent(BattleUnit target)
     {
-        if (target == null || target.MaxHP <= 0)
-            return 0;
-
-        float hpPercent = Mathf.Clamp((target.CurrentHP / (float)target.MaxHP) * 100f, 0f, 100f);
-
-        if (captureChanceRanges != null)
-        {
-            for (int i = 0; i < captureChanceRanges.Count; i++)
-            {
-                CaptureChanceRange range = captureChanceRanges[i];
-                if (range == null)
-                    continue;
-
-                if (range.IsInRange(hpPercent))
-                    return Mathf.Clamp(Mathf.RoundToInt(range.chancePercent), 0, 100);
-            }
-        }
-
-        return 0;
+        return captureController != null ? captureController.GetCaptureChancePercent(target) : 0;
     }
 
     public bool TryAddCapturedRewardToInventory(BattleUnit target, out ItemDefinition addedItem)
     {
         addedItem = null;
-
-        if (target == null || target.Definition == null)
-            return false;
-
-        ItemDefinition rewardItem = target.Definition.captureRewardItem;
-        if (rewardItem == null || allyPartyDefinition == null || allyPartyDefinition.inventory == null)
-            return false;
-
-        if (!HasInventorySpaceForCapture())
-            return false;
-
-        InventoryStackData newStack = new InventoryStackData();
-        newStack.item = rewardItem;
-        newStack.amount = 1;
-        allyPartyDefinition.inventory.Add(newStack);
-
-        addedItem = rewardItem;
-        return true;
-    }
-
-    private void CheckBattleResult()
-    {
-        bool alliesAlive = allyFormation != null && allyFormation.HasLivingUnits();
-        bool enemiesAlive = enemyFormation != null && enemyFormation.HasLivingUnits();
-
-        if (!IsMainPlayerAliveInBattle())
-        {
-            BattleResult = BattleResultType.Defeat;
-            return;
-        }
-
-        if (alliesAlive && enemiesAlive)
-            BattleResult = BattleResultType.None;
-        else if (alliesAlive)
-            BattleResult = BattleResultType.Victory;
-        else
-            BattleResult = BattleResultType.Defeat;
-    }
-
-    private void NotifyBattleEndedIfNeeded()
-    {
-        if (battleEndEventSent)
-            return;
-
-        if (BattleResult == BattleResultType.None)
-            return;
-
-        SavePersistentAllyPartyHP();
-
-        battleEndEventSent = true;
-        BattleEnded?.Invoke(BattleResult);
-    }
-
-    private BattleUnit GetDefaultShownAllyUnit()
-    {
-        List<BattleUnit> allies = allyFormation != null ? allyFormation.GetAliveUnits() : null;
-        return allies != null && allies.Count > 0 ? allies[0] : null;
-    }
-
-    private BattleUnit GetDefaultShownEnemyUnit()
-    {
-        List<BattleUnit> enemies = enemyFormation != null ? enemyFormation.GetAliveUnits() : null;
-        return enemies != null && enemies.Count > 0 ? enemies[0] : null;
+        return captureController != null && captureController.TryAddCapturedRewardToInventory(target, out addedItem);
     }
 
     public void SetInputMode(BattleInputMode mode)
@@ -822,6 +299,11 @@ public class BattleManager : MonoBehaviour
         StartCoroutine(routine);
     }
 
+    public void StopManagedCoroutines()
+    {
+        StopAllCoroutines();
+    }
+
     public void ShowTargetMarkers(List<BattleUnit> targets)
     {
         if (viewManager != null)
@@ -836,199 +318,232 @@ public class BattleManager : MonoBehaviour
 
     public void OnActionSlotPressed(int slotIndex)
     {
-        inputController.HandleActionSlotPressed(slotIndex);
+        if (inputController != null)
+            inputController.HandleActionSlotPressed(slotIndex);
     }
 
     public void OnMoveButtonPressed()
     {
-        inputController.HandleMovePressed();
+        if (inputController != null)
+            inputController.HandleMovePressed();
     }
 
     public void OnCaptureButtonPressed()
     {
-        inputController.HandleCapturePressed();
+        if (inputController != null)
+            inputController.HandleCapturePressed();
     }
 
     public void OnFleeButtonPressed()
     {
-        inputController.HandleFleePressed();
+        if (inputController != null)
+            inputController.HandleFleePressed();
     }
 
     public void OnEndTurnButtonPressed()
     {
-        inputController.HandleEndTurnPressed();
+        if (inputController != null)
+            inputController.HandleEndTurnPressed();
     }
 
     public void OnCancelButtonPressed()
     {
-        inputController.CancelCurrentInput();
+        if (inputController != null)
+            inputController.CancelCurrentInput();
+
         ClearUISelection();
         RefreshAllUI();
     }
 
     public void OnInventoryTogglePressed()
     {
-        bottomContextType = BottomContextType.Inventory;
-
-        if (uiController != null)
-            uiController.HideEnemyDetailPopup();
-
-        ClearUISelection();
-        RefreshAllUI();
+        if (presentationController != null)
+            presentationController.OnInventoryTogglePressed();
     }
 
     public void OnMapButtonPressed()
     {
-        bottomContextType = BottomContextType.Map;
-
-        if (uiController != null)
-            uiController.HideEnemyDetailPopup();
-
-        ClearUISelection();
-        RefreshAllUI();
+        if (presentationController != null)
+            presentationController.OnMapButtonPressed();
     }
 
     public void OnInventorySlotPressed(int slotIndex)
     {
-        inputController.HandleInventorySlotPressed(slotIndex);
+        if (inputController != null)
+            inputController.HandleInventorySlotPressed(slotIndex);
     }
 
     public void OnPopupLogButtonPressed()
     {
-        if (popupLogPanel != null)
-            popupLogPanel.SetActive(!popupLogPanel.activeSelf);
-
-        ClearUISelection();
+        if (presentationController != null)
+            presentationController.OnPopupLogButtonPressed();
     }
 
     public void OnEnemyDetailPopupButtonPressed()
     {
-        if (uiController == null)
-            return;
-
-        bool isClosingCurrentPopup = bottomContextType == BottomContextType.EnemyInfo && uiController.IsEnemyDetailPopupOpen();
-        if (isClosingCurrentPopup)
-        {
-            uiController.HideEnemyDetailPopup();
-            bottomContextType = BottomContextType.Inventory;
-        }
-        else
-        {
-            bottomContextType = BottomContextType.EnemyInfo;
-            uiController.ShowEnemyDetailPopup(SelectedEnemyInfoUnit);
-        }
-
-        ClearUISelection();
-        RefreshAllUI();
+        if (presentationController != null)
+            presentationController.OnEnemyDetailPopupButtonPressed();
     }
 
     public void OnPlayerSkillButtonHoverEnter(int slotIndex, Vector3 screenPosition)
     {
-        BattleUnit unit = CurrentActingUnit != null && CurrentActingUnit.Team == TeamType.Ally
-            ? CurrentActingUnit
-            : LastShownAllyUnit;
-
-        SkillDefinition skill = unit != null ? unit.GetActionSkillAt(slotIndex) : null;
-        if (skill != null && uiController != null)
-            uiController.ShowPlayerSkillTooltip(skill, screenPosition);
+        if (presentationController != null)
+            presentationController.OnPlayerSkillButtonHoverEnter(slotIndex, screenPosition);
     }
 
     public void OnPlayerSkillButtonHoverExit()
     {
-        if (uiController != null)
-            uiController.HideSkillTooltip();
+        if (presentationController != null)
+            presentationController.OnPlayerSkillButtonHoverExit();
     }
 
     public void OnFleeButtonHoverEnter(Vector3 screenPosition)
     {
-        if (uiController == null || CurrentState != TurnState.PlayerInput || CurrentActingUnit == null || CurrentActingUnit.Team != TeamType.Ally)
-            return;
-
-        int fleeChancePercent = BattleCalculator.CalculateFleeChancePercent(CurrentActingUnit, enemyFormation);
-        uiController.ShowFleeTooltip(fleeChancePercent, screenPosition);
+        if (presentationController != null)
+            presentationController.OnFleeButtonHoverEnter(screenPosition);
     }
 
     public void OnFleeButtonHoverExit()
     {
-        if (uiController != null)
-            uiController.HideFleeTooltip();
+        if (presentationController != null)
+            presentationController.OnFleeButtonHoverExit();
     }
 
     public void OnEnemySkillHoverEnter(int slotIndex, Vector3 screenPosition)
     {
-        if (SelectedEnemyInfoUnit == null || uiController == null)
-            return;
-
-        SkillDefinition skill = SelectedEnemyInfoUnit.GetActionSkillAt(slotIndex);
-        if (skill != null)
-            uiController.ShowEnemySkillTooltip(skill, screenPosition);
+        if (presentationController != null)
+            presentationController.OnEnemySkillHoverEnter(slotIndex, screenPosition);
     }
 
     public void OnEnemySkillHoverExit()
     {
-        if (uiController != null)
-            uiController.HideEnemySkillTooltip();
+        if (presentationController != null)
+            presentationController.OnEnemySkillHoverExit();
     }
 
-    private void SavePersistentAllyPartyHP()
+    public void ResetRuntimeForBattleStart()
     {
-        if (allyFormation == null)
-            return;
+        battleStarted = false;
+        battleEndEventSent = false;
+        waitingForPlayerAction = false;
+        currentRound = 0;
+        currentTurnSkippedByStatus = false;
+        allyDeadUnitPresentThisTurn = false;
+        enemyDeadUnitPresentThisTurn = false;
 
-        List<BattleUnit> allies = allyFormation.GetAllUnits();
-        for (int i = 0; i < allies.Count; i++)
-        {
-            BattleUnit ally = allies[i];
-            if (ally == null)
-                continue;
+        CurrentState = TurnState.Waiting;
+        BattleResult = BattleResultType.None;
+        InputMode = BattleInputMode.None;
+        CurrentActingUnit = null;
+        LastShownAllyUnit = null;
+        SelectedEnemyInfoUnit = null;
 
-            ally.SavePersistentHPToMemberData();
-        }
-
-        // 전투 중 사망해서 formation에서 이미 제거된 멤버는 0으로 저장
-        if (allyPartyDefinition == null || allyPartyDefinition.members == null)
-            return;
-
-        for (int i = 0; i < allyPartyDefinition.members.Count; i++)
-        {
-            PartyMemberData member = allyPartyDefinition.members[i];
-            if (member == null)
-                continue;
-
-            bool found = false;
-            for (int j = 0; j < allies.Count; j++)
-            {
-                BattleUnit ally = allies[j];
-                if (ally != null && ally.MemberData == member)
-                {
-                    found = true;
-                    break;
-                }
-            }
-
-            if (!found)
-                member.persistentCurrentHP = 0;
-        }
+        ResetSelections();
     }
 
-    public void ResetPersistentAllyPartyHPForNewMap()
+    public void ResetSelections()
     {
-        if (allyPartyDefinition == null || allyPartyDefinition.members == null)
-            return;
-
-        for (int i = 0; i < allyPartyDefinition.members.Count; i++)
-        {
-            PartyMemberData member = allyPartyDefinition.members[i];
-            if (member == null)
-                continue;
-
-            member.ResetPersistentHPToFull();
-        }
+        SelectedSkill = null;
+        SelectedSkillSlotIndex = -1;
+        SelectedInventoryIndex = -1;
     }
 
-    private void ClearUISelection()
+    public void AssignFormations(BattleFormation ally, BattleFormation enemy)
     {
-        if (EventSystem.current != null)
-            EventSystem.current.SetSelectedGameObject(null);
+        allyFormation = ally;
+        enemyFormation = enemy;
+    }
+
+    public void SetBattleStarted(bool started)
+    {
+        battleStarted = started;
+    }
+
+    public void SetBattleResult(BattleResultType result)
+    {
+        BattleResult = result;
+    }
+
+    public void SetBattleEndEventSent(bool sent)
+    {
+        battleEndEventSent = sent;
+    }
+
+    public void InvokeBattleEnded()
+    {
+        BattleEnded?.Invoke(BattleResult);
+    }
+
+    public void SetWaitingForPlayerAction(bool value)
+    {
+        waitingForPlayerAction = value;
+    }
+
+    public void SetCurrentActingUnit(BattleUnit unit)
+    {
+        CurrentActingUnit = unit;
+    }
+
+    public void SetLastShownAllyUnit(BattleUnit unit)
+    {
+        LastShownAllyUnit = unit;
+    }
+
+    public void SetCurrentTurnSkippedByStatus(bool value)
+    {
+        currentTurnSkippedByStatus = value;
+    }
+
+    public void ClearDeadUnitPresenceFlags()
+    {
+        allyDeadUnitPresentThisTurn = false;
+        enemyDeadUnitPresentThisTurn = false;
+    }
+
+    public void MarkDeadUnitPresence(TeamType team, bool hasDeadUnit)
+    {
+        if (!hasDeadUnit)
+            return;
+
+        if (team == TeamType.Ally)
+            allyDeadUnitPresentThisTurn = true;
+        else
+            enemyDeadUnitPresentThisTurn = true;
+    }
+
+    public void IncrementCurrentRound()
+    {
+        currentRound++;
+    }
+
+    public BattleUnit GetDefaultShownAllyUnit()
+    {
+        List<BattleUnit> allies = allyFormation != null ? allyFormation.GetAliveUnits() : null;
+        return allies != null && allies.Count > 0 ? allies[0] : null;
+    }
+
+    public BattleUnit GetDefaultShownEnemyUnit()
+    {
+        List<BattleUnit> enemies = enemyFormation != null ? enemyFormation.GetAliveUnits() : null;
+        return enemies != null && enemies.Count > 0 ? enemies[0] : null;
+    }
+
+    public void ClearUISelection()
+    {
+        if (presentationController != null)
+            presentationController.ClearUISelection();
+    }
+
+    private T GetOrAddComponent<T>() where T : Component
+    {
+        T found = GetComponent<T>();
+        if (found == null)
+            found = gameObject.AddComponent<T>();
+        return found;
+    }
+
+    private IEnumerator EmptyRoutine()
+    {
+        yield break;
     }
 }

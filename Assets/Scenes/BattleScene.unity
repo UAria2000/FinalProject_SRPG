@@ -10602,7 +10602,11 @@ MonoBehaviour:
   inputController: {fileID: 871307114}
   enemyAIController: {fileID: 871307113}
   passiveController: {fileID: 0}
-  skillGimmickController: {fileID: 871307119}
+  skillGimmickController: {fileID: 0}
+  flowController: {fileID: 0}
+  captureController: {fileID: 0}
+  persistenceController: {fileID: 0}
+  presentationController: {fileID: 0}
   enemySkillHoverTargets:
   - {fileID: 577049873}
   - {fileID: 1086742406}
