@@ -106,14 +106,7 @@ public class BattleInputController : MonoBehaviour
         if (!CanAcceptPlayerInput())
             return;
 
-        battleManager.SelectedSkill = null;
-        battleManager.SelectedInventoryIndex = -1;
-        battleManager.SelectedSkillSlotIndex = -1;
-        battleManager.SetInputMode(BattleInputMode.WaitingForAction);
-        battleManager.ClearTargetMarkers();
-        uiController.HideTargetPreview();
-        uiController.HideSkillTooltip();
-        uiController.HideFleeTooltip();
+        BeginActionExecutionLock();
 
         ClearUISelection();
         battleManager.StartManagedCoroutine(actionController.ExecuteFlee(battleManager.CurrentActingUnit));
@@ -124,14 +117,7 @@ public class BattleInputController : MonoBehaviour
         if (!CanAcceptPlayerInput())
             return;
 
-        battleManager.SelectedSkill = null;
-        battleManager.SelectedInventoryIndex = -1;
-        battleManager.SelectedSkillSlotIndex = -1;
-        battleManager.SetInputMode(BattleInputMode.WaitingForAction);
-        battleManager.ClearTargetMarkers();
-        uiController.HideTargetPreview();
-        uiController.HideSkillTooltip();
-        uiController.HideFleeTooltip();
+        BeginActionExecutionLock();
 
         ClearUISelection();
         battleManager.StartManagedCoroutine(actionController.ExecuteEndTurnGuard(battleManager.CurrentActingUnit));
@@ -193,6 +179,10 @@ public class BattleInputController : MonoBehaviour
     public void OnUnitViewClicked(BattleUnitView clickedView)
     {
         if (clickedView == null || clickedView.Unit == null)
+            return;
+
+        // 액션 실행 잠금 상태에서는 클릭 무시
+        if (battleManager == null || battleManager.CurrentState != TurnState.PlayerInput)
             return;
 
         BattleUnit clickedUnit = clickedView.Unit;
@@ -276,6 +266,9 @@ public class BattleInputController : MonoBehaviour
 
     private void HandleSkillTargetClick(BattleUnit clickedUnit)
     {
+        if (!CanAcceptTargetSelectionInput())
+            return;
+
         SkillDefinition skill = battleManager.SelectedSkill;
         if (skill == null)
             return;
@@ -289,11 +282,16 @@ public class BattleInputController : MonoBehaviour
         if (!validTargets.Contains(clickedUnit))
             return;
 
-        battleManager.StartManagedCoroutine(actionController.ExecuteSkill(battleManager.CurrentActingUnit, skill, clickedUnit));
+        BattleUnit actor = battleManager.CurrentActingUnit;
+        BeginActionExecutionLock();
+        battleManager.StartManagedCoroutine(actionController.ExecuteSkill(actor, skill, clickedUnit));
     }
 
     private void HandleMoveTargetClick(BattleUnit clickedUnit)
     {
+        if (!CanAcceptTargetSelectionInput())
+            return;
+
         List<BattleUnit> validTargets = BattleTargeting.GetMovableTargets(
             battleManager.CurrentActingUnit,
             battleManager.AllyFormation);
@@ -301,11 +299,16 @@ public class BattleInputController : MonoBehaviour
         if (!validTargets.Contains(clickedUnit))
             return;
 
-        battleManager.StartManagedCoroutine(actionController.ExecuteMove(battleManager.CurrentActingUnit, clickedUnit));
+        BattleUnit actor = battleManager.CurrentActingUnit;
+        BeginActionExecutionLock();
+        battleManager.StartManagedCoroutine(actionController.ExecuteMove(actor, clickedUnit));
     }
 
     private void HandleItemTargetClick(BattleUnit clickedUnit)
     {
+        if (!CanAcceptTargetSelectionInput())
+            return;
+
         int index = battleManager.SelectedInventoryIndex;
         PartyDefinition allyParty = battleManager.AllyPartyDefinition;
         if (allyParty == null || index < 0 || index >= allyParty.inventory.Count)
@@ -321,20 +324,53 @@ public class BattleInputController : MonoBehaviour
         if (!validTargets.Contains(clickedUnit))
             return;
 
-        battleManager.StartManagedCoroutine(actionController.ExecuteItem(battleManager.CurrentActingUnit, index, clickedUnit));
+        BattleUnit actor = battleManager.CurrentActingUnit;
+        BeginActionExecutionLock();
+        battleManager.StartManagedCoroutine(actionController.ExecuteItem(actor, index, clickedUnit));
     }
 
     private void HandleCaptureTargetClick(BattleUnit clickedUnit)
     {
+        if (!CanAcceptTargetSelectionInput())
+            return;
+
         BattleUnit actor = battleManager.CurrentActingUnit;
         List<BattleUnit> validTargets = battleManager.GetValidCaptureTargets(actor);
         if (!validTargets.Contains(clickedUnit))
             return;
 
+        BeginActionExecutionLock();
         battleManager.StartManagedCoroutine(actionController.ExecuteCapture(actor, clickedUnit));
     }
 
+    private void BeginActionExecutionLock()
+    {
+        battleManager.SelectedSkill = null;
+        battleManager.SelectedInventoryIndex = -1;
+        battleManager.SelectedSkillSlotIndex = -1;
+        battleManager.ClearTargetMarkers();
+        battleManager.SetInputMode(BattleInputMode.None);
+        battleManager.SetTurnState(TurnState.ExecutingAction);
+
+        if (uiController != null)
+        {
+            uiController.HideTargetPreview();
+            uiController.HideSkillTooltip();
+            uiController.HideFleeTooltip();
+        }
+
+        battleManager.RefreshAllUI();
+    }
+
     private bool CanAcceptPlayerInput()
+    {
+        return battleManager != null &&
+               battleManager.CurrentState == TurnState.PlayerInput &&
+               battleManager.CurrentActingUnit != null &&
+               battleManager.CurrentActingUnit.Team == TeamType.Ally;
+    }
+
+    private bool CanAcceptTargetSelectionInput()
     {
         return battleManager != null &&
                battleManager.CurrentState == TurnState.PlayerInput &&
