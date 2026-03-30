@@ -18,29 +18,29 @@ public class ExplorationMapUI : MonoBehaviour
     [SerializeField] private Image connectionPrefab;
 
     [Header("Layout")]
-    [SerializeField] private Vector2 cellSpacing = new Vector2(120f, 120f);
-    [SerializeField] private Vector2 originOffset = new Vector2(60f, 60f);
-    [SerializeField] private float lineThickness = 8f;
+    [SerializeField] private Vector2 cellSpacing = new Vector2(80f, 40f);
+    [SerializeField] private Vector2 originOffset = new Vector2(40f, 20f);
+    [SerializeField] private Vector2 nodeSize = new Vector2(30f, 30f);
+    [SerializeField] private float lineThickness = 5f;
 
     [Header("Colors")]
     [SerializeField] private Color hiddenNodeColor = new Color(0.35f, 0.35f, 0.35f, 1f);
-    [SerializeField] private Color battleColor = new Color(0.80f, 0.30f, 0.30f, 1f);
-    [SerializeField] private Color treasureColor = new Color(0.92f, 0.74f, 0.20f, 1f);
-    [SerializeField] private Color restColor = new Color(0.30f, 0.72f, 0.42f, 1f);
-    [SerializeField] private Color bossColor = new Color(0.55f, 0.25f, 0.80f, 1f);
-    [SerializeField] private Color startColor = new Color(0.20f, 0.56f, 0.95f, 1f);
-    [SerializeField] private Color currentNodeTint = Color.white;
+    [SerializeField] private Color battleColor = new Color(0.78f, 0.32f, 0.32f, 1f);
+    [SerializeField] private Color treasureColor = new Color(0.92f, 0.76f, 0.22f, 1f);
+    [SerializeField] private Color restColor = new Color(0.36f, 0.7f, 0.46f, 1f);
+    [SerializeField] private Color bossColor = new Color(0.6f, 0.24f, 0.82f, 1f);
+    [SerializeField] private Color startColor = new Color(0.28f, 0.56f, 0.95f, 1f);
     [SerializeField] private Color reachableLineColor = new Color(1f, 1f, 1f, 0.95f);
     [SerializeField] private Color normalLineColor = new Color(1f, 1f, 1f, 0.25f);
 
-    private ExplorationRunController controller;
+    private ExplorationRunController runController;
     private ExplorationMapData mapData;
     private readonly Dictionary<int, ExplorationNodeButtonUI> nodeViews = new Dictionary<int, ExplorationNodeButtonUI>();
     private readonly List<ConnectionView> connectionViews = new List<ConnectionView>();
 
-    public void Build(ExplorationRunController owner, ExplorationMapData data)
+    public void Build(ExplorationRunController controller, ExplorationMapData data)
     {
-        controller = owner;
+        runController = controller;
         mapData = data;
 
         ClearAll();
@@ -55,7 +55,7 @@ public class ExplorationMapUI : MonoBehaviour
 
     public void Refresh()
     {
-        if (controller == null || mapData == null)
+        if (mapData == null || runController == null)
             return;
 
         ExplorationNodeData currentNode = mapData.GetNodeById(mapData.currentNodeId);
@@ -68,28 +68,48 @@ public class ExplorationMapUI : MonoBehaviour
                 continue;
 
             bool isCurrent = currentNode != null && currentNode.nodeId == node.nodeId;
-            bool canMove = controller.CanMoveTo(node);
+            bool isReachable = runController.CanMoveTo(node);
 
-            view.SetLabel(GetNodeLabel(node));
-            view.SetVisual(GetNodeColor(node, isCurrent), Color.white, canMove, isCurrent);
+            string label = GetNodeLabel(node);
+
+            if (isCurrent)
+                label = "현재";
+            else if (isReachable)
+                label = "!";
+
+            Color nodeColor = GetNodeColor(node);
+            if (isCurrent)
+                nodeColor = Color.cyan;
+            else if (isReachable)
+                nodeColor = Color.yellow;
+
+            view.SetLabel(label);
+            view.SetVisual(nodeColor, Color.black, isReachable, isCurrent);
         }
 
         for (int i = 0; i < connectionViews.Count; i++)
         {
-            ConnectionView line = connectionViews[i];
-            if (line.image == null)
+            ConnectionView connection = connectionViews[i];
+            if (connection.image == null)
                 continue;
 
             bool highlight = false;
             if (currentNode != null)
             {
                 highlight =
-                    (line.aId == currentNode.nodeId && currentNode.neighborIds.Contains(line.bId)) ||
-                    (line.bId == currentNode.nodeId && currentNode.neighborIds.Contains(line.aId));
+                    (connection.aId == currentNode.nodeId && currentNode.neighborIds.Contains(connection.bId)) ||
+                    (connection.bId == currentNode.nodeId && currentNode.neighborIds.Contains(connection.aId));
             }
 
-            line.image.color = highlight ? reachableLineColor : normalLineColor;
+            connection.image.color = highlight ? reachableLineColor : normalLineColor;
         }
+    }
+
+    public void ShowMap(bool show)
+    {
+        gameObject.SetActive(show);
+        if (show)
+            Refresh();
     }
 
     private void BuildNodes()
@@ -98,8 +118,15 @@ public class ExplorationMapUI : MonoBehaviour
         {
             ExplorationNodeData node = mapData.nodes[i];
             ExplorationNodeButtonUI view = Instantiate(nodePrefab, boardRoot);
+
+            RectTransform rt = view.RectTransform;
+            rt.anchorMin = new Vector2(0f, 0f);
+            rt.anchorMax = new Vector2(0f, 0f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = nodeSize;
+            rt.anchoredPosition = CoordToAnchoredPosition(node.coord);
+
             view.Initialize(node.nodeId, HandleNodeClicked);
-            view.RectTransform.anchoredPosition = CoordToAnchoredPosition(node.coord);
             nodeViews[node.nodeId] = view;
         }
     }
@@ -107,26 +134,35 @@ public class ExplorationMapUI : MonoBehaviour
     private void BuildConnections()
     {
         HashSet<string> created = new HashSet<string>();
+
         for (int i = 0; i < mapData.nodes.Count; i++)
         {
             ExplorationNodeData node = mapData.nodes[i];
+
             for (int j = 0; j < node.neighborIds.Count; j++)
             {
                 int neighborId = node.neighborIds[j];
                 int minId = Mathf.Min(node.nodeId, neighborId);
                 int maxId = Mathf.Max(node.nodeId, neighborId);
                 string key = minId + "_" + maxId;
+
                 if (created.Contains(key))
                     continue;
-
                 created.Add(key);
+
                 ExplorationNodeData neighbor = mapData.GetNodeById(neighborId);
                 if (neighbor == null)
                     continue;
 
                 Image line = Instantiate(connectionPrefab, boardRoot);
                 SetupConnectionLine(line.rectTransform, node.coord, neighbor.coord);
-                connectionViews.Add(new ConnectionView { aId = node.nodeId, bId = neighborId, image = line });
+
+                connectionViews.Add(new ConnectionView
+                {
+                    aId = node.nodeId,
+                    bId = neighborId,
+                    image = line
+                });
             }
         }
     }
@@ -149,30 +185,25 @@ public class ExplorationMapUI : MonoBehaviour
 
     private Vector2 CoordToAnchoredPosition(Vector2Int coord)
     {
-        return new Vector2(originOffset.x + coord.x * cellSpacing.x, originOffset.y + coord.y * cellSpacing.y);
+        return new Vector2(
+            originOffset.x + coord.x * cellSpacing.x,
+            originOffset.y + coord.y * cellSpacing.y);
     }
 
-    private Color GetNodeColor(ExplorationNodeData node, bool isCurrent)
+    private Color GetNodeColor(ExplorationNodeData node)
     {
-        Color baseColor;
         if (!node.revealed && node.roomType != ExplorationRoomType.Start)
-        {
-            baseColor = hiddenNodeColor;
-        }
-        else
-        {
-            switch (node.roomType)
-            {
-                case ExplorationRoomType.Start: baseColor = startColor; break;
-                case ExplorationRoomType.Battle: baseColor = battleColor; break;
-                case ExplorationRoomType.Treasure: baseColor = treasureColor; break;
-                case ExplorationRoomType.Rest: baseColor = restColor; break;
-                case ExplorationRoomType.Boss: baseColor = bossColor; break;
-                default: baseColor = hiddenNodeColor; break;
-            }
-        }
+            return hiddenNodeColor;
 
-        return isCurrent ? Color.Lerp(baseColor, currentNodeTint, 0.35f) : baseColor;
+        switch (node.roomType)
+        {
+            case ExplorationRoomType.Start: return startColor;
+            case ExplorationRoomType.Battle: return battleColor;
+            case ExplorationRoomType.Treasure: return treasureColor;
+            case ExplorationRoomType.Rest: return restColor;
+            case ExplorationRoomType.Boss: return bossColor;
+            default: return hiddenNodeColor;
+        }
     }
 
     private string GetNodeLabel(ExplorationNodeData node)
@@ -193,8 +224,8 @@ public class ExplorationMapUI : MonoBehaviour
 
     private void HandleNodeClicked(int nodeId)
     {
-        if (controller != null)
-            controller.HandleNodeClicked(nodeId);
+        if (runController != null)
+            runController.HandleNodeClicked(nodeId);
     }
 
     private void ClearAll()

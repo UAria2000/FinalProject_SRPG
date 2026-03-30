@@ -39,16 +39,6 @@ public class BattleViewManager : MonoBehaviour
         unitViews[unit] = view;
     }
 
-
-    public void ClearAllViews()
-    {
-        List<BattleUnit> keys = new List<BattleUnit>(unitViews.Keys);
-        for (int i = 0; i < keys.Count; i++)
-            RemoveView(keys[i]);
-
-        unitViews.Clear();
-    }
-
     public BattleUnitView GetView(BattleUnit unit)
     {
         if (unit == null) return null;
@@ -60,6 +50,18 @@ public class BattleViewManager : MonoBehaviour
     public IEnumerable<BattleUnitView> GetAllViews()
     {
         return unitViews.Values;
+    }
+
+
+    public void ClearAllViews()
+    {
+        foreach (KeyValuePair<BattleUnit, BattleUnitView> pair in unitViews)
+        {
+            if (pair.Value != null)
+                Destroy(pair.Value.gameObject);
+        }
+
+        unitViews.Clear();
     }
 
     public void RemoveView(BattleUnit unit)

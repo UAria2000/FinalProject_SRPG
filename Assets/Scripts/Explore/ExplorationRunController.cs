@@ -1,130 +1,141 @@
-using System;
 using System.Collections;
 using UnityEngine;
-using UnityEngine.Events;
-using UnityEngine.UI;
 
 public class ExplorationRunController : MonoBehaviour
 {
-    [Serializable]
-    public class ExplorationZoneConfig
-    {
-        public string zoneName = "Zone";
-        public Sprite backgroundSprite;
-        public EnemyEncounterTable encounterTable;
-    }
+    [Header("References")]
+    [SerializeField] private ExplorationMapUI mapUI;
+    [SerializeField] private SimpleScreenFader screenFader;
+    [SerializeField] private ExplorationBattleBridge battleBridge;
+    [SerializeField] private BattleManager battleManager;
 
     [Header("Map Settings")]
     [SerializeField] private int mapWidth = 10;
     [SerializeField] private int mapHeight = 5;
     [SerializeField] private Vector2Int startCoord = new Vector2Int(0, 2);
     [SerializeField] private int roomCountExcludingStart = 20;
-    [SerializeField] private bool generateOnStart = true;
     [SerializeField] private bool useRandomSeed = true;
     [SerializeField] private int fixedSeed = 12345;
+    [SerializeField] private bool showMapOnStart = true;
 
-    [Header("Battle Integration")]
-    [SerializeField] private BattleManager battleManager;
-    [SerializeField] private RandomEnemyEncounterBootstrapper encounterBootstrapper;
-    [SerializeField] private Image mainBackgroundImage;
-    [SerializeField] private ExplorationZoneConfig[] zones = new ExplorationZoneConfig[3];
-    [SerializeField] private Sprite bossBackgroundSprite;
-    [SerializeField] private PartyDefinition bossPartyDefinition;
-
-    [Header("UI")]
-    [SerializeField] private ExplorationMapUI mapUI;
-    [SerializeField] private SimpleScreenFader screenFader;
-    [SerializeField] private float fadeDuration = 0.25f;
-
-    [Header("Room Events")]
-    [SerializeField] private UnityEvent onTreasureRoomFirstEnter;
-    [SerializeField] private UnityEvent onRestRoomFirstEnter;
-    [SerializeField] private UnityEvent onRevisitRoom;
-    [SerializeField] private UnityEvent onNormalBattleVictory;
-    [SerializeField] private UnityEvent onNormalBattleDefeat;
-    [SerializeField] private UnityEvent onBossBattleVictory;
-    [SerializeField] private UnityEvent onBossBattleDefeat;
+    [Header("Fade")]
+    [SerializeField] private float fadeDuration = 0.2f;
 
     private ExplorationMapData mapData;
     private bool isBusy;
-    private bool awaitingBattleResult;
-    private bool awaitingBossResult;
-    private int lastSeedUsed;
+    private int uniqueVisitedCount = 1; // 시작 노드 포함
+    private int currentZoneIndex = 0;   // 0,1,2
 
     public ExplorationMapData MapData => mapData;
-    public int UniqueVisitedCount => mapData != null ? Mathf.Max(1, mapData.uniqueVisitedCount) : 1;
-    public int CurrentZoneIndex => GetZoneIndexByVisitedCount(UniqueVisitedCount);
-
-    private void OnEnable()
-    {
-        if (battleManager != null)
-            battleManager.BattleFinished += HandleBattleFinished;
-    }
-
-    private void OnDisable()
-    {
-        if (battleManager != null)
-            battleManager.BattleFinished -= HandleBattleFinished;
-    }
+    public int UniqueVisitedCount => uniqueVisitedCount;
+    public int CurrentZoneIndex => currentZoneIndex;
 
     private void Start()
     {
-        if (generateOnStart)
-            GenerateNewRun();
+        GenerateNewMap();
     }
 
-    public void GenerateNewRun()
+    public void GenerateNewMap()
     {
-        int seed = useRandomSeed ? UnityEngine.Random.Range(int.MinValue, int.MaxValue) : fixedSeed;
-        lastSeedUsed = seed;
+        int seed = useRandomSeed ? Random.Range(int.MinValue, int.MaxValue) : fixedSeed;
 
-        mapData = ExplorationMapGenerator.Generate(mapWidth, mapHeight, startCoord, roomCountExcludingStart, seed);
-        ApplyBackgroundForCurrentProgress(false);
+        mapData = ExplorationMapGenerator.Generate(
+            mapWidth,
+            mapHeight,
+            startCoord,
+            roomCountExcludingStart,
+            seed);
+
+        uniqueVisitedCount = 1;
+        currentZoneIndex = 0;
+        isBusy = false;
 
         if (mapUI != null)
+        {
             mapUI.Build(this, mapData);
+            mapUI.gameObject.SetActive(showMapOnStart);
+            mapUI.Refresh();
+        }
 
-        if (battleManager != null)
-            battleManager.OnInventoryTogglePressed();
+        if (battleBridge != null)
+            battleBridge.ApplyZoneBackground(currentZoneIndex);
+    }
 
-        Debug.Log($"[ExplorationRun] 새 탐색 맵 생성 완료. Seed={lastSeedUsed}");
+    public void OpenMap()
+    {
+        if (mapUI != null)
+        {
+            mapUI.gameObject.SetActive(true);
+            mapUI.Refresh();
+        }
+    }
+
+    public void CloseMap()
+    {
+        if (mapUI != null)
+            mapUI.gameObject.SetActive(false);
+    }
+
+    public void ToggleMap()
+    {
+        if (mapUI != null)
+        {
+            bool next = !mapUI.gameObject.activeSelf;
+            mapUI.gameObject.SetActive(next);
+
+            if (next)
+                mapUI.Refresh();
+        }
     }
 
     public bool CanMoveTo(ExplorationNodeData targetNode)
     {
-        if (isBusy || awaitingBattleResult || targetNode == null || mapData == null)
+        if (mapData == null || targetNode == null)
             return false;
 
+        // 전투 중에는 맵은 보여도 이동 불가
         if (battleManager != null && battleManager.IsBattleInProgress)
             return false;
 
-        ExplorationNodeData current = mapData.GetNodeById(mapData.currentNodeId);
-        if (current == null || current.nodeId == targetNode.nodeId)
+        ExplorationNodeData currentNode = mapData.GetNodeById(mapData.currentNodeId);
+        if (currentNode == null)
             return false;
 
-        return current.neighborIds.Contains(targetNode.nodeId);
+        if (targetNode.nodeId == currentNode.nodeId)
+            return false;
+
+        return currentNode.neighborIds.Contains(targetNode.nodeId);
     }
 
     public void HandleNodeClicked(int nodeId)
     {
-        if (mapData == null || isBusy)
+        if (isBusy || mapData == null)
+            return;
+
+        // 전투 중에는 노드 클릭 무시
+        if (battleManager != null && battleManager.IsBattleInProgress)
             return;
 
         ExplorationNodeData targetNode = mapData.GetNodeById(nodeId);
+        if (targetNode == null)
+            return;
+
         if (!CanMoveTo(targetNode))
             return;
 
         StartCoroutine(MoveToNodeRoutine(targetNode));
     }
 
+    public void OnReturnedToMap()
+    {
+        if (mapUI != null)
+            mapUI.Refresh();
+    }
+
     private IEnumerator MoveToNodeRoutine(ExplorationNodeData targetNode)
     {
         isBusy = true;
-
         bool firstEnter = !targetNode.resolved;
-        int projectedVisitedCount = mapData.uniqueVisitedCount + (firstEnter ? 1 : 0);
-        int previousZoneIndex = GetZoneIndexByVisitedCount(mapData.uniqueVisitedCount);
-        int nextZoneIndex = GetZoneIndexByVisitedCount(projectedVisitedCount);
 
         if (screenFader != null)
             yield return StartCoroutine(screenFader.FadeOut(fadeDuration));
@@ -135,191 +146,70 @@ public class ExplorationRunController : MonoBehaviour
         if (firstEnter)
         {
             targetNode.resolved = true;
-            mapData.uniqueVisitedCount = projectedVisitedCount;
+            uniqueVisitedCount++;
+
+            int nextZoneIndex = GetZoneIndexFromVisitedCount(uniqueVisitedCount);
+            bool zoneChanged = nextZoneIndex != currentZoneIndex;
+            currentZoneIndex = nextZoneIndex;
+
+            if (battleBridge != null)
+            {
+                if (targetNode.roomType == ExplorationRoomType.Boss)
+                {
+                    battleBridge.ApplyBossBackground();
+                }
+                else if (zoneChanged || uniqueVisitedCount == 2)
+                {
+                    battleBridge.ApplyZoneBackground(currentZoneIndex);
+                }
+            }
         }
-
-        bool zoneChanged = previousZoneIndex != nextZoneIndex;
-        if (zoneChanged || targetNode.roomType == ExplorationRoomType.Boss)
-            ApplyBackgroundForNode(targetNode, nextZoneIndex);
-
-        if (battleManager != null)
-            battleManager.OnInventoryTogglePressed();
-
-        Coroutine fadeInRoutine = null;
-        if (screenFader != null)
-            fadeInRoutine = StartCoroutine(screenFader.FadeIn(fadeDuration));
-
-        if (firstEnter)
-            ResolveNode(targetNode);
-        else
-        {
-            onRevisitRoom?.Invoke();
-            Debug.Log($"[ExplorationRun] 재방문: {targetNode.roomType} / {targetNode.coord}");
-        }
-
-        if (fadeInRoutine != null)
-            yield return fadeInRoutine;
 
         if (mapUI != null)
             mapUI.Refresh();
+
+        if (screenFader != null)
+            yield return StartCoroutine(screenFader.FadeIn(fadeDuration));
+
+        if (firstEnter)
+            ResolveNode(targetNode);
 
         isBusy = false;
     }
 
     private void ResolveNode(ExplorationNodeData node)
     {
-        if (node == null)
+        if (battleBridge == null || node == null)
             return;
 
         switch (node.roomType)
         {
             case ExplorationRoomType.Battle:
-                StartNormalEncounterBattle();
+                battleBridge.StartNormalBattle(currentZoneIndex);
                 break;
 
             case ExplorationRoomType.Treasure:
-                Debug.Log($"[ExplorationRun] 보물 이벤트 @ {node.coord}");
-                onTreasureRoomFirstEnter?.Invoke();
+                battleBridge.OpenTreasureEvent(node);
                 break;
 
             case ExplorationRoomType.Rest:
-                Debug.Log($"[ExplorationRun] 휴식 이벤트 @ {node.coord}");
-                onRestRoomFirstEnter?.Invoke();
+                battleBridge.OpenRestEvent(node);
                 break;
 
             case ExplorationRoomType.Boss:
-                StartBossEncounterBattle();
+                battleBridge.StartBossBattle();
                 break;
         }
     }
 
-    private void StartNormalEncounterBattle()
+    private int GetZoneIndexFromVisitedCount(int visitedCount)
     {
-        if (battleManager == null)
-        {
-            Debug.LogWarning("[ExplorationRun] BattleManager reference is missing.");
-            return;
-        }
-
-        if (encounterBootstrapper == null)
-        {
-            Debug.LogWarning("[ExplorationRun] RandomEnemyEncounterBootstrapper reference is missing.");
-            return;
-        }
-
-        ExplorationZoneConfig zone = GetCurrentZoneConfig();
-        if (zone == null || zone.encounterTable == null)
-        {
-            Debug.LogWarning("[ExplorationRun] 현재 구역의 EnemyEncounterTable이 비어 있습니다.");
-            return;
-        }
-
-        encounterBootstrapper.GenerateAndApplyEnemyParty(zone.encounterTable);
-        awaitingBattleResult = true;
-        awaitingBossResult = false;
-        battleManager.StartBattle();
-        Debug.Log($"[ExplorationRun] 일반 전투 시작 / 구역 {CurrentZoneIndex + 1} / 방문 수 {UniqueVisitedCount}");
-    }
-
-    private void StartBossEncounterBattle()
-    {
-        if (battleManager == null)
-        {
-            Debug.LogWarning("[ExplorationRun] BattleManager reference is missing.");
-            return;
-        }
-
-        if (bossPartyDefinition == null)
-        {
-            Debug.LogWarning("[ExplorationRun] bossPartyDefinition reference is missing.");
-            return;
-        }
-
-        battleManager.SetEnemyPartyDefinition(bossPartyDefinition);
-        awaitingBattleResult = true;
-        awaitingBossResult = true;
-        battleManager.StartBattle();
-        Debug.Log($"[ExplorationRun] 보스 전투 시작 / 방문 수 {UniqueVisitedCount}");
-    }
-
-    private void HandleBattleFinished(BattleResultType result)
-    {
-        if (!awaitingBattleResult)
-            return;
-
-        bool wasBoss = awaitingBossResult;
-        awaitingBattleResult = false;
-        awaitingBossResult = false;
-
-        if (wasBoss)
-        {
-            if (result == BattleResultType.Victory)
-                onBossBattleVictory?.Invoke();
-            else if (result == BattleResultType.Defeat)
-                onBossBattleDefeat?.Invoke();
-        }
-        else
-        {
-            if (result == BattleResultType.Victory)
-                onNormalBattleVictory?.Invoke();
-            else if (result == BattleResultType.Defeat)
-                onNormalBattleDefeat?.Invoke();
-        }
-
-        if (mapUI != null)
-            mapUI.Refresh();
-    }
-
-    private void ApplyBackgroundForCurrentProgress(bool log)
-    {
-        ApplyBackgroundForZone(CurrentZoneIndex, log);
-    }
-
-    private void ApplyBackgroundForNode(ExplorationNodeData node, int zoneIndex)
-    {
-        if (node != null && node.roomType == ExplorationRoomType.Boss)
-        {
-            if (mainBackgroundImage != null && bossBackgroundSprite != null)
-                mainBackgroundImage.sprite = bossBackgroundSprite;
-
-            Debug.Log("[ExplorationRun] 보스 방 배경 적용");
-            return;
-        }
-
-        ApplyBackgroundForZone(zoneIndex, true);
-    }
-
-    private void ApplyBackgroundForZone(int zoneIndex, bool log)
-    {
-        ExplorationZoneConfig zone = GetZoneConfig(zoneIndex);
-        if (mainBackgroundImage != null && zone != null && zone.backgroundSprite != null)
-            mainBackgroundImage.sprite = zone.backgroundSprite;
-
-        if (log)
-            Debug.Log($"[ExplorationRun] 구역 배경 적용: Zone {zoneIndex + 1}");
-    }
-
-    private ExplorationZoneConfig GetCurrentZoneConfig()
-    {
-        return GetZoneConfig(CurrentZoneIndex);
-    }
-
-    private ExplorationZoneConfig GetZoneConfig(int zoneIndex)
-    {
-        if (zones == null || zones.Length == 0)
-            return null;
-
-        zoneIndex = Mathf.Clamp(zoneIndex, 0, zones.Length - 1);
-        return zones[zoneIndex];
-    }
-
-    private int GetZoneIndexByVisitedCount(int visitedCount)
-    {
-        int clamped = Mathf.Max(1, visitedCount);
-        if (clamped <= 7)
+        if (visitedCount <= 7)
             return 0;
-        if (clamped <= 14)
+
+        if (visitedCount <= 14)
             return 1;
+
         return 2;
     }
 }

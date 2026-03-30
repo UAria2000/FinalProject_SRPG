@@ -7,9 +7,11 @@ using UnityEngine.EventSystems;
 public class BattleManager : MonoBehaviour
 {
     [Header("Prepared Battle Data")]
-    [SerializeField] private bool autoStartBattle = true;
     [SerializeField] private PartyDefinition allyPartyDefinition;
     [SerializeField] private PartyDefinition enemyPartyDefinition;
+
+    [Header("Exploration")]
+    [SerializeField] private bool autoStartBattleOnStart = true;
 
     [Header("Controllers")]
     [SerializeField] private BattleViewManager viewManager;
@@ -53,13 +55,15 @@ public class BattleManager : MonoBehaviour
 
     private bool waitingForPlayerAction;
     private bool battleStarted;
-    private Coroutine battleLoopCoroutine;
     private int currentRound;
     private bool currentTurnSkippedByStatus;
     private bool allyDeathOccurredThisTurn;
     private bool enemyDeathOccurredThisTurn;
 
     private BottomContextType bottomContextType = BottomContextType.Inventory;
+    private bool battleEndEventSent;
+
+    public event Action<BattleResultType> BattleEnded;
 
     public BattleFormation AllyFormation { get { return allyFormation; } }
     public BattleFormation EnemyFormation { get { return enemyFormation; } }
@@ -70,13 +74,15 @@ public class BattleManager : MonoBehaviour
     public BattleViewManager ViewManager { get { return viewManager; } }
     public BattleSkillGimmickController SkillGimmickController { get { return skillGimmickController; } }
     public int CurrentRound { get { return currentRound; } }
-    public bool IsBattleInProgress { get { return battleStarted; } }
-
-    public event Action<BattleResultType> BattleFinished;
 
     public TurnState CurrentState { get; private set; }
     public BattleResultType BattleResult { get; private set; }
     public BattleInputMode InputMode { get; private set; }
+
+    public bool IsBattleInProgress
+    {
+        get { return battleStarted && BattleResult == BattleResultType.None; }
+    }
 
     public BattleUnit CurrentActingUnit { get; private set; }
     public BattleUnit LastShownAllyUnit { get; private set; }
@@ -123,10 +129,8 @@ public class BattleManager : MonoBehaviour
         if (skillGimmickController != null)
             skillGimmickController.Initialize(this, logController);
 
-        if (autoStartBattle)
+        if (autoStartBattleOnStart)
             StartBattle();
-        else
-            RefreshAllUI();
     }
 
     public void SetEnemyPartyDefinition(PartyDefinition definition)
@@ -136,15 +140,13 @@ public class BattleManager : MonoBehaviour
 
     public void StartBattle()
     {
-        if (battleLoopCoroutine != null)
-        {
-            StopCoroutine(battleLoopCoroutine);
-            battleLoopCoroutine = null;
-        }
+        StopAllCoroutines();
 
         if (viewManager != null)
             viewManager.ClearAllViews();
 
+        battleStarted = false;
+        battleEndEventSent = false;
         allyFormation = new BattleFormation();
         enemyFormation = new BattleFormation();
         turnManager = new TurnManager();
@@ -179,12 +181,12 @@ public class BattleManager : MonoBehaviour
         SelectedEnemyInfoUnit = GetDefaultShownEnemyUnit();
 
         battleStarted = true;
-        bottomContextType = BottomContextType.Inventory;
+        battleEndEventSent = false;
         if (skillGimmickController != null)
             skillGimmickController.ResetRuntimeState();
         RefreshAllUI();
         ClearUISelection();
-        battleLoopCoroutine = StartCoroutine(BattleLoopRoutine());
+        StartCoroutine(BattleLoopRoutine());
     }
 
     private void SpawnPartyIntoFormation(PartyDefinition partyDefinition, TeamType team, BattleFormation formation)
@@ -339,7 +341,6 @@ public class BattleManager : MonoBehaviour
         }
 
         CurrentState = TurnState.BattleEnded;
-        battleStarted = false;
         if (BattleResult == BattleResultType.Victory)
             logController.AppendBattleLog(logController.BuildVictoryLog());
         else if (BattleResult == BattleResultType.Defeat)
@@ -347,8 +348,7 @@ public class BattleManager : MonoBehaviour
 
         RefreshAllUI();
         ClearUISelection();
-        battleLoopCoroutine = null;
-        BattleFinished?.Invoke(BattleResult);
+        NotifyBattleEndedIfNeeded();
     }
 
     private IEnumerator ResolveTurnStartStatusesRoutine(BattleUnit unit)
@@ -776,6 +776,18 @@ public class BattleManager : MonoBehaviour
             BattleResult = BattleResultType.Defeat;
     }
 
+    private void NotifyBattleEndedIfNeeded()
+    {
+        if (battleEndEventSent)
+            return;
+
+        if (BattleResult == BattleResultType.None)
+            return;
+
+        battleEndEventSent = true;
+        BattleEnded?.Invoke(BattleResult);
+    }
+
     private BattleUnit GetDefaultShownAllyUnit()
     {
         List<BattleUnit> allies = allyFormation != null ? allyFormation.GetAliveUnits() : null;
@@ -860,9 +872,6 @@ public class BattleManager : MonoBehaviour
 
     public void OnMapButtonPressed()
     {
-        if (IsBattleInProgress)
-            return;
-
         bottomContextType = BottomContextType.Map;
 
         if (uiController != null)

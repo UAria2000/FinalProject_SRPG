@@ -29,7 +29,6 @@ public class ExplorationMapData
     public int height;
     public Vector2Int startCoord;
     public int currentNodeId;
-    public int uniqueVisitedCount;
     public List<ExplorationNodeData> nodes = new List<ExplorationNodeData>();
 
     public ExplorationNodeData GetNodeById(int nodeId)

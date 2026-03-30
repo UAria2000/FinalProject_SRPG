@@ -22,22 +22,22 @@ public class RandomEnemyEncounterBootstrapper : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (runtimeGeneratedEnemyParty != null)
-            Destroy(runtimeGeneratedEnemyParty);
+        DestroyRuntimeGeneratedParty();
     }
 
-    [ContextMenu("Generate And Apply Enemy Party")]
-    public void GenerateAndApplyEnemyPartyContextMenu()
+    public void SetEncounterTable(EnemyEncounterTable table)
     {
+        encounterTable = table;
+    }
+
+    public void GenerateAndApplyEnemyPartyFromTable(EnemyEncounterTable table)
+    {
+        encounterTable = table;
         GenerateAndApplyEnemyParty();
     }
 
+    [ContextMenu("Generate And Apply Enemy Party")]
     public void GenerateAndApplyEnemyParty()
-    {
-        GenerateAndApplyEnemyParty(encounterTable);
-    }
-
-    public void GenerateAndApplyEnemyParty(EnemyEncounterTable tableOverride)
     {
         if (battleManager == null)
             battleManager = GetComponent<BattleManager>();
@@ -48,13 +48,11 @@ public class RandomEnemyEncounterBootstrapper : MonoBehaviour
             return;
         }
 
-        PartyDefinition generated = GenerateRuntimeEnemyParty(tableOverride);
+        PartyDefinition generated = GenerateRuntimeEnemyParty();
         if (generated == null)
             return;
 
-        if (runtimeGeneratedEnemyParty != null)
-            Destroy(runtimeGeneratedEnemyParty);
-
+        DestroyRuntimeGeneratedParty();
         runtimeGeneratedEnemyParty = generated;
         battleManager.SetEnemyPartyDefinition(runtimeGeneratedEnemyParty);
 
@@ -62,23 +60,25 @@ public class RandomEnemyEncounterBootstrapper : MonoBehaviour
             Debug.Log(BuildPartySummary(runtimeGeneratedEnemyParty));
     }
 
-    public PartyDefinition GenerateRuntimeEnemyParty()
+    public void DestroyRuntimeGeneratedParty()
     {
-        return GenerateRuntimeEnemyParty(encounterTable);
+        if (runtimeGeneratedEnemyParty != null)
+        {
+            Destroy(runtimeGeneratedEnemyParty);
+            runtimeGeneratedEnemyParty = null;
+        }
     }
 
-    public PartyDefinition GenerateRuntimeEnemyParty(EnemyEncounterTable tableOverride)
+    public PartyDefinition GenerateRuntimeEnemyParty()
     {
-        EnemyEncounterTable table = tableOverride != null ? tableOverride : encounterTable;
-
-        List<EnemyEncounterEntry> validEntries = CollectValidEntries(table);
+        List<EnemyEncounterEntry> validEntries = CollectValidEntries();
         if (validEntries.Count == 0)
         {
             Debug.LogWarning("[RandomEnemyEncounterBootstrapper] No valid encounter entries found.");
             return null;
         }
 
-        int enemyCount = table != null ? table.GetRandomEnemyCount() : 0;
+        int enemyCount = encounterTable != null ? encounterTable.GetRandomEnemyCount() : 0;
         if (enemyCount <= 0)
         {
             Debug.LogWarning("[RandomEnemyEncounterBootstrapper] Enemy count resolved to 0.");
@@ -102,7 +102,7 @@ public class RandomEnemyEncounterBootstrapper : MonoBehaviour
             PartyMemberData member = CreatePartyMember(picked, slot);
             party.members.Add(member);
 
-            bool allowDuplicates = table == null || table.allowDuplicates;
+            bool allowDuplicates = encounterTable == null || encounterTable.allowDuplicates;
             if (!allowDuplicates)
                 drawPool.Remove(picked);
 
@@ -120,15 +120,15 @@ public class RandomEnemyEncounterBootstrapper : MonoBehaviour
         return party;
     }
 
-    private List<EnemyEncounterEntry> CollectValidEntries(EnemyEncounterTable table)
+    private List<EnemyEncounterEntry> CollectValidEntries()
     {
         List<EnemyEncounterEntry> result = new List<EnemyEncounterEntry>();
-        if (table == null || table.entries == null)
+        if (encounterTable == null || encounterTable.entries == null)
             return result;
 
-        for (int i = 0; i < table.entries.Count; i++)
+        for (int i = 0; i < encounterTable.entries.Count; i++)
         {
-            EnemyEncounterEntry entry = table.entries[i];
+            EnemyEncounterEntry entry = encounterTable.entries[i];
             if (entry == null || !entry.enabled)
                 continue;
             if (entry.unitDefinition == null || entry.unitViewDefinition == null)

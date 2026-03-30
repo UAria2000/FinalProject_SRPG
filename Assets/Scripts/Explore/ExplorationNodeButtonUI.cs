@@ -33,10 +33,10 @@ public class ExplorationNodeButtonUI : MonoBehaviour
             labelText.text = text;
     }
 
-    public void SetVisual(Color bgColor, Color textColor, bool interactable, bool isCurrent)
+    public void SetVisual(Color backgroundColor, Color textColor, bool interactable, bool isCurrent)
     {
         if (backgroundImage != null)
-            backgroundImage.color = bgColor;
+            backgroundImage.color = backgroundColor;
 
         if (labelText != null)
             labelText.color = textColor;
@@ -50,7 +50,7 @@ public class ExplorationNodeButtonUI : MonoBehaviour
 
     private void HandleClick()
     {
-        if (clickHandler != null)
-            clickHandler(nodeId);
+        Debug.Log($"[ExplorationNodeButtonUI] Clicked nodeId={nodeId}");
+        clickHandler?.Invoke(nodeId);
     }
 }

@@ -4,7 +4,7 @@ using UnityEngine;
 
 public static class ExplorationMapGenerator
 {
-    private static readonly Vector2Int[] CardinalDirs =
+    private static readonly Vector2Int[] CardinalDirections =
     {
         Vector2Int.up,
         Vector2Int.down,
@@ -21,14 +21,14 @@ public static class ExplorationMapGenerator
     {
         System.Random rng = seed == 0 ? new System.Random() : new System.Random(seed);
 
-        for (int attempt = 0; attempt < 128; attempt++)
+        for (int attempt = 0; attempt < 300; attempt++)
         {
             ExplorationMapData map = TryGenerate(width, height, startCoord, roomCountExcludingStart, rng);
             if (map != null)
                 return map;
         }
 
-        throw new Exception("맵 생성 실패: 조건을 만족하는 연결된 노드를 만들지 못했습니다.");
+        throw new Exception("맵 생성 실패: 연결된 탐색 노드를 만들지 못했습니다.");
     }
 
     private static ExplorationMapData TryGenerate(
@@ -38,7 +38,7 @@ public static class ExplorationMapGenerator
         int roomCountExcludingStart,
         System.Random rng)
     {
-        int totalNodeCount = roomCountExcludingStart + 1;
+        int totalNodeCount = roomCountExcludingStart + 1; // 시작 노드 포함
         HashSet<Vector2Int> occupied = new HashSet<Vector2Int>();
         List<Vector2Int> orderedCoords = new List<Vector2Int>();
 
@@ -46,22 +46,23 @@ public static class ExplorationMapGenerator
         orderedCoords.Add(startCoord);
 
         int guard = 0;
-        while (occupied.Count < totalNodeCount && guard < 5000)
+        while (occupied.Count < totalNodeCount && guard < 10000)
         {
             guard++;
 
             List<Vector2Int> expandable = new List<Vector2Int>();
             for (int i = 0; i < orderedCoords.Count; i++)
             {
-                if (GetEmptyNeighbors(orderedCoords[i], occupied, width, height).Count > 0)
+                List<Vector2Int> emptyNeighbors = GetEmptyNeighbors(orderedCoords[i], occupied, width, height);
+                if (emptyNeighbors.Count > 0)
                     expandable.Add(orderedCoords[i]);
             }
 
             if (expandable.Count == 0)
                 return null;
 
-            Vector2Int from = expandable[rng.Next(expandable.Count)];
-            List<Vector2Int> candidates = GetEmptyNeighbors(from, occupied, width, height);
+            Vector2Int baseCoord = expandable[rng.Next(expandable.Count)];
+            List<Vector2Int> candidates = GetEmptyNeighbors(baseCoord, occupied, width, height);
             if (candidates.Count == 0)
                 continue;
 
@@ -77,7 +78,6 @@ public static class ExplorationMapGenerator
         map.width = width;
         map.height = height;
         map.startCoord = startCoord;
-        map.uniqueVisitedCount = 1;
 
         for (int i = 0; i < orderedCoords.Count; i++)
         {
@@ -85,6 +85,8 @@ public static class ExplorationMapGenerator
             node.nodeId = i;
             node.coord = orderedCoords[i];
             node.roomType = ExplorationRoomType.Battle;
+            node.revealed = false;
+            node.resolved = false;
             map.nodes.Add(node);
         }
 
@@ -105,6 +107,7 @@ public static class ExplorationMapGenerator
             return null;
 
         bossNode.roomType = ExplorationRoomType.Boss;
+
         AssignNonBossRoomTypes(map, roomCountExcludingStart, rng);
         return map;
     }
@@ -117,9 +120,11 @@ public static class ExplorationMapGenerator
         for (int i = 0; i < map.nodes.Count; i++)
         {
             ExplorationNodeData node = map.nodes[i];
-            for (int d = 0; d < CardinalDirs.Length; d++)
+
+            for (int d = 0; d < CardinalDirections.Length; d++)
             {
-                ExplorationNodeData neighbor = map.GetNodeAt(node.coord + CardinalDirs[d]);
+                Vector2Int neighborCoord = node.coord + CardinalDirections[d];
+                ExplorationNodeData neighbor = map.GetNodeAt(neighborCoord);
                 if (neighbor == null)
                     continue;
 
@@ -132,49 +137,60 @@ public static class ExplorationMapGenerator
     private static int FindFarthestNodeIdFromStart(ExplorationMapData map, System.Random rng)
     {
         ExplorationNodeData startNode = map.GetNodeAt(map.startCoord);
-        Dictionary<int, int> dist = new Dictionary<int, int>();
+        if (startNode == null)
+            return 0;
+
+        Dictionary<int, int> distanceById = new Dictionary<int, int>();
         Queue<int> queue = new Queue<int>();
 
-        dist[startNode.nodeId] = 0;
+        distanceById[startNode.nodeId] = 0;
         queue.Enqueue(startNode.nodeId);
 
         while (queue.Count > 0)
         {
-            int id = queue.Dequeue();
-            ExplorationNodeData node = map.GetNodeById(id);
-            for (int i = 0; i < node.neighborIds.Count; i++)
+            int currentId = queue.Dequeue();
+            ExplorationNodeData current = map.GetNodeById(currentId);
+            if (current == null)
+                continue;
+
+            for (int i = 0; i < current.neighborIds.Count; i++)
             {
-                int nextId = node.neighborIds[i];
-                if (dist.ContainsKey(nextId))
+                int nextId = current.neighborIds[i];
+                if (distanceById.ContainsKey(nextId))
                     continue;
 
-                dist[nextId] = dist[id] + 1;
+                distanceById[nextId] = distanceById[currentId] + 1;
                 queue.Enqueue(nextId);
             }
         }
 
-        int maxDist = -1;
-        List<int> farthest = new List<int>();
+        int maxDistance = -1;
+        List<int> farthestIds = new List<int>();
+
         for (int i = 0; i < map.nodes.Count; i++)
         {
             ExplorationNodeData node = map.nodes[i];
             if (node.roomType == ExplorationRoomType.Start)
                 continue;
 
-            int currentDist = dist.ContainsKey(node.nodeId) ? dist[node.nodeId] : -1;
-            if (currentDist > maxDist)
+            int dist = distanceById.ContainsKey(node.nodeId) ? distanceById[node.nodeId] : -1;
+
+            if (dist > maxDistance)
             {
-                maxDist = currentDist;
-                farthest.Clear();
-                farthest.Add(node.nodeId);
+                maxDistance = dist;
+                farthestIds.Clear();
+                farthestIds.Add(node.nodeId);
             }
-            else if (currentDist == maxDist)
+            else if (dist == maxDistance)
             {
-                farthest.Add(node.nodeId);
+                farthestIds.Add(node.nodeId);
             }
         }
 
-        return farthest[rng.Next(farthest.Count)];
+        if (farthestIds.Count == 0)
+            return startNode.nodeId;
+
+        return farthestIds[rng.Next(farthestIds.Count)];
     }
 
     private static void AssignNonBossRoomTypes(ExplorationMapData map, int roomCountExcludingStart, System.Random rng)
@@ -197,21 +213,31 @@ public static class ExplorationMapGenerator
         Shuffle(assignable, rng);
 
         int index = 0;
+
         for (int i = 0; i < restCount; i++)
-            assignable[index++].roomType = ExplorationRoomType.Rest;
+        {
+            assignable[index].roomType = ExplorationRoomType.Rest;
+            index++;
+        }
 
         for (int i = 0; i < treasureCount; i++)
-            assignable[index++].roomType = ExplorationRoomType.Treasure;
+        {
+            assignable[index].roomType = ExplorationRoomType.Treasure;
+            index++;
+        }
 
-        for (int i = 0; i < battleCount && index < assignable.Count; i++)
-            assignable[index++].roomType = ExplorationRoomType.Battle;
+        for (int i = 0; i < battleCount; i++)
+        {
+            assignable[index].roomType = ExplorationRoomType.Battle;
+            index++;
+        }
     }
 
     private static void PickCounts(int roomCountExcludingStart, System.Random rng, out int battle, out int treasure, out int rest)
     {
-        int distributable = roomCountExcludingStart - 1; // boss 제외
+        int distributable = roomCountExcludingStart - 1; // 보스 1 제외
 
-        for (int attempt = 0; attempt < 128; attempt++)
+        for (int attempt = 0; attempt < 300; attempt++)
         {
             battle = NextInclusive(rng, 12, 18);
             rest = NextInclusive(rng, 1, 2);
@@ -221,27 +247,51 @@ public static class ExplorationMapGenerator
                 return;
         }
 
+        // 안전 기본값
         battle = 16;
         rest = 1;
         treasure = 2;
     }
 
-    private static List<Vector2Int> GetEmptyNeighbors(Vector2Int origin, HashSet<Vector2Int> occupied, int width, int height)
+    private static List<Vector2Int> GetEmptyNeighbors(
+        Vector2Int origin,
+        HashSet<Vector2Int> occupied,
+        int width,
+        int height)
     {
         List<Vector2Int> result = new List<Vector2Int>();
 
-        for (int i = 0; i < CardinalDirs.Length; i++)
+        for (int i = 0; i < CardinalDirections.Length; i++)
         {
-            Vector2Int next = origin + CardinalDirs[i];
+            Vector2Int next = origin + CardinalDirections[i];
+
             if (next.x < 0 || next.x >= width || next.y < 0 || next.y >= height)
                 continue;
+
             if (occupied.Contains(next))
+                continue;
+
+            // 같은 세로열(x 동일) 최대 3개까지
+            if (GetColumnRoomCount(occupied, next.x) >= 3)
                 continue;
 
             result.Add(next);
         }
 
         return result;
+    }
+
+    private static int GetColumnRoomCount(HashSet<Vector2Int> occupied, int x)
+    {
+        int count = 0;
+
+        foreach (Vector2Int coord in occupied)
+        {
+            if (coord.x == x)
+                count++;
+        }
+
+        return count;
     }
 
     private static int NextInclusive(System.Random rng, int minInclusive, int maxInclusive)
