@@ -25,7 +25,7 @@ MonoBehaviour:
   - kind: 1
     statusType: 0
     statModifierType: 0
-    successChancePercent: 0
+    successChancePercent: 100
     affectedByResistance: 0
     powerPercent: 0
     useRandomPowerPercentRange: 0
