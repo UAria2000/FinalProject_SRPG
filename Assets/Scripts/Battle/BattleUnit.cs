@@ -17,7 +17,12 @@ public class BattleUnit
         memberData = data;
         Team = team;
         SlotIndex = data != null ? data.startSlotIndex : 0;
-        CurrentHP = MaxHP;
+
+        if (memberData != null && memberData.persistentCurrentHP >= 0)
+            CurrentHP = Mathf.Clamp(memberData.persistentCurrentHP, 0, MaxHP);
+        else
+            CurrentHP = MaxHP;
+
         CurrentShield = 0;
         endTurnGuardPercent = 0;
     }
@@ -485,6 +490,22 @@ public class BattleUnit
         int before = CurrentHP;
         CurrentHP = Mathf.Min(MaxHP, CurrentHP + amount);
         return CurrentHP - before;
+    }
+
+    public void SavePersistentHPToMemberData()
+    {
+        if (memberData == null)
+            return;
+
+        memberData.persistentCurrentHP = Mathf.Clamp(CurrentHP, 0, MaxHP);
+    }
+
+    public void ResetPersistentHPToFull()
+    {
+        CurrentHP = MaxHP;
+
+        if (memberData != null)
+            memberData.persistentCurrentHP = MaxHP;
     }
 
     public int AddShield(int amount)

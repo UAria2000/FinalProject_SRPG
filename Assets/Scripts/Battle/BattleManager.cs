@@ -172,6 +172,11 @@ public class BattleManager : MonoBehaviour
         logController.ClearBattleLog();
         SpawnPartyIntoFormation(allyPartyDefinition, TeamType.Ally, allyFormation);
         SpawnPartyIntoFormation(enemyPartyDefinition, TeamType.Enemy, enemyFormation);
+
+        allyFormation.RemoveDeadAndCompress();
+        enemyFormation.RemoveDeadAndCompress();
+        RemoveDeadViews();
+
         InitializeCaptureAttempts();
 
         if (viewManager != null)
@@ -784,6 +789,8 @@ public class BattleManager : MonoBehaviour
         if (BattleResult == BattleResultType.None)
             return;
 
+        SavePersistentAllyPartyHP();
+
         battleEndEventSent = true;
         BattleEnded?.Invoke(BattleResult);
     }
@@ -961,6 +968,62 @@ public class BattleManager : MonoBehaviour
     {
         if (uiController != null)
             uiController.HideEnemySkillTooltip();
+    }
+
+    private void SavePersistentAllyPartyHP()
+    {
+        if (allyFormation == null)
+            return;
+
+        List<BattleUnit> allies = allyFormation.GetAllUnits();
+        for (int i = 0; i < allies.Count; i++)
+        {
+            BattleUnit ally = allies[i];
+            if (ally == null)
+                continue;
+
+            ally.SavePersistentHPToMemberData();
+        }
+
+        // 전투 중 사망해서 formation에서 이미 제거된 멤버는 0으로 저장
+        if (allyPartyDefinition == null || allyPartyDefinition.members == null)
+            return;
+
+        for (int i = 0; i < allyPartyDefinition.members.Count; i++)
+        {
+            PartyMemberData member = allyPartyDefinition.members[i];
+            if (member == null)
+                continue;
+
+            bool found = false;
+            for (int j = 0; j < allies.Count; j++)
+            {
+                BattleUnit ally = allies[j];
+                if (ally != null && ally.MemberData == member)
+                {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+                member.persistentCurrentHP = 0;
+        }
+    }
+
+    public void ResetPersistentAllyPartyHPForNewMap()
+    {
+        if (allyPartyDefinition == null || allyPartyDefinition.members == null)
+            return;
+
+        for (int i = 0; i < allyPartyDefinition.members.Count; i++)
+        {
+            PartyMemberData member = allyPartyDefinition.members[i];
+            if (member == null)
+                continue;
+
+            member.ResetPersistentHPToFull();
+        }
     }
 
     private void ClearUISelection()

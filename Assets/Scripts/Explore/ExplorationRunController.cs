@@ -37,6 +37,9 @@ public class ExplorationRunController : MonoBehaviour
 
     public void GenerateNewMap()
     {
+        if (battleManager != null)
+            battleManager.ResetPersistentAllyPartyHPForNewMap();
+
         int seed = useRandomSeed ? Random.Range(int.MinValue, int.MaxValue) : fixedSeed;
 
         mapData = ExplorationMapGenerator.Generate(
