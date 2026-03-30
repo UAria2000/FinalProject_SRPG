@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: UV_Squire
   m_EditorClassIdentifier: Assembly-CSharp::UnitViewDefinition
   portrait: {fileID: 21300000, guid: a2918b996b5631c44b31cf9d1f9e7740, type: 3}
-  bodySprite: {fileID: 21300000, guid: a2918b996b5631c44b31cf9d1f9e7740, type: 3}
+  bodySprite: {fileID: 21300000, guid: fbae960c4acf16244b1ad564995f5ba7, type: 3}
   viewPrefab: {fileID: 5061461418041598090, guid: edca2cd44571b8f4c80b0dfce99d6e95, type: 3}

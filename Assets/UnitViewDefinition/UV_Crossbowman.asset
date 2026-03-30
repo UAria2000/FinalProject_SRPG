@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: UV_Crossbowman
   m_EditorClassIdentifier: Assembly-CSharp::UnitViewDefinition
   portrait: {fileID: 21300000, guid: 80ff56293c8fd734992983a43e361565, type: 3}
-  bodySprite: {fileID: 21300000, guid: 80ff56293c8fd734992983a43e361565, type: 3}
+  bodySprite: {fileID: 21300000, guid: e0147b3a5b0905348b9b294cbca13b07, type: 3}
   viewPrefab: {fileID: 5061461418041598090, guid: edca2cd44571b8f4c80b0dfce99d6e95, type: 3}

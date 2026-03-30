@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: UV_Farmer
   m_EditorClassIdentifier: Assembly-CSharp::UnitViewDefinition
   portrait: {fileID: 21300000, guid: 75931a6c033388041ae3aa6075d06f4b, type: 3}
-  bodySprite: {fileID: 21300000, guid: 75931a6c033388041ae3aa6075d06f4b, type: 3}
+  bodySprite: {fileID: 21300000, guid: e1e5a94c4d2a19e4b80b8cad98c25e42, type: 3}
   viewPrefab: {fileID: 5061461418041598090, guid: edca2cd44571b8f4c80b0dfce99d6e95, type: 3}
