@@ -72,6 +72,29 @@ public class BattlePassiveController : MonoBehaviour
         ApplyShieldThornsBleed(attacker, defender, passiveSkill);
     }
 
+    public void ResolveAfterDirectAttackDamageTaken(BattleUnit attacker, BattleUnit defender, int hpDamageTaken)
+    {
+        if (attacker == null || defender == null)
+            return;
+
+        if (hpDamageTaken <= 0)
+            return;
+
+        SkillDefinition passiveSkill;
+        if (!defender.TryGetPassiveSkillByGimmick(
+                PassiveSkillGimmick.BlackAuraShieldFromDamageTaken,
+                out passiveSkill))
+            return;
+
+        int shieldAmount = defender.AddShield(hpDamageTaken);
+        string skillName = GetPassiveSkillName(passiveSkill);
+
+        AppendLog(string.Format(
+            "{0}의 {1} 발동 → 보호막 {2}",
+            defender.Name,
+            skillName,
+            shieldAmount));
+    }
     private void ApplyShieldThornsBleed(BattleUnit attacker, BattleUnit defender, SkillDefinition passiveSkill)
     {
         if (attacker == null || attacker.IsDead)

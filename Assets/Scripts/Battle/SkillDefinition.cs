@@ -17,7 +17,8 @@ public enum ActiveSkillGimmick
     DelayedReinforcement,
     BleedDrainStrike,
     ForceMoveTargetToRankAfterHit,
-    PushTargetBackwardAfterHit
+    PushTargetBackwardAfterHit,
+    AbyssReboundSelfRecoil20FromTotalDamage
 }
 
 [CreateAssetMenu(menuName = "Battle/Skill Definition")]

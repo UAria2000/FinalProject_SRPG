@@ -10,6 +10,8 @@ public class BattleActionController : MonoBehaviour
     private BattleViewManager viewManager;
     private BattleLogController logController;
 
+    private int lastResolvedAttackHpDamageDealt;
+
     public void Initialize(BattleManager manager, BattleViewManager view, BattleLogController log)
     {
         battleManager = manager;
@@ -60,9 +62,20 @@ public class BattleActionController : MonoBehaviour
 
         if (skill.resolutionMode == SkillResolutionMode.Attack && skill.HasDamageEffect())
         {
+            int totalHpDamageDealt = 0;
+
             for (int i = 0; i < targets.Count; i++)
             {
-                yield return StartCoroutine(ResolveAndApplyAttack(actor, skill, targets[i], rolledPrimaryDamagePercent, -1f, string.Empty, true));
+                yield return StartCoroutine(ResolveAndApplyAttack(
+                    actor,
+                    skill,
+                    targets[i],
+                    rolledPrimaryDamagePercent,
+                    -1f,
+                    string.Empty,
+                    true));
+
+                totalHpDamageDealt += lastResolvedAttackHpDamageDealt;
 
                 if (skill.HasSecondaryHit())
                 {
@@ -83,6 +96,8 @@ public class BattleActionController : MonoBehaviour
                             skill.secondaryAccuracyCoefficientPercent,
                             " [추가타격]",
                             skill.secondaryApplyNonDamageEffects));
+
+                        totalHpDamageDealt += lastResolvedAttackHpDamageDealt;
                     }
                 }
 
@@ -99,9 +114,14 @@ public class BattleActionController : MonoBehaviour
                             -1f,
                             " [관통]",
                             false));
+
+                        totalHpDamageDealt += lastResolvedAttackHpDamageDealt;
                     }
                 }
             }
+
+            if (skill.activeGimmick == ActiveSkillGimmick.AbyssReboundSelfRecoil20FromTotalDamage)
+                yield return StartCoroutine(ApplyAbyssReboundSelfRecoil(actor, skill, totalHpDamageDealt));
         }
         else
         {
@@ -337,14 +357,16 @@ public class BattleActionController : MonoBehaviour
     }
 
     private IEnumerator ResolveAndApplyAttack(
-     BattleUnit actor,
-     SkillDefinition skill,
-     BattleUnit target,
-     float damagePowerPercentOverride,
-     float accuracyPercentOverride,
-     string logSuffix,
-     bool applyNonDamageEffects)
+    BattleUnit actor,
+    SkillDefinition skill,
+    BattleUnit target,
+    float damagePowerPercentOverride,
+    float accuracyPercentOverride,
+    string logSuffix,
+    bool applyNonDamageEffects)
     {
+        lastResolvedAttackHpDamageDealt = 0;
+
         if (actor == null || target == null || skill == null)
             yield break;
 
@@ -361,6 +383,7 @@ public class BattleActionController : MonoBehaviour
             result.Damage = target.ApplyIncomingAttackDamageReduction(result.Damage);
 
             int hpDamageDealt = target.ApplyDamage(result.Damage);
+            lastResolvedAttackHpDamageDealt = hpDamageDealt;
 
             if (applyNonDamageEffects)
             {
@@ -381,20 +404,7 @@ public class BattleActionController : MonoBehaviour
             yield return StartCoroutine(view.AnimateHPChange(0.15f));
 
         if (target.IsDead)
-        {
             logController.AppendBattleLog(logController.BuildDeathLog(target));
-            yield break;
-        }
-
-        // 반격 태세: 직접 공격을 받고 살아남았으면 즉시 반격
-        if (result.DidHit &&
-            string.IsNullOrEmpty(logSuffix) &&
-            target.HasStatus(StatusEffectType.CounterStance) &&
-            actor != null &&
-            !actor.IsDead)
-        {
-            yield return StartCoroutine(ExecuteReactiveCounterAttack(target, actor));
-        }
     }
 
     private IEnumerator HandleSelfMoveAfterSkill(BattleUnit actor, SkillDefinition skill)
@@ -502,6 +512,34 @@ public class BattleActionController : MonoBehaviour
             return null;
 
         return back;
+    }
+
+    private IEnumerator ApplyAbyssReboundSelfRecoil(BattleUnit actor, SkillDefinition skill, int totalHpDamageDealt)
+    {
+        if (actor == null || actor.IsDead)
+            yield break;
+
+        if (totalHpDamageDealt <= 0)
+            yield break;
+
+        int recoilDamage = Mathf.Max(1, Mathf.FloorToInt(totalHpDamageDealt * 0.2f));
+        int actualDamage = actor.ApplyDamage(recoilDamage);
+
+        if (actualDamage <= 0)
+            yield break;
+
+        logController.AppendBattleLog(string.Format(
+            "{0}의 {1} 반동 → {2} 피해",
+            actor.Name,
+            skill != null ? skill.skillName : "심연 반동",
+            actualDamage));
+
+        BattleUnitView actorView = viewManager.GetView(actor);
+        if (actorView != null)
+            yield return StartCoroutine(actorView.AnimateHPChange(0.15f));
+
+        if (actor.IsDead)
+            logController.AppendBattleLog(logController.BuildDeathLog(actor));
     }
 
     private SkillDefinition FindBasicAttackSkill(BattleUnit unit)
