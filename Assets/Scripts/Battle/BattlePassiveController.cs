@@ -14,6 +14,20 @@ public class BattlePassiveController : MonoBehaviour
         logController = log;
     }
 
+    public void ResolveBattleStartPassives()
+    {
+        if (battleManager == null || battleManager.BattleResult != BattleResultType.None)
+            return;
+
+        ResolveBattleStartPassivesForFormation(
+            battleManager.AllyFormation,
+            battleManager.EnemyFormation);
+
+        ResolveBattleStartPassivesForFormation(
+            battleManager.EnemyFormation,
+            battleManager.AllyFormation);
+    }
+
     public void EvaluateAfterTurnEnd(BattleUnit endedTurnUnit)
     {
         if (battleManager == null || battleManager.BattleResult != BattleResultType.None || endedTurnUnit == null)
@@ -38,6 +52,110 @@ public class BattlePassiveController : MonoBehaviour
                 actingUnit.ConsumePendingPassiveSkill();
                 yield return StartCoroutine(ExecuteGuaranteedFlee(actingUnit, passiveSkill));
                 yield break;
+        }
+    }
+
+    public void ResolveAfterDirectAttackHit(BattleUnit attacker, BattleUnit defender, int defenderShieldBeforeHit)
+    {
+        if (attacker == null || defender == null)
+            return;
+
+        if (defenderShieldBeforeHit <= 0)
+            return;
+
+        SkillDefinition passiveSkill;
+        if (!defender.TryGetPassiveSkillByGimmick(
+                PassiveSkillGimmick.Bleed25ToAttackerWhenShieldedHit,
+                out passiveSkill))
+            return;
+
+        ApplyShieldThornsBleed(attacker, defender, passiveSkill);
+    }
+
+    private void ApplyShieldThornsBleed(BattleUnit attacker, BattleUnit defender, SkillDefinition passiveSkill)
+    {
+        if (attacker == null || attacker.IsDead)
+            return;
+
+        int baseChance = 25;
+        int resist = attacker.BleedResist;
+        int finalChance = Mathf.RoundToInt(baseChance * Mathf.Clamp01((100f - resist) / 100f));
+
+        bool success = Random.Range(0f, 100f) < finalChance;
+        string skillName = GetPassiveSkillName(passiveSkill);
+
+        if (!success)
+        {
+            AppendLog(string.Format(
+                "{0}의 {1} 발동 → {2} 출혈 실패 ({3}%)",
+                defender.Name,
+                skillName,
+                attacker.Name,
+                finalChance));
+            return;
+        }
+
+        attacker.ApplyStatus(StatusEffectType.Bleed, 1);
+
+        AppendLog(string.Format(
+            "{0}의 {1} 발동 → {2} 출혈 1스택 ({3}%)",
+            defender.Name,
+            skillName,
+            attacker.Name,
+            finalChance));
+    }
+
+    private void ResolveBattleStartPassivesForFormation(BattleFormation sourceFormation, BattleFormation targetFormation)
+    {
+        if (sourceFormation == null || targetFormation == null)
+            return;
+
+        List<BattleUnit> sources = sourceFormation.GetAliveUnits();
+        for (int i = 0; i < sources.Count; i++)
+        {
+            BattleUnit sourceUnit = sources[i];
+            if (sourceUnit == null || sourceUnit.IsDead)
+                continue;
+
+            SkillDefinition passiveSkill;
+            if (!sourceUnit.TryGetPassiveSkillByGimmick(
+                    PassiveSkillGimmick.BattleStartEnemyTeamDmgDown20For2Turns,
+                    out passiveSkill))
+                continue;
+
+            ApplyBattleStartEnemyTeamDmgDown20For2Turns(sourceUnit, targetFormation, passiveSkill);
+        }
+    }
+
+    private void ApplyBattleStartEnemyTeamDmgDown20For2Turns(BattleUnit sourceUnit, BattleFormation targetFormation, SkillDefinition passiveSkill)
+    {
+        if (sourceUnit == null || targetFormation == null)
+            return;
+
+        List<BattleUnit> targets = targetFormation.GetAliveUnits();
+        bool anyApplied = false;
+
+        for (int i = 0; i < targets.Count; i++)
+        {
+            BattleUnit target = targets[i];
+            if (target == null || target.IsDead)
+                continue;
+
+            bool applied = target.TryApplyTimedModifier(
+                StatModifierType.DMG,
+                -20,
+                2);
+
+            anyApplied |= applied;
+        }
+
+        if (anyApplied)
+        {
+            string skillName = GetPassiveSkillName(passiveSkill);
+            AppendLog(string.Format(
+                "{0}의 {1} 발동 → 적 전체 DMG 20% 감소 (2턴)",
+                sourceUnit.Name,
+                skillName));
         }
     }
 

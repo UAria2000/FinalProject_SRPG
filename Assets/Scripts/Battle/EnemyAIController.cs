@@ -537,7 +537,7 @@ public class EnemyAIController : MonoBehaviour
             return false;
 
         bool hasTaunt = false;
-        bool hasDamageReduction = false;
+        bool hasGuardValue = false;
 
         for (int i = 0; i < skill.effects.Count; i++)
         {
@@ -552,16 +552,24 @@ public class EnemyAIController : MonoBehaviour
                 hasTaunt = true;
             }
 
+            // 기존 감피형 도발도 허용
             if (block.kind == BattleEffectKind.Buff &&
                 block.statModifierType == StatModifierType.IncomingDamageTakenPercent &&
                 block.flatValue > 0 &&
                 block.durationTurns > 0)
             {
-                hasDamageReduction = true;
+                hasGuardValue = true;
+            }
+
+            // 새 보호막형 도발도 허용
+            if (block.kind == BattleEffectKind.Shield &&
+                (block.flatValue > 0 || block.powerPercent > 0f))
+            {
+                hasGuardValue = true;
             }
         }
 
-        return hasTaunt && hasDamageReduction;
+        return hasTaunt && hasGuardValue;
     }
 
     private bool ShouldPreferTauntGuard(BattleUnit actor)
@@ -574,7 +582,10 @@ public class EnemyAIController : MonoBehaviour
             actor.GetTimedModifierRemainingTurns(StatModifierType.IncomingDamageTakenPercent) > 0 &&
             actor.GetTimedModifierMagnitude(StatModifierType.IncomingDamageTakenPercent) < 0;
 
-        return !hasTaunt || !hasDamageReduction;
+        bool hasShield = actor.CurrentShield > 0;
+
+        // 감피형이든 보호막형이든, 둘 중 하나라도 있으면 방어 준비가 된 것으로 본다
+        return !hasTaunt || (!hasDamageReduction && !hasShield);
     }
 
     private float ScoreTauntGuard(BattleUnit actor)

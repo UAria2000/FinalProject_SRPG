@@ -337,13 +337,13 @@ public class BattleActionController : MonoBehaviour
     }
 
     private IEnumerator ResolveAndApplyAttack(
-        BattleUnit actor,
-        SkillDefinition skill,
-        BattleUnit target,
-        float damagePowerPercentOverride,
-        float accuracyPercentOverride,
-        string logSuffix,
-        bool applyNonDamageEffects)
+     BattleUnit actor,
+     SkillDefinition skill,
+     BattleUnit target,
+     float damagePowerPercentOverride,
+     float accuracyPercentOverride,
+     string logSuffix,
+     bool applyNonDamageEffects)
     {
         if (actor == null || target == null || skill == null)
             yield break;
@@ -386,9 +386,15 @@ public class BattleActionController : MonoBehaviour
             yield break;
         }
 
-        // 주 타격에만 강제 위치 이동 적용
-        if (result.DidHit && string.IsNullOrEmpty(logSuffix))
-            yield return StartCoroutine(HandleForcedTargetMoveAfterHit(actor, skill, target));
+        // 반격 태세: 직접 공격을 받고 살아남았으면 즉시 반격
+        if (result.DidHit &&
+            string.IsNullOrEmpty(logSuffix) &&
+            target.HasStatus(StatusEffectType.CounterStance) &&
+            actor != null &&
+            !actor.IsDead)
+        {
+            yield return StartCoroutine(ExecuteReactiveCounterAttack(target, actor));
+        }
     }
 
     private IEnumerator HandleSelfMoveAfterSkill(BattleUnit actor, SkillDefinition skill)
@@ -436,7 +442,7 @@ public class BattleActionController : MonoBehaviour
         if (actor == null || skill == null || target == null)
             yield break;
 
-        if (!skill.HasForcedTargetMoveAfterHit())
+        if (!skill.HasForcedTargetMoveAfterHit() && !skill.HasForcedTargetPushBackAfterHit())
             yield break;
 
         if (target.IsDead || !battleManager.IsUnitInBattle(target))
@@ -450,12 +456,20 @@ public class BattleActionController : MonoBehaviour
             yield break;
 
         int fromSlotIndex = target.SlotIndex;
-        int toSlotIndex = skill.GetForcedTargetMoveTargetSlotIndex();
+        bool moved = false;
 
-        if (fromSlotIndex == toSlotIndex)
-            yield break;
+        if (skill.HasForcedTargetMoveAfterHit())
+        {
+            int toSlotIndex = skill.GetForcedTargetMoveTargetSlotIndex();
+            if (fromSlotIndex != toSlotIndex)
+                moved = targetFormation.MoveUnitTo(target, toSlotIndex);
+        }
+        else if (skill.HasForcedTargetPushBackAfterHit())
+        {
+            int steps = skill.GetForcedTargetMoveSteps();
+            moved = targetFormation.MoveUnitByDelta(target, steps);
+        }
 
-        bool moved = targetFormation.MoveUnitTo(target, toSlotIndex);
         if (!moved)
             yield break;
 
@@ -488,6 +502,62 @@ public class BattleActionController : MonoBehaviour
             return null;
 
         return back;
+    }
+
+    private SkillDefinition FindBasicAttackSkill(BattleUnit unit)
+    {
+        if (unit == null)
+            return null;
+
+        for (int i = 0; i < unit.GetActionSkillSlotCount(); i++)
+        {
+            SkillDefinition skill = unit.GetActionSkillAt(i);
+            if (skill != null && skill.isBasicAttack)
+                return skill;
+        }
+
+        return null;
+    }
+
+    private IEnumerator ExecuteReactiveCounterAttack(BattleUnit counterActor, BattleUnit originalAttacker)
+    {
+        if (counterActor == null || originalAttacker == null)
+            yield break;
+
+        if (counterActor.IsDead || originalAttacker.IsDead)
+            yield break;
+
+        SkillDefinition basicAttack = FindBasicAttackSkill(counterActor);
+        if (basicAttack == null)
+            yield break;
+
+        AttackResult counterResult = BattleCalculator.ResolveAttack(
+            counterActor,
+            originalAttacker,
+            basicAttack,
+            100f,
+            100f);
+
+        if (counterResult.DidHit)
+        {
+            int originalDamage = counterResult.Damage;
+            counterResult.Damage = originalAttacker.ApplyIncomingAttackDamageReduction(counterResult.Damage);
+            originalAttacker.ApplyDamage(counterResult.Damage);
+
+            if (counterResult.Damage < originalDamage)
+                logController.AppendBattleLog(
+                    logController.BuildGuardReductionLog(originalAttacker, originalDamage, counterResult.Damage));
+        }
+
+        logController.AppendBattleLog(
+            logController.BuildAttackLog(counterActor, originalAttacker, basicAttack, counterResult, " [반격]"));
+
+        BattleUnitView targetView = viewManager.GetView(originalAttacker);
+        if (targetView != null)
+            yield return StartCoroutine(targetView.AnimateHPChange(0.15f));
+
+        if (originalAttacker.IsDead)
+            logController.AppendBattleLog(logController.BuildDeathLog(originalAttacker));
     }
 
     private void ApplyItemEffects(BattleUnit actor, BattleUnit target, ItemDefinition item)
@@ -658,6 +728,7 @@ public class BattleActionController : MonoBehaviour
             case StatusEffectType.Bleed: return "출혈";
             case StatusEffectType.Stun: return "기절";
             case StatusEffectType.Taunt: return "도발";
+            case StatusEffectType.CounterStance: return "반격 태세";
             default: return statusType.ToString();
         }
     }

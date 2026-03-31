@@ -71,6 +71,7 @@ public class BattleManager : MonoBehaviour
     public BattleActionController ActionController { get { return actionController; } }
     public BattleInputController InputController { get { return inputController; } }
     public BattleViewManager ViewManager { get { return viewManager; } }
+    public BattlePassiveController PassiveController { get { return passiveController; } }
     public BattleSkillGimmickController SkillGimmickController { get { return skillGimmickController; } }
     public BattlePresentationController PresentationController { get { return presentationController; } }
     public int CurrentRound { get { return currentRound; } }

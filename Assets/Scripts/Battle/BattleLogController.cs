@@ -263,6 +263,7 @@ public class BattleLogController : MonoBehaviour
             case StatusEffectType.Bleed: return "출혈";
             case StatusEffectType.Stun: return "기절";
             case StatusEffectType.Taunt: return "도발";
+            case StatusEffectType.CounterStance: return "반격 태세";
             default: return statusType.ToString();
         }
     }

@@ -5,7 +5,10 @@ using UnityEngine;
 public enum PassiveSkillGimmick
 {
     None,
-    FleeNextTurnWhenAlone
+    FleeNextTurnWhenAlone,
+    BattleStartEnemyTeamDmgDown20For2Turns,
+    Bleed25ToAttackerWhenShieldedHit,
+    BlackAuraShieldFromDamageTaken
 }
 
 public enum ActiveSkillGimmick
@@ -13,7 +16,8 @@ public enum ActiveSkillGimmick
     None,
     DelayedReinforcement,
     BleedDrainStrike,
-    ForceMoveTargetToRankAfterHit
+    ForceMoveTargetToRankAfterHit,
+    PushTargetBackwardAfterHit
 }
 
 [CreateAssetMenu(menuName = "Battle/Skill Definition")]
@@ -66,6 +70,8 @@ public class SkillDefinition : ScriptableObject
     [Header("Target Forced Move (Optional)")]
     [Tooltip("명중 시 대상을 이동시킬 대열 번호(1~4)")]
     [Range(1, 4)] public int forcedTargetMoveToRank = 1;
+    [Tooltip("명중 시 대상을 뒤로 밀 칸 수")]
+    [Range(1, 3)] public int forcedTargetMoveSteps = 1;
 
     [Header("Effects")]
     public List<BattleEffectBlock> effects = new List<BattleEffectBlock>();
@@ -151,5 +157,15 @@ public class SkillDefinition : ScriptableObject
     public int GetForcedTargetMoveTargetSlotIndex()
     {
         return Mathf.Clamp(forcedTargetMoveToRank - 1, 0, 3);
+    }
+
+    public bool HasForcedTargetPushBackAfterHit()
+    {
+        return activeGimmick == ActiveSkillGimmick.PushTargetBackwardAfterHit && forcedTargetMoveSteps > 0;
+    }
+
+    public int GetForcedTargetMoveSteps()
+    {
+        return Mathf.Max(1, forcedTargetMoveSteps);
     }
 }

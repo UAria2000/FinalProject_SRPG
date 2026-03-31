@@ -64,6 +64,9 @@ public class BattleFlowController : MonoBehaviour
         battleManager.EnemyFormation.RemoveDeadAndCompress();
         RemoveDeadViews();
 
+        if (passiveController != null)
+            passiveController.ResolveBattleStartPassives();
+
         if (captureController != null)
             captureController.InitializeCaptureAttempts();
 
