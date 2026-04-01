@@ -91,13 +91,9 @@ public class BattleFlowController : MonoBehaviour
 
     public IEnumerator HandleDeathsAndCompressionRoutine()
     {
-        bool allyDeadPresent = HasDeadUnits(battleManager.AllyFormation);
-        bool enemyDeadPresent = HasDeadUnits(battleManager.EnemyFormation);
+        battleManager.MarkDeadUnitPresence(TeamType.Ally, HasDeadUnits(battleManager.AllyFormation));
+        battleManager.MarkDeadUnitPresence(TeamType.Enemy, HasDeadUnits(battleManager.EnemyFormation));
 
-        battleManager.MarkDeadUnitPresence(TeamType.Ally, allyDeadPresent);
-        battleManager.MarkDeadUnitPresence(TeamType.Enemy, enemyDeadPresent);
-
-        bool duelLockChanged = ClearInvalidDuelLocks();
         List<BattleUnit> movedAllies = battleManager.AllyFormation.RemoveDeadAndCompress();
         List<BattleUnit> movedEnemies = battleManager.EnemyFormation.RemoveDeadAndCompress();
 
@@ -107,20 +103,15 @@ public class BattleFlowController : MonoBehaviour
         for (int i = 0; i < movedEnemies.Count; i++)
             logController.AppendBattleLog(logController.BuildAutoMoveLog(movedEnemies[i]));
 
-        bool formationChanged = allyDeadPresent || enemyDeadPresent || duelLockChanged || movedAllies.Count > 0 || movedEnemies.Count > 0;
+        ClearInvalidDuelLocks();
 
         if (viewManager != null)
         {
-            if (allyDeadPresent || enemyDeadPresent)
-                RemoveDeadViews();
-
-            if (formationChanged)
-            {
-                yield return StartCoroutine(viewManager.AnimateRefreshAllPositions(
-                    battleManager.AllyFormation,
-                    battleManager.EnemyFormation,
-                    battleManager.MoveAnimationDuration));
-            }
+            RemoveDeadViews();
+            yield return StartCoroutine(viewManager.AnimateRefreshAllPositions(
+                battleManager.AllyFormation,
+                battleManager.EnemyFormation,
+                battleManager.MoveAnimationDuration));
         }
 
         if (!IsUnitInBattle(battleManager.SelectedEnemyInfoUnit))
@@ -281,7 +272,6 @@ public class BattleFlowController : MonoBehaviour
                     battleManager.CurrentTurnSkippedByStatus)
                 {
                     EvaluateEndOfTurnGimmicks(unit);
-                    yield return StartCoroutine(HandleDeathsAndCompressionRoutine());
 
                     CheckBattleResult();
                     battleManager.RefreshAllUI();
@@ -325,7 +315,6 @@ public class BattleFlowController : MonoBehaviour
                     break;
 
                 EvaluateEndOfTurnGimmicks(unit);
-                yield return StartCoroutine(HandleDeathsAndCompressionRoutine());
 
                 CheckBattleResult();
                 battleManager.RefreshAllUI();
@@ -376,22 +365,12 @@ public class BattleFlowController : MonoBehaviour
             battleManager.SetCurrentTurnSkippedByStatus(true);
         }
 
-        bool duelExpired = false;
         for (int i = 0; i < result.expiredStatuses.Count; i++)
-        {
-            StatusEffectType expiredStatus = result.expiredStatuses[i];
-            logController.AppendBattleLog(logController.BuildStatusExpiredLog(unit, expiredStatus));
-            if (expiredStatus == StatusEffectType.DuelArena)
-                duelExpired = true;
-        }
-
-        if (duelExpired)
-            yield return StartCoroutine(HandleDeathsAndCompressionRoutine());
+            logController.AppendBattleLog(logController.BuildStatusExpiredLog(unit, result.expiredStatuses[i]));
     }
 
-private bool ClearInvalidDuelLocks()
+private void ClearInvalidDuelLocks()
 {
-    bool changed = false;
     List<BattleUnit> units = new List<BattleUnit>();
 
     if (battleManager.AllyFormation != null)
@@ -403,18 +382,13 @@ private bool ClearInvalidDuelLocks()
     for (int i = 0; i < units.Count; i++)
     {
         BattleUnit unit = units[i];
-        if (unit == null || !unit.HasStatus(StatusEffectType.DuelArena))
+        if (unit == null)
             continue;
 
         BattleUnit duelTarget = unit.DuelLockedTarget;
-        if (duelTarget == null || !IsUnitInBattle(duelTarget))
-        {
+        if (duelTarget != null && !IsUnitInBattle(duelTarget))
             unit.ClearDuelLock();
-            changed = true;
-        }
     }
-
-    return changed;
 }
 
     private void RemoveDeadViews()

@@ -1,31 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-[System.Serializable]
-public class SkillGimmickSettings
-{
-    [Header("Delayed Reinforcement")]
-    [Min(0)] public int delayedReinforcementDelayRounds = 2;
-
-    [Header("Abyss Rebound")]
-    [Range(0f, 500f)] public float abyssReboundSelfRecoilPercent = 20f;
-
-    [Header("Black Arena Duel")]
-    [Min(1)] public int blackArenaDuelDurationTurns = 2;
-
-    [Header("Battle Start Enemy Team DMG Down")]
-    [Min(0)] public int battleStartEnemyTeamDmgDownPercent = 20;
-    [Min(1)] public int battleStartEnemyTeamDmgDownDurationTurns = 2;
-
-    [Header("Shield Thorns Bleed")]
-    [Range(0f, 100f)] public float shieldedHitBleedChancePercent = 25f;
-    [Min(1)] public int shieldedHitBleedStacks = 1;
-
-    [Header("Black Aura Shield")]
-    [Range(0f, 500f)] public float blackAuraShieldGainPercentFromHpDamage = 100f;
-    [Min(0)] public int blackAuraShieldFlatBonus = 0;
-}
-
 public enum PassiveSkillGimmick
 {
     None,
@@ -98,9 +73,8 @@ public class SkillDefinition : ScriptableObject
     [Range(1, 4)] public int forcedTargetMoveToRank = 1;
     [Tooltip("명중 시 대상을 뒤로 밀 칸 수")]
     [Range(1, 3)] public int forcedTargetMoveSteps = 1;
-
-    [Header("Gimmick Settings")]
-    public SkillGimmickSettings gimmickSettings = new SkillGimmickSettings();
+    [Tooltip("뒤로 밀치기 실패 시 적용할 최종 피해 계수. 0이면 미사용")]
+    [Min(0f)] public float pushBackFailFinalPowerPercent = 0f;
 
     [Header("Effects")]
     public List<BattleEffectBlock> effects = new List<BattleEffectBlock>();
@@ -198,67 +172,8 @@ public class SkillDefinition : ScriptableObject
         return Mathf.Max(1, forcedTargetMoveSteps);
     }
 
-    public int GetDelayedReinforcementDelayRounds()
+    public float GetPushBackFailFinalPowerPercent()
     {
-        return gimmickSettings != null
-            ? Mathf.Max(0, gimmickSettings.delayedReinforcementDelayRounds)
-            : 2;
+        return Mathf.Max(0f, pushBackFailFinalPowerPercent);
     }
-
-    public float GetAbyssReboundSelfRecoilPercent()
-    {
-        return gimmickSettings != null
-            ? Mathf.Max(0f, gimmickSettings.abyssReboundSelfRecoilPercent)
-            : 20f;
-    }
-
-    public int GetBlackArenaDuelDurationTurns()
-    {
-        return gimmickSettings != null
-            ? Mathf.Max(1, gimmickSettings.blackArenaDuelDurationTurns)
-            : 2;
-    }
-
-    public int GetBattleStartEnemyTeamDmgDownPercent()
-    {
-        return gimmickSettings != null
-            ? Mathf.Max(0, gimmickSettings.battleStartEnemyTeamDmgDownPercent)
-            : 20;
-    }
-
-    public int GetBattleStartEnemyTeamDmgDownDurationTurns()
-    {
-        return gimmickSettings != null
-            ? Mathf.Max(1, gimmickSettings.battleStartEnemyTeamDmgDownDurationTurns)
-            : 2;
-    }
-
-    public float GetShieldedHitBleedChancePercent()
-    {
-        return gimmickSettings != null
-            ? Mathf.Clamp(gimmickSettings.shieldedHitBleedChancePercent, 0f, 100f)
-            : 25f;
-    }
-
-    public int GetShieldedHitBleedStacks()
-    {
-        return gimmickSettings != null
-            ? Mathf.Max(1, gimmickSettings.shieldedHitBleedStacks)
-            : 1;
-    }
-
-    public float GetBlackAuraShieldGainPercentFromHpDamage()
-    {
-        return gimmickSettings != null
-            ? Mathf.Max(0f, gimmickSettings.blackAuraShieldGainPercentFromHpDamage)
-            : 100f;
-    }
-
-    public int GetBlackAuraShieldFlatBonus()
-    {
-        return gimmickSettings != null
-            ? Mathf.Max(0, gimmickSettings.blackAuraShieldFlatBonus)
-            : 0;
-    }
-
 }

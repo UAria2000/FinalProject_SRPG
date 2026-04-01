@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b0ec0aa42fa160a46a6330d7ff30c770, type: 3}
-  m_Name: SK_DarkShield
+  m_Name: SK_ImmortalEcho
   m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
-  skillId: dark_shield
-  skillName: "\uD751\uC7A5 \uBC29\uC5B4\uB9C9"
-  description: "\uD53C\uD574\uB97C \uBC1B\uC744 \uB54C\uB9C8\uB2E4 \uC5B4\uB460\uC758
-    \uD798\uC73C\uB85C \uBCF4\uD638\uB9C9\uC744 \uC0DD\uC131\uD55C\uB2E4"
+  skillId: immortal_echo
+  skillName: "\uBD88\uBA78\uC758 \uBA54\uC544\uB9AC"
+  description: "\uD53C\uD574\uB97C \uBC1B\uC744 \uB54C\uB9C8\uB2E4 \uBCF4\uD638\uB9C9\uC744
+    \uC0DD\uC131\uD55C\uB2E4"
   icon: {fileID: 0}
   isBasicAttack: 0
   castType: 1
@@ -42,5 +42,16 @@ MonoBehaviour:
   secondaryDamagePercent: 0
   secondaryApplyNonDamageEffects: 0
   forcedTargetMoveToRank: 1
+  forcedTargetMoveSteps: 1
+  gimmickSettings:
+    delayedReinforcementDelayRounds: 2
+    abyssReboundSelfRecoilPercent: 20
+    blackArenaDuelDurationTurns: 2
+    battleStartEnemyTeamDmgDownPercent: 20
+    battleStartEnemyTeamDmgDownDurationTurns: 2
+    shieldedHitBleedChancePercent: 25
+    shieldedHitBleedStacks: 1
+    blackAuraShieldGainPercentFromHpDamage: 100
+    blackAuraShieldFlatBonus: 0
   effects: []
   disableAfterUseInBattle: 0

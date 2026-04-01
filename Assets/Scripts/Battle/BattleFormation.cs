@@ -91,6 +91,90 @@ public class BattleFormation
         b.SlotIndex = indexA;
     }
 
+    private int FindCurrentIndex(BattleUnit unit)
+    {
+        if (unit == null)
+            return -1;
+
+        for (int i = 0; i < slots.Length; i++)
+        {
+            if (slots[i] == unit)
+                return i;
+        }
+
+        return -1;
+    }
+
+    private int GetBackmostOccupiedSlotIndex()
+    {
+        for (int i = slots.Length - 1; i >= 0; i--)
+        {
+            if (slots[i] != null && !slots[i].IsDead)
+                return i;
+        }
+
+        return 0;
+    }
+
+    private int ClampTargetIndexForCurrentFormation(int targetIndex)
+    {
+        if (targetIndex < 0) targetIndex = 0;
+        if (targetIndex >= slots.Length) targetIndex = slots.Length - 1;
+
+        int backmostOccupiedSlotIndex = GetBackmostOccupiedSlotIndex();
+        if (targetIndex > backmostOccupiedSlotIndex)
+            targetIndex = backmostOccupiedSlotIndex;
+
+        return targetIndex;
+    }
+
+    public bool CanMoveUnitByDelta(BattleUnit unit, int delta)
+    {
+        if (unit == null || delta == 0)
+            return false;
+
+        int currentIndex = FindCurrentIndex(unit);
+        if (currentIndex < 0)
+            return false;
+
+        int targetIndex = ClampTargetIndexForCurrentFormation(currentIndex + delta);
+        return CanMoveUnitTo(unit, targetIndex);
+    }
+
+    public bool CanMoveUnitTo(BattleUnit unit, int targetIndex)
+    {
+        if (unit == null)
+            return false;
+
+        if (unit.IsPositionMovementLocked)
+            return false;
+
+        targetIndex = ClampTargetIndexForCurrentFormation(targetIndex);
+
+        int currentIndex = FindCurrentIndex(unit);
+        if (currentIndex < 0 || currentIndex == targetIndex)
+            return false;
+
+        if (targetIndex > currentIndex)
+        {
+            for (int i = currentIndex + 1; i <= targetIndex; i++)
+            {
+                if (slots[i] != null && slots[i].IsPositionMovementLocked)
+                    return false;
+            }
+        }
+        else
+        {
+            for (int i = targetIndex; i < currentIndex; i++)
+            {
+                if (slots[i] != null && slots[i].IsPositionMovementLocked)
+                    return false;
+            }
+        }
+
+        return true;
+    }
+
     public bool MoveUnitByDelta(BattleUnit unit, int delta)
     {
         if (unit == null || delta == 0)
@@ -99,22 +183,12 @@ public class BattleFormation
         if (unit.IsPositionMovementLocked)
             return false;
 
-        int currentIndex = -1;
-        for (int i = 0; i < slots.Length; i++)
-        {
-            if (slots[i] == unit)
-            {
-                currentIndex = i;
-                break;
-            }
-        }
+        int currentIndex = FindCurrentIndex(unit);
 
         if (currentIndex < 0)
             return false;
 
-        int targetIndex = currentIndex + delta;
-        if (targetIndex < 0) targetIndex = 0;
-        if (targetIndex >= slots.Length) targetIndex = slots.Length - 1;
+        int targetIndex = ClampTargetIndexForCurrentFormation(currentIndex + delta);
 
         return MoveUnitTo(unit, targetIndex);
     }
@@ -127,18 +201,9 @@ public class BattleFormation
         if (unit.IsPositionMovementLocked)
             return false;
 
-        if (targetIndex < 0) targetIndex = 0;
-        if (targetIndex >= slots.Length) targetIndex = slots.Length - 1;
+        targetIndex = ClampTargetIndexForCurrentFormation(targetIndex);
 
-        int currentIndex = -1;
-        for (int i = 0; i < slots.Length; i++)
-        {
-            if (slots[i] == unit)
-            {
-                currentIndex = i;
-                break;
-            }
-        }
+        int currentIndex = FindCurrentIndex(unit);
 
         if (currentIndex < 0 || currentIndex == targetIndex)
             return false;

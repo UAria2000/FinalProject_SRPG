@@ -359,12 +359,19 @@ public class BattleActionController : MonoBehaviour
         if (actor == null || target == null || skill == null)
             yield break;
 
+        float resolvedDamagePowerPercent = GetResolvedDamagePowerPercentForThisAttack(
+            actor,
+            target,
+            skill,
+            damagePowerPercentOverride,
+            logSuffix);
+
         AttackResult result = BattleCalculator.ResolveAttack(
             actor,
             target,
             skill,
             accuracyPercentOverride,
-            damagePowerPercentOverride);
+            resolvedDamagePowerPercent);
 
         if (result.DidHit)
         {
@@ -425,6 +432,46 @@ public class BattleActionController : MonoBehaviour
         // 주 타격에만 강제 위치 이동 적용
         if (result.DidHit && string.IsNullOrEmpty(logSuffix))
             yield return StartCoroutine(HandleForcedTargetMoveAfterHit(actor, skill, target));
+    }
+
+    private float GetResolvedDamagePowerPercentForThisAttack(
+        BattleUnit actor,
+        BattleUnit target,
+        SkillDefinition skill,
+        float requestedDamagePowerPercent,
+        string logSuffix)
+    {
+        float resolvedDamagePowerPercent = requestedDamagePowerPercent;
+
+        if (actor == null || target == null || skill == null)
+            return resolvedDamagePowerPercent;
+
+        if (!string.IsNullOrEmpty(logSuffix))
+            return resolvedDamagePowerPercent;
+
+        if (!skill.HasForcedTargetPushBackAfterHit())
+            return resolvedDamagePowerPercent;
+
+        BattleFormation targetFormation = target.Team == TeamType.Ally
+            ? battleManager.AllyFormation
+            : battleManager.EnemyFormation;
+
+        if (targetFormation == null || !targetFormation.Contains(target))
+            return resolvedDamagePowerPercent;
+
+        int steps = skill.GetForcedTargetMoveSteps();
+        bool canMove = targetFormation.CanMoveUnitByDelta(target, steps);
+        if (canMove)
+            return resolvedDamagePowerPercent;
+
+        float failFinalPowerPercent = skill.GetPushBackFailFinalPowerPercent();
+        if (failFinalPowerPercent <= 0f)
+            return resolvedDamagePowerPercent;
+
+        if (failFinalPowerPercent > resolvedDamagePowerPercent)
+            resolvedDamagePowerPercent = failFinalPowerPercent;
+
+        return resolvedDamagePowerPercent;
     }
 
     private IEnumerator HandleSelfMoveAfterSkill(BattleUnit actor, SkillDefinition skill)
@@ -518,104 +565,104 @@ public class BattleActionController : MonoBehaviour
         }
     }
 
-private SkillDefinition FindBasicAttackSkill(BattleUnit unit)
-{
-    if (unit == null)
+    private SkillDefinition FindBasicAttackSkill(BattleUnit unit)
+    {
+        if (unit == null)
+            return null;
+
+        for (int i = 0; i < unit.GetActionSkillSlotCount(); i++)
+        {
+            SkillDefinition skill = unit.GetActionSkillAt(i);
+            if (skill != null && skill.isBasicAttack)
+                return skill;
+        }
+
         return null;
-
-    for (int i = 0; i < unit.GetActionSkillSlotCount(); i++)
-    {
-        SkillDefinition skill = unit.GetActionSkillAt(i);
-        if (skill != null && skill.isBasicAttack)
-            return skill;
     }
 
-    return null;
-}
-
-private IEnumerator ExecuteReactiveCounterAttack(BattleUnit counterActor, BattleUnit originalAttacker)
-{
-    if (counterActor == null || originalAttacker == null)
-        yield break;
-
-    if (counterActor.IsDead || originalAttacker.IsDead)
-        yield break;
-
-    SkillDefinition basicAttack = FindBasicAttackSkill(counterActor);
-    if (basicAttack == null)
-        yield break;
-
-    AttackResult counterResult = BattleCalculator.ResolveAttack(
-        counterActor,
-        originalAttacker,
-        basicAttack,
-        100f,
-        100f);
-
-    if (counterResult.DidHit)
+    private IEnumerator ExecuteReactiveCounterAttack(BattleUnit counterActor, BattleUnit originalAttacker)
     {
-        int originalDamage = counterResult.Damage;
-        counterResult.Damage = originalAttacker.ApplyIncomingAttackDamageReduction(counterResult.Damage);
-        originalAttacker.ApplyDamage(counterResult.Damage);
+        if (counterActor == null || originalAttacker == null)
+            yield break;
 
-        if (counterResult.Damage < originalDamage)
-            logController.AppendBattleLog(
-                logController.BuildGuardReductionLog(originalAttacker, originalDamage, counterResult.Damage));
+        if (counterActor.IsDead || originalAttacker.IsDead)
+            yield break;
+
+        SkillDefinition basicAttack = FindBasicAttackSkill(counterActor);
+        if (basicAttack == null)
+            yield break;
+
+        AttackResult counterResult = BattleCalculator.ResolveAttack(
+            counterActor,
+            originalAttacker,
+            basicAttack,
+            100f,
+            100f);
+
+        if (counterResult.DidHit)
+        {
+            int originalDamage = counterResult.Damage;
+            counterResult.Damage = originalAttacker.ApplyIncomingAttackDamageReduction(counterResult.Damage);
+            originalAttacker.ApplyDamage(counterResult.Damage);
+
+            if (counterResult.Damage < originalDamage)
+                logController.AppendBattleLog(
+                    logController.BuildGuardReductionLog(originalAttacker, originalDamage, counterResult.Damage));
+        }
+
+        logController.AppendBattleLog(
+            logController.BuildAttackLog(counterActor, originalAttacker, basicAttack, counterResult, " [반격]"));
+
+        BattleUnitView targetView = viewManager.GetView(originalAttacker);
+        if (targetView != null)
+            yield return StartCoroutine(targetView.AnimateHPChange(0.15f));
+
+        if (originalAttacker.IsDead)
+            logController.AppendBattleLog(logController.BuildDeathLog(originalAttacker));
     }
 
-    logController.AppendBattleLog(
-        logController.BuildAttackLog(counterActor, originalAttacker, basicAttack, counterResult, " [반격]"));
+    private void ApplyBlackArenaDuel(BattleUnit actor, BattleUnit target, SkillDefinition skill)
+    {
+        if (actor == null || target == null)
+            return;
 
-    BattleUnitView targetView = viewManager.GetView(originalAttacker);
-    if (targetView != null)
-        yield return StartCoroutine(targetView.AnimateHPChange(0.15f));
+        actor.ApplyDuelLock(target, 2);
+        target.ApplyDuelLock(actor, 2);
 
-    if (originalAttacker.IsDead)
-        logController.AppendBattleLog(logController.BuildDeathLog(originalAttacker));
-}
+        logController.AppendBattleLog(string.Format(
+            "{0}의 {1} → {2}: 2턴간 결투 격리",
+            actor.Name,
+            skill != null ? skill.skillName : "결투",
+            target.Name));
+    }
 
-private void ApplyBlackArenaDuel(BattleUnit actor, BattleUnit target, SkillDefinition skill)
-{
-    if (actor == null || target == null)
-        return;
+    private IEnumerator ApplyAbyssReboundSelfRecoil(BattleUnit actor, SkillDefinition skill, int totalHpDamageDealt)
+    {
+        if (actor == null || actor.IsDead)
+            yield break;
 
-    actor.ApplyDuelLock(target, 2);
-    target.ApplyDuelLock(actor, 2);
+        if (totalHpDamageDealt <= 0)
+            yield break;
 
-    logController.AppendBattleLog(string.Format(
-        "{0}의 {1} → {2}: 2턴간 결투 격리",
-        actor.Name,
-        skill != null ? skill.skillName : "결투",
-        target.Name));
-}
+        int recoilDamage = Mathf.Max(1, Mathf.FloorToInt(totalHpDamageDealt * 0.2f));
+        int actualDamage = actor.ApplyDamage(recoilDamage);
 
-private IEnumerator ApplyAbyssReboundSelfRecoil(BattleUnit actor, SkillDefinition skill, int totalHpDamageDealt)
-{
-    if (actor == null || actor.IsDead)
-        yield break;
+        if (actualDamage <= 0)
+            yield break;
 
-    if (totalHpDamageDealt <= 0)
-        yield break;
+        logController.AppendBattleLog(string.Format(
+            "{0}의 {1} 반동 → {2} 피해",
+            actor.Name,
+            skill != null ? skill.skillName : "심연 반동",
+            actualDamage));
 
-    int recoilDamage = Mathf.Max(1, Mathf.FloorToInt(totalHpDamageDealt * 0.2f));
-    int actualDamage = actor.ApplyDamage(recoilDamage);
+        BattleUnitView actorView = viewManager.GetView(actor);
+        if (actorView != null)
+            yield return StartCoroutine(actorView.AnimateHPChange(0.15f));
 
-    if (actualDamage <= 0)
-        yield break;
-
-    logController.AppendBattleLog(string.Format(
-        "{0}의 {1} 반동 → {2} 피해",
-        actor.Name,
-        skill != null ? skill.skillName : "심연 반동",
-        actualDamage));
-
-    BattleUnitView actorView = viewManager.GetView(actor);
-    if (actorView != null)
-        yield return StartCoroutine(actorView.AnimateHPChange(0.15f));
-
-    if (actor.IsDead)
-        logController.AppendBattleLog(logController.BuildDeathLog(actor));
-}
+        if (actor.IsDead)
+            logController.AppendBattleLog(logController.BuildDeathLog(actor));
+    }
 
     private BattleUnit GetBackUnit(BattleUnit primaryTarget)
     {
