@@ -124,10 +124,8 @@ public class BattleSkillGimmickController : MonoBehaviour
         pending.sourceData = ClonePartyMemberData(actor.MemberData);
         pending.sourceSkill = skill;
 
-        // 라운드 시작 시 증원이 처리되므로,
-        // "2라운드 후"를 구현하려면 현재 라운드 다음의 2개 라운드를 모두 지난 뒤,
-        // 그 다음 라운드 시작에서 소환되도록 +3을 사용한다.
-        pending.resolveRound = Mathf.Max(1, battleManager.CurrentRound + 3);
+        int delayRounds = skill.GetDelayedReinforcementDelayRounds();
+        pending.resolveRound = Mathf.Max(1, battleManager.CurrentRound + delayRounds + 1);
         pending.sourceUnitName = actor.Name;
         pending.skillName = GetSkillName(skill);
         pendingReinforcements.Add(pending);
@@ -135,7 +133,7 @@ public class BattleSkillGimmickController : MonoBehaviour
         // 이 스킬은 전투 중 1회만 사용 가능.
         actor.DisableSkill(skill);
 
-        AppendLog(string.Format("{0}의 {1}: 2라운드 후 증원 예약", actor.Name, pending.skillName));
+        AppendLog(string.Format("{0}의 {1}: {2}라운드 후 증원 예약", actor.Name, pending.skillName, delayRounds));
     }
 
     private IEnumerator SpawnPendingReinforcement(PendingReinforcement pending)

@@ -583,9 +583,9 @@ private void ApplyBlackArenaDuel(BattleUnit actor, BattleUnit target, SkillDefin
     target.ApplyDuelLock(actor, 2);
 
     logController.AppendBattleLog(string.Format(
-        "{0}의 {1} → {2}: 2턴간 흑투기장 격리",
+        "{0}의 {1} → {2}: 2턴간 결투 격리",
         actor.Name,
-        skill != null ? skill.skillName : "흑투기장",
+        skill != null ? skill.skillName : "결투",
         target.Name));
 }
 
@@ -805,7 +805,7 @@ private IEnumerator ApplyAbyssReboundSelfRecoil(BattleUnit actor, SkillDefinitio
             case StatusEffectType.Stun: return "기절";
             case StatusEffectType.Taunt: return "도발";
             case StatusEffectType.CounterStance: return "반격 태세";
-            case StatusEffectType.DuelArena: return "흑투기장";
+            case StatusEffectType.DuelArena: return "결투";
             default: return statusType.ToString();
         }
     }
