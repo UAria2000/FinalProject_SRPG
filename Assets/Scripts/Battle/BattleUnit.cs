@@ -11,6 +11,7 @@ public class BattleUnit
     private readonly HashSet<string> disabledSkillKeys = new HashSet<string>();
 
     private SkillDefinition pendingPassiveSkill;
+    private BattleUnit duelLockedTarget;
 
     public BattleUnit(PartyMemberData data, TeamType team)
     {
@@ -46,6 +47,30 @@ public class BattleUnit
     public int CurrentHP { get; private set; }
     public int CurrentShield { get; private set; }
     public bool IsDead { get { return CurrentHP <= 0; } }
+
+    public BattleUnit DuelLockedTarget
+    {
+        get
+        {
+            if (!HasStatus(StatusEffectType.DuelArena))
+                return null;
+
+            if (duelLockedTarget == null || duelLockedTarget.IsDead)
+                return null;
+
+            return duelLockedTarget;
+        }
+    }
+
+    public bool HasActiveDuelLock
+    {
+        get { return DuelLockedTarget != null; }
+    }
+
+    public bool IsPositionMovementLocked
+    {
+        get { return HasActiveDuelLock; }
+    }
 
     public CharacterRangeType RangeType { get { return Definition != null ? Definition.rangeType : CharacterRangeType.Melee; } }
 
@@ -515,6 +540,18 @@ public class BattleUnit
         return amount;
     }
 
+    public void ApplyDuelLock(BattleUnit opponent, int duration)
+    {
+        duelLockedTarget = opponent;
+        ApplyStatus(StatusEffectType.DuelArena, duration);
+    }
+
+    public void ClearDuelLock()
+    {
+        duelLockedTarget = null;
+        RemoveStatus(StatusEffectType.DuelArena);
+    }
+
     private BattleStatusInstance FindStatusInstance(StatusEffectType statusType)
     {
         for (int i = 0; i < statuses.Count; i++)
@@ -570,8 +607,12 @@ public class BattleUnit
 
             if (statuses[i].remainingTurns <= 0)
             {
-                result.expiredStatuses.Add(statuses[i].statusType);
+                StatusEffectType expiredType = statuses[i].statusType;
+                result.expiredStatuses.Add(expiredType);
                 statuses.RemoveAt(i);
+
+                if (expiredType == StatusEffectType.DuelArena)
+                    duelLockedTarget = null;
             }
         }
 
@@ -606,6 +647,9 @@ public class BattleUnit
             if (statuses[i].statusType == statusType)
                 statuses.RemoveAt(i);
         }
+
+        if (statusType == StatusEffectType.DuelArena)
+            duelLockedTarget = null;
     }
 
     public bool HasStatus(StatusEffectType statusType)

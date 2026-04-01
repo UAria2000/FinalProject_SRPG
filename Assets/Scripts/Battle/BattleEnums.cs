@@ -129,7 +129,8 @@ public enum StatusEffectType
     Bleed,
     Stun,
     Taunt,
-    CounterStance
+    CounterStance,
+    DuelArena
 }
 
 public enum StatModifierType

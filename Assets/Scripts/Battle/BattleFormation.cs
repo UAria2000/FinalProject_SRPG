@@ -73,6 +73,7 @@ public class BattleFormation
     public void Swap(BattleUnit a, BattleUnit b)
     {
         if (a == null || b == null) return;
+        if (a.IsPositionMovementLocked || b.IsPositionMovementLocked) return;
 
         int indexA = -1;
         int indexB = -1;
@@ -93,6 +94,9 @@ public class BattleFormation
     public bool MoveUnitByDelta(BattleUnit unit, int delta)
     {
         if (unit == null || delta == 0)
+            return false;
+
+        if (unit.IsPositionMovementLocked)
             return false;
 
         int currentIndex = -1;
@@ -120,6 +124,9 @@ public class BattleFormation
         if (unit == null)
             return false;
 
+        if (unit.IsPositionMovementLocked)
+            return false;
+
         if (targetIndex < 0) targetIndex = 0;
         if (targetIndex >= slots.Length) targetIndex = slots.Length - 1;
 
@@ -138,6 +145,12 @@ public class BattleFormation
 
         if (targetIndex > currentIndex)
         {
+            for (int i = currentIndex + 1; i <= targetIndex; i++)
+            {
+                if (slots[i] != null && slots[i].IsPositionMovementLocked)
+                    return false;
+            }
+
             for (int i = currentIndex; i < targetIndex; i++)
             {
                 slots[i] = slots[i + 1];
@@ -147,6 +160,12 @@ public class BattleFormation
         }
         else
         {
+            for (int i = targetIndex; i < currentIndex; i++)
+            {
+                if (slots[i] != null && slots[i].IsPositionMovementLocked)
+                    return false;
+            }
+
             for (int i = currentIndex; i > targetIndex; i--)
             {
                 slots[i] = slots[i - 1];
@@ -170,22 +189,54 @@ public class BattleFormation
                 slots[i] = null;
         }
 
+        BattleUnit[] nextSlots = new BattleUnit[4];
+        bool[] fixedIndices = new bool[4];
+
+        for (int i = 0; i < slots.Length; i++)
+        {
+            BattleUnit unit = slots[i];
+            if (unit != null && unit.IsPositionMovementLocked)
+            {
+                nextSlots[i] = unit;
+                fixedIndices[i] = true;
+                unit.SlotIndex = i;
+            }
+        }
+
         int writeIndex = 0;
+
         for (int readIndex = 0; readIndex < slots.Length; readIndex++)
         {
             BattleUnit unit = slots[readIndex];
-            if (unit == null) continue;
+            if (unit == null)
+                continue;
+
+            if (unit.IsPositionMovementLocked)
+                continue;
+
+            while (writeIndex < nextSlots.Length && fixedIndices[writeIndex])
+                writeIndex++;
+
+            if (writeIndex >= nextSlots.Length)
+                break;
+
+            nextSlots[writeIndex] = unit;
 
             if (readIndex != writeIndex)
             {
-                slots[writeIndex] = unit;
-                slots[readIndex] = null;
                 unit.SlotIndex = writeIndex;
                 moved.Add(unit);
+            }
+            else
+            {
+                unit.SlotIndex = writeIndex;
             }
 
             writeIndex++;
         }
+
+        for (int i = 0; i < slots.Length; i++)
+            slots[i] = nextSlots[i];
 
         return moved;
     }

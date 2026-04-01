@@ -95,38 +95,6 @@ public class BattlePassiveController : MonoBehaviour
             skillName,
             shieldAmount));
     }
-    private void ApplyShieldThornsBleed(BattleUnit attacker, BattleUnit defender, SkillDefinition passiveSkill)
-    {
-        if (attacker == null || attacker.IsDead)
-            return;
-
-        int baseChance = 25;
-        int resist = attacker.BleedResist;
-        int finalChance = Mathf.RoundToInt(baseChance * Mathf.Clamp01((100f - resist) / 100f));
-
-        bool success = Random.Range(0f, 100f) < finalChance;
-        string skillName = GetPassiveSkillName(passiveSkill);
-
-        if (!success)
-        {
-            AppendLog(string.Format(
-                "{0}의 {1} 발동 → {2} 출혈 실패 ({3}%)",
-                defender.Name,
-                skillName,
-                attacker.Name,
-                finalChance));
-            return;
-        }
-
-        attacker.ApplyStatus(StatusEffectType.Bleed, 1);
-
-        AppendLog(string.Format(
-            "{0}의 {1} 발동 → {2} 출혈 1스택 ({3}%)",
-            defender.Name,
-            skillName,
-            attacker.Name,
-            finalChance));
-    }
 
     private void ResolveBattleStartPassivesForFormation(BattleFormation sourceFormation, BattleFormation targetFormation)
     {
@@ -180,6 +148,39 @@ public class BattlePassiveController : MonoBehaviour
                 sourceUnit.Name,
                 skillName));
         }
+    }
+
+    private void ApplyShieldThornsBleed(BattleUnit attacker, BattleUnit defender, SkillDefinition passiveSkill)
+    {
+        if (attacker == null || attacker.IsDead)
+            return;
+
+        int baseChance = 25;
+        int resist = attacker.BleedResist;
+        int finalChance = Mathf.RoundToInt(baseChance * Mathf.Clamp01((100f - resist) / 100f));
+
+        bool success = Random.Range(0f, 100f) < finalChance;
+        string skillName = GetPassiveSkillName(passiveSkill);
+
+        if (!success)
+        {
+            AppendLog(string.Format(
+                "{0}의 {1} 발동 → {2} 출혈 실패 ({3}%)",
+                defender.Name,
+                skillName,
+                attacker.Name,
+                finalChance));
+            return;
+        }
+
+        attacker.ApplyStatus(StatusEffectType.Bleed, 1);
+
+        AppendLog(string.Format(
+            "{0}의 {1} 발동 → {2} 출혈 1스택 ({3}%)",
+            defender.Name,
+            skillName,
+            attacker.Name,
+            finalChance));
     }
 
     private void EvaluateLonePassiveForFormation(BattleFormation formation, BattleUnit endedTurnUnit)

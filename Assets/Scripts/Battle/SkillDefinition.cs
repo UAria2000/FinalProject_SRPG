@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-
 public enum PassiveSkillGimmick
 {
     None,
@@ -18,7 +17,8 @@ public enum ActiveSkillGimmick
     BleedDrainStrike,
     ForceMoveTargetToRankAfterHit,
     PushTargetBackwardAfterHit,
-    AbyssReboundSelfRecoil20FromTotalDamage
+    AbyssReboundSelfRecoil20FromTotalDamage,
+    BlackArenaDuel2Turns
 }
 
 [CreateAssetMenu(menuName = "Battle/Skill Definition")]

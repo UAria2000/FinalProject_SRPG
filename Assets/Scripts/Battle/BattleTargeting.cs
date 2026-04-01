@@ -18,6 +18,23 @@ public static class BattleTargeting
             return result;
         }
 
+        if (actor.HasActiveDuelLock)
+        {
+            if (skill.targetTeam == SkillTargetTeam.Ally)
+                return result;
+
+            BattleUnit duelTarget = actor.DuelLockedTarget;
+            if (skill.targetTeam == SkillTargetTeam.Enemy &&
+                duelTarget != null &&
+                !duelTarget.IsDead &&
+                skill.CanTargetSlot(duelTarget.SlotIndex))
+            {
+                result.Add(duelTarget);
+            }
+
+            return result;
+        }
+
         BattleFormation formation = skill.targetTeam == SkillTargetTeam.Ally ? allyFormation : enemyFormation;
         if (formation == null)
             return result;
@@ -31,6 +48,7 @@ public static class BattleTargeting
             if (!skill.CanTargetSlot(unit.SlotIndex)) continue;
             if (skill.targetTeam == SkillTargetTeam.Ally && unit.Team != actor.Team) continue;
             if (skill.targetTeam == SkillTargetTeam.Enemy && unit.Team == actor.Team) continue;
+            if (unit.HasActiveDuelLock) continue;
             result.Add(unit);
         }
 
@@ -70,6 +88,7 @@ public static class BattleTargeting
     {
         List<BattleUnit> result = new List<BattleUnit>();
         if (actor == null || actor.IsDead || allyFormation == null) return result;
+        if (actor.IsPositionMovementLocked) return result;
 
         BattleUnit left = allyFormation.GetUnit(actor.SlotIndex - 1);
         BattleUnit right = allyFormation.GetUnit(actor.SlotIndex + 1);
@@ -98,6 +117,22 @@ public static class BattleTargeting
             return result;
         }
 
+        if (actor.HasActiveDuelLock)
+        {
+            if (item.targetTeam == SkillTargetTeam.Ally)
+                return result;
+
+            BattleUnit duelTarget = actor.DuelLockedTarget;
+            if (item.targetTeam == SkillTargetTeam.Enemy &&
+                duelTarget != null &&
+                !duelTarget.IsDead)
+            {
+                result.Add(duelTarget);
+            }
+
+            return result;
+        }
+
         BattleFormation formation = item.targetTeam == SkillTargetTeam.Ally ? allyFormation : enemyFormation;
         if (formation == null)
             return result;
@@ -110,6 +145,7 @@ public static class BattleTargeting
             if (unit == null || unit.IsDead) continue;
             if (item.targetTeam == SkillTargetTeam.Ally && unit.Team != actor.Team) continue;
             if (item.targetTeam == SkillTargetTeam.Enemy && unit.Team == actor.Team) continue;
+            if (unit.HasActiveDuelLock) continue;
             result.Add(unit);
         }
 
@@ -154,11 +190,17 @@ public static class BattleTargeting
         if (actor == null || actor.IsDead || enemyFormation == null || predicate == null)
             return result;
 
+        if (actor.HasActiveDuelLock)
+            return result;
+
         List<BattleUnit> candidates = enemyFormation.GetAliveUnits();
         for (int i = 0; i < candidates.Count; i++)
         {
             BattleUnit unit = candidates[i];
             if (unit == null || unit.IsDead)
+                continue;
+
+            if (unit.HasActiveDuelLock)
                 continue;
 
             if (!predicate(unit))
@@ -184,6 +226,12 @@ public static class BattleTargeting
         if (skill.secondaryTargetRule == SecondaryTargetRule.None)
             return null;
 
+        if (actor.HasActiveDuelLock)
+            return null;
+
+        if (primaryTarget.HasActiveDuelLock)
+            return null;
+
         BattleFormation targetFormation = primaryTarget.Team == TeamType.Ally ? allyFormation : enemyFormation;
         if (targetFormation == null)
             return null;
@@ -191,12 +239,12 @@ public static class BattleTargeting
         switch (skill.secondaryTargetRule)
         {
             case SecondaryTargetRule.BackOne:
-                {
-                    BattleUnit back = targetFormation.GetUnit(primaryTarget.SlotIndex + 1);
-                    if (back == null || back.IsDead)
-                        return null;
-                    return back;
-                }
+            {
+                BattleUnit back = targetFormation.GetUnit(primaryTarget.SlotIndex + 1);
+                if (back == null || back.IsDead || back.HasActiveDuelLock)
+                    return null;
+                return back;
+            }
         }
 
         return null;
@@ -213,7 +261,10 @@ public static class BattleTargeting
         for (int i = 0; i < aliveUnits.Count; i++)
         {
             BattleUnit unit = aliveUnits[i];
-            if (unit != null && !unit.IsDead && unit.HasStatus(StatusEffectType.Taunt))
+            if (unit != null &&
+                !unit.IsDead &&
+                !unit.HasActiveDuelLock &&
+                unit.HasStatus(StatusEffectType.Taunt))
             {
                 hasTauntingUnit = true;
                 break;

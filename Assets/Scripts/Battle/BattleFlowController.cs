@@ -103,6 +103,8 @@ public class BattleFlowController : MonoBehaviour
         for (int i = 0; i < movedEnemies.Count; i++)
             logController.AppendBattleLog(logController.BuildAutoMoveLog(movedEnemies[i]));
 
+        ClearInvalidDuelLocks();
+
         if (viewManager != null)
         {
             RemoveDeadViews();
@@ -366,6 +368,28 @@ public class BattleFlowController : MonoBehaviour
         for (int i = 0; i < result.expiredStatuses.Count; i++)
             logController.AppendBattleLog(logController.BuildStatusExpiredLog(unit, result.expiredStatuses[i]));
     }
+
+private void ClearInvalidDuelLocks()
+{
+    List<BattleUnit> units = new List<BattleUnit>();
+
+    if (battleManager.AllyFormation != null)
+        units.AddRange(battleManager.AllyFormation.GetAllUnits());
+
+    if (battleManager.EnemyFormation != null)
+        units.AddRange(battleManager.EnemyFormation.GetAllUnits());
+
+    for (int i = 0; i < units.Count; i++)
+    {
+        BattleUnit unit = units[i];
+        if (unit == null)
+            continue;
+
+        BattleUnit duelTarget = unit.DuelLockedTarget;
+        if (duelTarget != null && !IsUnitInBattle(duelTarget))
+            unit.ClearDuelLock();
+    }
+}
 
     private void RemoveDeadViews()
     {
