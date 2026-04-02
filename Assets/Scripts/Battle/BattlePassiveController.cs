@@ -93,14 +93,21 @@ public class BattlePassiveController : MonoBehaviour
                 out passiveSkill))
             return;
 
-        int shieldAmount = defender.AddShield(hpDamageTaken);
+        float gainPercent = passiveSkill.GetBlackAuraShieldGainPercentFromHpDamage();
+        int flatBonus = passiveSkill.GetBlackAuraShieldFlatBonus();
+
+        int shieldAmount = Mathf.Max(0, Mathf.FloorToInt(hpDamageTaken * (gainPercent * 0.01f)) + flatBonus);
+        if (shieldAmount <= 0)
+            return;
+
+        int actualShield = defender.AddShield(shieldAmount);
         string skillName = GetPassiveSkillName(passiveSkill);
 
         AppendLog(string.Format(
             "{0}의 {1} 발동 → 보호막 {2}",
             defender.Name,
             skillName,
-            shieldAmount));
+            actualShield));
     }
 
     private void ResolveBattleStartPassivesForFormation(BattleFormation sourceFormation, BattleFormation targetFormation)
@@ -121,14 +128,21 @@ public class BattlePassiveController : MonoBehaviour
                     out passiveSkill))
                 continue;
 
-            ApplyBattleStartEnemyTeamDmgDown10Permanent(sourceUnit, targetFormation, passiveSkill);
+            ApplyBattleStartEnemyTeamDmgDown(sourceUnit, targetFormation, passiveSkill);
         }
     }
 
-    private void ApplyBattleStartEnemyTeamDmgDown10Permanent(BattleUnit sourceUnit, BattleFormation targetFormation, SkillDefinition passiveSkill)
+    private void ApplyBattleStartEnemyTeamDmgDown(BattleUnit sourceUnit, BattleFormation targetFormation, SkillDefinition passiveSkill)
     {
-        if (sourceUnit == null || targetFormation == null)
+        if (sourceUnit == null || targetFormation == null || passiveSkill == null)
             return;
+
+        int percent = passiveSkill.GetBattleStartEnemyTeamDmgDownPercent();
+        if (percent <= 0)
+            return;
+
+        bool isPermanent = passiveSkill.IsBattleStartEnemyTeamDmgDownPermanent();
+        int duration = passiveSkill.GetBattleStartEnemyTeamDmgDownDurationTurns();
 
         List<BattleUnit> targets = targetFormation.GetAliveUnits();
         bool anyApplied = false;
@@ -139,26 +153,53 @@ public class BattlePassiveController : MonoBehaviour
             if (target == null || target.IsDead)
                 continue;
 
-            target.AddPersistentBattleDmgModifierPercent(-10);
-            anyApplied = true;
+            if (isPermanent)
+            {
+                target.AddPersistentBattleDmgModifierPercent(-percent);
+                anyApplied = true;
+            }
+            else
+            {
+                bool applied = target.TryApplyTimedModifier(
+                    StatModifierType.DMG,
+                    -percent,
+                    duration);
+
+                anyApplied |= applied;
+            }
         }
 
-        if (anyApplied)
+        if (!anyApplied)
+            return;
+
+        string skillName = GetPassiveSkillName(passiveSkill);
+        if (isPermanent)
         {
-            string skillName = GetPassiveSkillName(passiveSkill);
             AppendLog(string.Format(
-                "{0}의 {1} 발동 → 적 전체 DMG 10% 감소 (전투 종료까지, 중첩 가능)",
+                "{0}의 {1} 발동 → 적 전체 DMG {2}% 감소 (전투 종료까지)",
                 sourceUnit.Name,
-                skillName));
+                skillName,
+                percent));
+        }
+        else
+        {
+            AppendLog(string.Format(
+                "{0}의 {1} 발동 → 적 전체 DMG {2}% 감소 ({3}턴)",
+                sourceUnit.Name,
+                skillName,
+                percent,
+                duration));
         }
     }
 
     private void ApplyShieldThornsBleed(BattleUnit attacker, BattleUnit defender, SkillDefinition passiveSkill)
     {
-        if (attacker == null || attacker.IsDead)
+        if (attacker == null || attacker.IsDead || passiveSkill == null)
             return;
 
-        int baseChance = 100;
+        float baseChance = passiveSkill.GetShieldedHitBleedChancePercent();
+        int stacks = passiveSkill.GetShieldedHitBleedStacks();
+
         int resist = attacker.BleedResist;
         int finalChance = Mathf.RoundToInt(baseChance * Mathf.Clamp01((100f - resist) / 100f));
 
@@ -176,13 +217,14 @@ public class BattlePassiveController : MonoBehaviour
             return;
         }
 
-        attacker.ApplyStatus(StatusEffectType.Bleed, 1);
+        attacker.ApplyStatus(StatusEffectType.Bleed, stacks);
 
         AppendLog(string.Format(
-            "{0}의 {1} 발동 → {2} 출혈 1스택 ({3}%)",
+            "{0}의 {1} 발동 → {2} 출혈 {3}스택 ({4}%)",
             defender.Name,
             skillName,
             attacker.Name,
+            stacks,
             finalChance));
     }
 

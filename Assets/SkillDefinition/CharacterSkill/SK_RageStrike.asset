@@ -1,0 +1,76 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b0ec0aa42fa160a46a6330d7ff30c770, type: 3}
+  m_Name: SK_RageStrike
+  m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
+  skillId: rage_strike
+  skillName: "\uBD84\uB178\uC758 \uC77C\uACA9"
+  description: "\uCCB4\uB825\uC744 \uC783\uC744 \uC218\uB85D \uBD84\uB178\uD558\uC5EC
+    \uAC15\uD55C \uD53C\uD574\uB97C \uC785\uD78C\uB2E4"
+  icon: {fileID: 0}
+  isBasicAttack: 0
+  castType: 0
+  activeRole: 0
+  learnTags: 0
+  rangeTag: 0
+  passiveGimmick: 0
+  activeGimmick: 0
+  usableMinSlotIndex: 0
+  usableMaxSlotIndex: 1
+  targetMinSlotIndex: 0
+  targetMaxSlotIndex: 1
+  targetTeam: 0
+  targetScope: 0
+  resolutionMode: 0
+  cooldownTurns: 1
+  accuracyCoefficientPercent: 100
+  allowCrit: 1
+  allowGraze: 1
+  selfMoveDirection: 0
+  selfMoveSteps: 0
+  selfApplyStatusAfterUse: 0
+  selfApplyStatusDurationTurns: 0
+  useMissingHpPowerBonus: 1
+  missingHpPercentStep: 1
+  bonusPowerPerStep: 3
+  secondaryTargetRule: 0
+  secondaryAccuracyCoefficientPercent: 100
+  secondaryDamagePercent: 0
+  secondaryApplyNonDamageEffects: 0
+  forcedTargetMoveToRank: 1
+  forcedTargetMoveSteps: 1
+  pushBackFailFinalPowerPercent: 0
+  delayedReinforcementDelayRounds: 2
+  abyssReboundRecoilPercentFromTotalDamage: 20
+  blackArenaDuelDurationTurns: 2
+  battleStartEnemyTeamDmgDownPercent: 10
+  battleStartEnemyTeamDmgDownDurationTurns: 0
+  battleStartEnemyTeamDmgDownPermanent: 1
+  shieldedHitBleedChancePercent: 100
+  shieldedHitBleedStacks: 1
+  blackAuraShieldGainPercentFromHpDamage: 100
+  blackAuraShieldFlatBonus: 0
+  effects:
+  - kind: 0
+    statusType: 0
+    statModifierType: 0
+    successChancePercent: 100
+    affectedByResistance: 0
+    powerPercent: 100
+    useRandomPowerPercentRange: 0
+    randomPowerPercentMin: 0
+    randomPowerPercentMax: 0
+    flatValue: 0
+    valueReference: 0
+    durationTurns: 0
+    displayIcon: {fileID: 0}
+  disableAfterUseInBattle: 0

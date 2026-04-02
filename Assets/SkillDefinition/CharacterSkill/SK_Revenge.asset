@@ -1,0 +1,73 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b0ec0aa42fa160a46a6330d7ff30c770, type: 3}
+  m_Name: SK_Revenge
+  m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
+  skillId: revenge
+  skillName: "\uBCF5\uC218"
+  description: "\uB370\uBBF8\uC9C0\uB97C \uACBD\uAC10\uD558\uACE0 \uBC18\uACA9\uD55C\uB2E4"
+  icon: {fileID: 0}
+  isBasicAttack: 0
+  castType: 0
+  activeRole: 1
+  learnTags: 0
+  rangeTag: 0
+  passiveGimmick: 0
+  activeGimmick: 0
+  usableMinSlotIndex: 0
+  usableMaxSlotIndex: 1
+  targetMinSlotIndex: 0
+  targetMaxSlotIndex: 3
+  targetTeam: 2
+  targetScope: 0
+  resolutionMode: 1
+  cooldownTurns: 2
+  accuracyCoefficientPercent: 100
+  allowCrit: 0
+  allowGraze: 0
+  selfMoveDirection: 0
+  selfMoveSteps: 0
+  secondaryTargetRule: 0
+  secondaryAccuracyCoefficientPercent: 100
+  secondaryDamagePercent: 0
+  secondaryApplyNonDamageEffects: 0
+  forcedTargetMoveToRank: 1
+  forcedTargetMoveSteps: 1
+  pushBackFailFinalPowerPercent: 0
+  effects:
+  - kind: 3
+    statusType: 0
+    statModifierType: 7
+    successChancePercent: 100
+    affectedByResistance: 0
+    powerPercent: 0
+    useRandomPowerPercentRange: 0
+    randomPowerPercentMin: 0
+    randomPowerPercentMax: 0
+    flatValue: 30
+    valueReference: 0
+    durationTurns: 1
+    displayIcon: {fileID: 0}
+  - kind: 5
+    statusType: 5
+    statModifierType: 0
+    successChancePercent: 100
+    affectedByResistance: 0
+    powerPercent: 0
+    useRandomPowerPercentRange: 0
+    randomPowerPercentMin: 0
+    randomPowerPercentMax: 0
+    flatValue: 0
+    valueReference: 0
+    durationTurns: 1
+    displayIcon: {fileID: 0}
+  disableAfterUseInBattle: 0

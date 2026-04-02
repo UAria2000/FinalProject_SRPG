@@ -1,0 +1,58 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b0ec0aa42fa160a46a6330d7ff30c770, type: 3}
+  m_Name: SK_SuckerAttack
+  m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
+  skillId: sucker_attack
+  skillName: "\uAE09\uC2B5"
+  description: "\uC55E\uC73C\uB85C \uB3CC\uC9C4\uD558\uC5EC \uB300\uC0C1\uC5D0\uAC8C
+    \uD53C\uD574\uB97C \uC785\uD78C\uB2E4"
+  icon: {fileID: 21300000, guid: 94353287c97d1b347b4e3c19b67538a4, type: 3}
+  isBasicAttack: 0
+  castType: 0
+  activeRole: 0
+  learnTags: 0
+  rangeTag: 0
+  passiveGimmick: 0
+  activeGimmick: 0
+  usableMinSlotIndex: 0
+  usableMaxSlotIndex: 2
+  targetMinSlotIndex: 0
+  targetMaxSlotIndex: 0
+  targetTeam: 0
+  targetScope: 0
+  resolutionMode: 0
+  cooldownTurns: 2
+  accuracyCoefficientPercent: 100
+  allowCrit: 1
+  allowGraze: 1
+  selfMoveDirection: 1
+  selfMoveSteps: 1
+  secondaryTargetRule: 0
+  secondaryAccuracyCoefficientPercent: 100
+  secondaryDamagePercent: 0
+  secondaryApplyNonDamageEffects: 0
+  effects:
+  - kind: 0
+    statusType: 0
+    statModifierType: 0
+    successChancePercent: 0
+    affectedByResistance: 0
+    powerPercent: 0
+    useRandomPowerPercentRange: 1
+    randomPowerPercentMin: 90
+    randomPowerPercentMax: 100
+    flatValue: 0
+    valueReference: 0
+    durationTurns: 0
+    displayIcon: {fileID: 0}
+  disableAfterUseInBattle: 0

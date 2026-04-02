@@ -662,28 +662,31 @@ public class BattleActionController : MonoBehaviour
 
     private void ApplyBlackArenaDuel(BattleUnit actor, BattleUnit target, SkillDefinition skill)
     {
-        if (actor == null || target == null)
+        if (actor == null || target == null || skill == null)
             return;
 
-        actor.ApplyDuelLock(target, 2);
-        target.ApplyDuelLock(actor, 2);
+        int duration = skill.GetBlackArenaDuelDurationTurns();
+        actor.ApplyDuelLock(target, duration);
+        target.ApplyDuelLock(actor, duration);
 
         logController.AppendBattleLog(string.Format(
-            "{0}의 {1} → {2}: 2턴간 결투 격리",
+            "{0}의 {1} → {2}: {3}턴간 결투 격리",
             actor.Name,
-            skill != null ? skill.skillName : "결투",
-            target.Name));
+            skill.skillName,
+            target.Name,
+            duration));
     }
 
     private IEnumerator ApplyAbyssReboundSelfRecoil(BattleUnit actor, SkillDefinition skill, int totalHpDamageDealt)
     {
-        if (actor == null || actor.IsDead)
+        if (actor == null || actor.IsDead || skill == null)
             yield break;
 
         if (totalHpDamageDealt <= 0)
             yield break;
 
-        int recoilDamage = Mathf.Max(1, Mathf.FloorToInt(totalHpDamageDealt * 0.2f));
+        float recoilPercent = skill.GetAbyssReboundRecoilPercentFromTotalDamage();
+        int recoilDamage = Mathf.Max(1, Mathf.FloorToInt(totalHpDamageDealt * (recoilPercent * 0.01f)));
         int actualDamage = actor.ApplyDamage(recoilDamage);
 
         if (actualDamage <= 0)
@@ -692,7 +695,7 @@ public class BattleActionController : MonoBehaviour
         logController.AppendBattleLog(string.Format(
             "{0}의 {1} 반동 → {2} 피해",
             actor.Name,
-            skill != null ? skill.skillName : "심연 반동",
+            skill.skillName,
             actualDamage));
 
         BattleUnitView actorView = viewManager.GetView(actor);

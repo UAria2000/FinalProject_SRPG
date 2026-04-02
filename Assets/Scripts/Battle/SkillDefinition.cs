@@ -88,6 +88,38 @@ public class SkillDefinition : ScriptableObject
     [Tooltip("뒤로 밀치기 실패 시 적용할 최종 피해 계수. 0이면 미사용")]
     [Min(0f)] public float pushBackFailFinalPowerPercent = 0f;
 
+    [Header("Active Gimmick Settings")]
+    [Tooltip("증원 스킬 사용 후 몇 라운드 뒤에 소환될지")]
+    [Min(1)] public int delayedReinforcementDelayRounds = 2;
+
+    [Tooltip("심연 반동: 총 HP 피해량의 몇 %를 반동으로 받을지")]
+    [Range(0f, 300f)] public float abyssReboundRecoilPercentFromTotalDamage = 20f;
+
+    [Tooltip("결투 지속 턴")]
+    [Min(1)] public int blackArenaDuelDurationTurns = 2;
+
+    [Header("Passive Gimmick Settings")]
+    [Tooltip("전투 시작 시 적 전체 DMG 감소 수치")]
+    [Min(0)] public int battleStartEnemyTeamDmgDownPercent = 10;
+
+    [Tooltip("0이면 지속 턴 미사용. permanent가 false일 때만 의미 있음")]
+    [Min(0)] public int battleStartEnemyTeamDmgDownDurationTurns = 0;
+
+    [Tooltip("체크 시 전투 종료까지 영구 적용")]
+    public bool battleStartEnemyTeamDmgDownPermanent = true;
+
+    [Tooltip("보호막이 있는 상태에서 피격 시 공격자 출혈 부여 확률")]
+    [Range(0f, 100f)] public float shieldedHitBleedChancePercent = 100f;
+
+    [Tooltip("보호막 피격 출혈 스택 수")]
+    [Min(1)] public int shieldedHitBleedStacks = 1;
+
+    [Tooltip("불멸의 메아리: 받은 HP 피해량의 몇 %만큼 보호막 획득")]
+    [Range(0f, 500f)] public float blackAuraShieldGainPercentFromHpDamage = 100f;
+
+    [Tooltip("불멸의 메아리: 추가 고정 보호막")]
+    public int blackAuraShieldFlatBonus = 0;
+
     [Header("Effects")]
     public List<BattleEffectBlock> effects = new List<BattleEffectBlock>();
 
@@ -214,5 +246,55 @@ public class SkillDefinition : ScriptableObject
     public float GetPushBackFailFinalPowerPercent()
     {
         return Mathf.Max(0f, pushBackFailFinalPowerPercent);
+    }
+
+    public int GetDelayedReinforcementDelayRounds()
+    {
+        return Mathf.Max(1, delayedReinforcementDelayRounds);
+    }
+
+    public float GetAbyssReboundRecoilPercentFromTotalDamage()
+    {
+        return Mathf.Max(0f, abyssReboundRecoilPercentFromTotalDamage);
+    }
+
+    public int GetBlackArenaDuelDurationTurns()
+    {
+        return Mathf.Max(1, blackArenaDuelDurationTurns);
+    }
+
+    public int GetBattleStartEnemyTeamDmgDownPercent()
+    {
+        return Mathf.Max(0, battleStartEnemyTeamDmgDownPercent);
+    }
+
+    public int GetBattleStartEnemyTeamDmgDownDurationTurns()
+    {
+        return Mathf.Max(0, battleStartEnemyTeamDmgDownDurationTurns);
+    }
+
+    public bool IsBattleStartEnemyTeamDmgDownPermanent()
+    {
+        return battleStartEnemyTeamDmgDownPermanent || battleStartEnemyTeamDmgDownDurationTurns <= 0;
+    }
+
+    public float GetShieldedHitBleedChancePercent()
+    {
+        return Mathf.Clamp(shieldedHitBleedChancePercent, 0f, 100f);
+    }
+
+    public int GetShieldedHitBleedStacks()
+    {
+        return Mathf.Max(1, shieldedHitBleedStacks);
+    }
+
+    public float GetBlackAuraShieldGainPercentFromHpDamage()
+    {
+        return Mathf.Max(0f, blackAuraShieldGainPercentFromHpDamage);
+    }
+
+    public int GetBlackAuraShieldFlatBonus()
+    {
+        return blackAuraShieldFlatBonus;
     }
 }
