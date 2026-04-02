@@ -15,7 +15,7 @@ MonoBehaviour:
   itemId: item_knight_captured
   itemName: "\uBD99\uC7A1\uD78C \uAE30\uC0AC"
   description: 
-  icon: {fileID: 21300000, guid: c59b9745dbd3a4449b269f36c6d858d9, type: 3}
+  icon: {fileID: 21300000, guid: c00b30ea490a29645b8957506c856330, type: 3}
   targetTeam: 1
   targetScope: 0
   usableInBattle: 0
