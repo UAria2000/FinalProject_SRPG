@@ -30,18 +30,21 @@ MonoBehaviour:
   targetMaxSlotIndex: 3
   targetTeam: 0
   targetScope: 1
-  resolutionMode: 0
+  resolutionMode: 1
   cooldownTurns: 0
   accuracyCoefficientPercent: 100
   allowCrit: 1
   allowGraze: 1
   selfMoveDirection: 0
   selfMoveSteps: 0
+  selfApplyStatusAfterUse: 0
+  selfApplyStatusDurationTurns: 0
   secondaryTargetRule: 0
   secondaryAccuracyCoefficientPercent: 100
   secondaryDamagePercent: 0
   secondaryApplyNonDamageEffects: 0
   forcedTargetMoveToRank: 1
   forcedTargetMoveSteps: 1
+  pushBackFailFinalPowerPercent: 0
   effects: []
   disableAfterUseInBattle: 0

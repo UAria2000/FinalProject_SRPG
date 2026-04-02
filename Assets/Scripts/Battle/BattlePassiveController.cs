@@ -7,17 +7,24 @@ public class BattlePassiveController : MonoBehaviour
 {
     private BattleManager battleManager;
     private BattleLogController logController;
+    private bool battleStartPassivesResolved;
 
     public void Initialize(BattleManager manager, BattleLogController log)
     {
         battleManager = manager;
         logController = log;
+        battleStartPassivesResolved = false;
     }
 
     public void ResolveBattleStartPassives()
     {
         if (battleManager == null || battleManager.BattleResult != BattleResultType.None)
             return;
+
+        if (battleStartPassivesResolved)
+            return;
+
+        battleStartPassivesResolved = true;
 
         ResolveBattleStartPassivesForFormation(
             battleManager.AllyFormation,
@@ -110,15 +117,15 @@ public class BattlePassiveController : MonoBehaviour
 
             SkillDefinition passiveSkill;
             if (!sourceUnit.TryGetPassiveSkillByGimmick(
-                    PassiveSkillGimmick.BattleStartEnemyTeamDmgDown20For2Turns,
+                    PassiveSkillGimmick.BattleStartEnemyTeamDmgDown10Permanent,
                     out passiveSkill))
                 continue;
 
-            ApplyBattleStartEnemyTeamDmgDown20For2Turns(sourceUnit, targetFormation, passiveSkill);
+            ApplyBattleStartEnemyTeamDmgDown10Permanent(sourceUnit, targetFormation, passiveSkill);
         }
     }
 
-    private void ApplyBattleStartEnemyTeamDmgDown20For2Turns(BattleUnit sourceUnit, BattleFormation targetFormation, SkillDefinition passiveSkill)
+    private void ApplyBattleStartEnemyTeamDmgDown10Permanent(BattleUnit sourceUnit, BattleFormation targetFormation, SkillDefinition passiveSkill)
     {
         if (sourceUnit == null || targetFormation == null)
             return;
@@ -132,19 +139,15 @@ public class BattlePassiveController : MonoBehaviour
             if (target == null || target.IsDead)
                 continue;
 
-            bool applied = target.TryApplyTimedModifier(
-                StatModifierType.DMG,
-                -20,
-                2);
-
-            anyApplied |= applied;
+            target.AddPersistentBattleDmgModifierPercent(-10);
+            anyApplied = true;
         }
 
         if (anyApplied)
         {
             string skillName = GetPassiveSkillName(passiveSkill);
             AppendLog(string.Format(
-                "{0}의 {1} 발동 → 적 전체 DMG 20% 감소 (2턴)",
+                "{0}의 {1} 발동 → 적 전체 DMG 10% 감소 (전투 종료까지, 중첩 가능)",
                 sourceUnit.Name,
                 skillName));
         }
@@ -155,7 +158,7 @@ public class BattlePassiveController : MonoBehaviour
         if (attacker == null || attacker.IsDead)
             return;
 
-        int baseChance = 25;
+        int baseChance = 100;
         int resist = attacker.BleedResist;
         int finalChance = Mathf.RoundToInt(baseChance * Mathf.Clamp01((100f - resist) / 100f));
 

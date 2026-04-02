@@ -54,7 +54,11 @@ public class BattleActionController : MonoBehaviour
             BattleUnitView actorView = viewManager.GetView(actor);
             BattleUnitView targetView = viewManager.GetView(clickedTarget);
             if (actorView != null && targetView != null)
-                yield return StartCoroutine(actorView.PlayAttackMove(targetView.transform.position, battleManager.AttackMoveRatio, battleManager.AttackMoveMaxDistance, battleManager.AttackMoveDuration));
+                yield return StartCoroutine(actorView.PlayAttackMove(
+                    targetView.transform.position,
+                    battleManager.AttackMoveRatio,
+                    battleManager.AttackMoveMaxDistance,
+                    battleManager.AttackMoveDuration));
         }
 
         int rolledPrimaryDamagePercent = BattleCalculator.RollSkillDamagePowerPercent(skill);
@@ -65,7 +69,14 @@ public class BattleActionController : MonoBehaviour
 
             for (int i = 0; i < targets.Count; i++)
             {
-                yield return StartCoroutine(ResolveAndApplyAttack(actor, skill, targets[i], rolledPrimaryDamagePercent, -1f, string.Empty, true));
+                yield return StartCoroutine(ResolveAndApplyAttack(
+                    actor,
+                    skill,
+                    targets[i],
+                    rolledPrimaryDamagePercent,
+                    -1f,
+                    string.Empty,
+                    true));
                 totalHpDamageDealt += lastResolvedAttackHpDamageDealt;
 
                 if (skill.HasSecondaryHit())
@@ -148,6 +159,8 @@ public class BattleActionController : MonoBehaviour
 
         if (battleManager.SkillGimmickController != null)
             battleManager.SkillGimmickController.OnSkillExecuted(actor, skill);
+
+        ApplySelfStatusAfterSkill(actor, skill);
 
         if (skill.disableAfterUseInBattle)
             actor.DisableSkill(skill);
@@ -429,7 +442,6 @@ public class BattleActionController : MonoBehaviour
             yield return StartCoroutine(ExecuteReactiveCounterAttack(target, actor));
         }
 
-        // 주 타격에만 강제 위치 이동 적용
         if (result.DidHit && string.IsNullOrEmpty(logSuffix))
             yield return StartCoroutine(HandleForcedTargetMoveAfterHit(actor, skill, target));
     }
@@ -445,6 +457,9 @@ public class BattleActionController : MonoBehaviour
 
         if (actor == null || target == null || skill == null)
             return resolvedDamagePowerPercent;
+
+        if (skill.HasMissingHpPowerBonus())
+            resolvedDamagePowerPercent += skill.GetMissingHpBonusPowerPercent(actor);
 
         if (!string.IsNullOrEmpty(logSuffix))
             return resolvedDamagePowerPercent;
@@ -472,6 +487,30 @@ public class BattleActionController : MonoBehaviour
             resolvedDamagePowerPercent = failFinalPowerPercent;
 
         return resolvedDamagePowerPercent;
+    }
+
+    private void ApplySelfStatusAfterSkill(BattleUnit actor, SkillDefinition skill)
+    {
+        if (actor == null || skill == null)
+            return;
+
+        if (actor.IsDead)
+            return;
+
+        if (!skill.HasSelfStatusAfterUse())
+            return;
+
+        actor.ApplyStatus(skill.selfApplyStatusAfterUse, skill.selfApplyStatusDurationTurns);
+
+        if (logController != null)
+        {
+            logController.AppendBattleLog(
+                logController.BuildEffectSuccessLog(
+                    actor,
+                    actor,
+                    skill.skillName,
+                    GetStatusDisplayName(skill.selfApplyStatusAfterUse)));
+        }
     }
 
     private IEnumerator HandleSelfMoveAfterSkill(BattleUnit actor, SkillDefinition skill)
@@ -810,14 +849,14 @@ public class BattleActionController : MonoBehaviour
         {
             case BattleEffectKind.Heal:
                 {
-                    int amount = block.flatValue > 0 ? block.flatValue : Mathf.FloorToInt(actor.DMG * (block.powerPercent * 0.01f));
+                    int amount = ResolveEffectAmount(actor, target, block);
                     int healed = target.Heal(amount);
                     logController.AppendBattleLog(logController.BuildHealLog(actor, target, sourceName, healed));
                     break;
                 }
             case BattleEffectKind.Shield:
                 {
-                    int amount = block.flatValue > 0 ? block.flatValue : Mathf.FloorToInt(actor.DMG * (block.powerPercent * 0.01f));
+                    int amount = ResolveEffectAmount(actor, target, block);
                     target.AddShield(amount);
                     logController.AppendBattleLog(logController.BuildShieldLog(actor, target, sourceName, amount));
                     break;
@@ -841,6 +880,30 @@ public class BattleActionController : MonoBehaviour
                     break;
                 }
         }
+    }
+
+    private int ResolveEffectAmount(BattleUnit actor, BattleUnit target, BattleEffectBlock block)
+    {
+        if (block == null)
+            return 0;
+
+        if (block.flatValue > 0)
+            return Mathf.Max(0, block.flatValue);
+
+        float baseValue = 0f;
+        switch (block.valueReference)
+        {
+            case EffectValueReference.TargetMaxHP:
+                baseValue = target != null ? target.MaxHP : 0f;
+                break;
+
+            case EffectValueReference.ActorDMG:
+            default:
+                baseValue = actor != null ? actor.DMG : 0f;
+                break;
+        }
+
+        return Mathf.Max(0, Mathf.FloorToInt(baseValue * (block.powerPercent * 0.01f)));
     }
 
     private string GetStatusDisplayName(StatusEffectType statusType)
@@ -900,7 +963,6 @@ public class BattleActionController : MonoBehaviour
                     if (basePercent <= 0 || block.durationTurns <= 0)
                         return;
 
-                    // Buff면 +, Debuff면 -
                     int signedPercent = block.kind == BattleEffectKind.Buff ? basePercent : -basePercent;
 
                     bool applied = target.TryApplyTimedModifier(

@@ -5,7 +5,7 @@ public enum PassiveSkillGimmick
 {
     None,
     FleeNextTurnWhenAlone,
-    BattleStartEnemyTeamDmgDown20For2Turns,
+    BattleStartEnemyTeamDmgDown10Permanent,
     Bleed25ToAttackerWhenShieldedHit,
     BlackAuraShieldFromDamageTaken
 }
@@ -58,6 +58,18 @@ public class SkillDefinition : ScriptableObject
     [Header("Self Position Move (Optional)")]
     public SkillSelfMoveDirection selfMoveDirection = SkillSelfMoveDirection.None;
     [Range(0, 3)] public int selfMoveSteps = 0;
+
+    [Header("Self Status After Use (Optional)")]
+    public StatusEffectType selfApplyStatusAfterUse = StatusEffectType.None;
+    [Min(0)] public int selfApplyStatusDurationTurns = 0;
+
+    [Header("Missing HP Power Bonus (Optional)")]
+    [Tooltip("체력을 잃을수록 위력이 증가합니다.")]
+    public bool useMissingHpPowerBonus = false;
+    [Tooltip("최대 체력 기준 몇 %를 잃을 때마다 bonusPowerPerStep 만큼 위력 증가할지")]
+    [Min(1)] public int missingHpPercentStep = 1;
+    [Tooltip("missingHpPercentStep 마다 증가할 위력")]
+    [Min(0f)] public float bonusPowerPerStep = 0f;
 
     [Header("Secondary Hit (Optional)")]
     public SecondaryTargetRule secondaryTargetRule = SecondaryTargetRule.None;
@@ -123,6 +135,33 @@ public class SkillDefinition : ScriptableObject
     public bool HasSelfMoveAfterUse()
     {
         return selfMoveDirection != SkillSelfMoveDirection.None && selfMoveSteps > 0;
+    }
+
+    public bool HasSelfStatusAfterUse()
+    {
+        return selfApplyStatusAfterUse != StatusEffectType.None && selfApplyStatusDurationTurns > 0;
+    }
+
+    public bool HasMissingHpPowerBonus()
+    {
+        return useMissingHpPowerBonus && missingHpPercentStep > 0 && bonusPowerPerStep > 0f;
+    }
+
+    public float GetMissingHpBonusPowerPercent(BattleUnit actor)
+    {
+        if (!HasMissingHpPowerBonus() || actor == null || actor.MaxHP <= 0)
+            return 0f;
+
+        int missingHp = Mathf.Max(0, actor.MaxHP - actor.CurrentHP);
+        if (missingHp <= 0)
+            return 0f;
+
+        float missingPercent = (missingHp / (float)actor.MaxHP) * 100f;
+        int steps = Mathf.FloorToInt(missingPercent / missingHpPercentStep);
+        if (steps <= 0)
+            return 0f;
+
+        return steps * bonusPowerPerStep;
     }
 
     public int GetPrimaryPowerPercent()

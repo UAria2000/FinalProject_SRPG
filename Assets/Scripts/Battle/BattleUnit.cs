@@ -12,6 +12,7 @@ public class BattleUnit
 
     private SkillDefinition pendingPassiveSkill;
     private BattleUnit duelLockedTarget;
+    private int persistentBattleDmgModifierPercent;
 
     public BattleUnit(PartyMemberData data, TeamType team)
     {
@@ -92,7 +93,11 @@ public class BattleUnit
         get
         {
             int baseValue = Mathf.Max(0, BaseDMG + GetVariance().dmgDelta);
-            return ApplyPercentTimedModifierToInt(baseValue, StatModifierType.DMG);
+            int totalModifierPercent = GetTimedModifierMagnitude(StatModifierType.DMG) + persistentBattleDmgModifierPercent;
+            if (totalModifierPercent == 0)
+                return baseValue;
+
+            return Mathf.Max(0, Mathf.RoundToInt(baseValue * (1f + totalModifierPercent / 100f)));
         }
     }
 
@@ -209,9 +214,6 @@ public class BattleUnit
         {
             SkillDefinition candidate = memberData.learnedSkills[i];
             if (candidate == null)
-                continue;
-
-            if (candidate.castType != SkillCastType.Passive)
                 continue;
 
             if (candidate.passiveGimmick != gimmick)
@@ -350,8 +352,8 @@ public class BattleUnit
             return;
         }
 
-        // í˜„ì¬ êµ¬ì¡°ëŠ” "ìê¸° í„´ ì‹œì‘ ì‹œ 1 ê°ì†Œ"ì´ë¯€ë¡œ,
-        // ì‚¬ìš© í›„ Në²ˆì˜ ìê¸° í„´ ë™ì•ˆ ì‚¬ìš© ë¶ˆê°€ë¥¼ ì›í•˜ë©´ N+1ë¡œ ë„£ì–´ì•¼ í•œë‹¤.
+        // ÇöÀç ±¸Á¶´Â "ÀÚ±â ÅÏ ½ÃÀÛ ½Ã 1 °¨¼Ò"ÀÌ¹Ç·Î,
+        // »ç¿ë ÈÄ N¹øÀÇ ÀÚ±â ÅÏ µ¿¾È »ç¿ë ºÒ°¡¸¦ ¿øÇÏ¸é N+1·Î ³Ö¾î¾ß ÇÑ´Ù.
         skillCooldowns[key] = configuredCooldown + 1;
     }
 
@@ -408,6 +410,14 @@ public class BattleUnit
         }
 
         return amount;
+    }
+
+    public void AddPersistentBattleDmgModifierPercent(int amount)
+    {
+        if (amount == 0)
+            return;
+
+        persistentBattleDmgModifierPercent += amount;
     }
 
     public void ApplyEndTurnGuard(int guardPercent)
@@ -574,6 +584,7 @@ public class BattleUnit
 
         return 1;
     }
+
     public BattleTurnStartStatusResult ResolveTurnStartStatuses()
     {
         BattleTurnStartStatusResult result = new BattleTurnStartStatusResult();
@@ -618,6 +629,7 @@ public class BattleUnit
 
         return result;
     }
+
     public void ApplyStatus(StatusEffectType statusType, int duration)
     {
         if (statusType == StatusEffectType.None || duration <= 0)

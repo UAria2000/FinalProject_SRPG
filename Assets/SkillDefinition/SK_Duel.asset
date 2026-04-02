@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b0ec0aa42fa160a46a6330d7ff30c770, type: 3}
   m_Name: SK_Duel
   m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
-  skillId: 
-  skillName: 
-  description: 
+  skillId: duel
+  skillName: "\uACB0\uD22C"
+  description: "\uB300\uC0C1\uC5D0\uAC8C \uACB0\uD22C\uB97C \uC2E0\uCCAD\uD55C\uB2E4"
   icon: {fileID: 0}
   isBasicAttack: 0
   castType: 0
@@ -22,18 +22,18 @@ MonoBehaviour:
   learnTags: 0
   rangeTag: 0
   passiveGimmick: 0
-  activeGimmick: 0
+  activeGimmick: 6
   usableMinSlotIndex: 0
-  usableMaxSlotIndex: 3
+  usableMaxSlotIndex: 0
   targetMinSlotIndex: 0
-  targetMaxSlotIndex: 3
+  targetMaxSlotIndex: 2
   targetTeam: 0
   targetScope: 0
   resolutionMode: 0
-  cooldownTurns: 0
+  cooldownTurns: 5
   accuracyCoefficientPercent: 100
-  allowCrit: 1
-  allowGraze: 1
+  allowCrit: 0
+  allowGraze: 0
   selfMoveDirection: 0
   selfMoveSteps: 0
   secondaryTargetRule: 0
@@ -42,5 +42,19 @@ MonoBehaviour:
   secondaryApplyNonDamageEffects: 0
   forcedTargetMoveToRank: 1
   forcedTargetMoveSteps: 1
-  effects: []
+  pushBackFailFinalPowerPercent: 0
+  effects:
+  - kind: 0
+    statusType: 0
+    statModifierType: 0
+    successChancePercent: 100
+    affectedByResistance: 0
+    powerPercent: 0
+    useRandomPowerPercentRange: 1
+    randomPowerPercentMin: 100
+    randomPowerPercentMax: 120
+    flatValue: 0
+    valueReference: 0
+    durationTurns: 0
+    displayIcon: {fileID: 0}
   disableAfterUseInBattle: 0

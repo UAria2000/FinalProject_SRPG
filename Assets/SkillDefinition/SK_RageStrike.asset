@@ -10,38 +10,43 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b0ec0aa42fa160a46a6330d7ff30c770, type: 3}
-  m_Name: SK_BloodThorn
+  m_Name: SK_RageStrike
   m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
-  skillId: blood_thorn
-  skillName: "\uD53C\uC758 \uAC00\uC2DC"
-  description: "\uBCF4\uD638\uB9C9\uC5D0 \uD53C\uC758 \uAC00\uC2DC\uB97C \uB458\uB7EC
-    \uACF5\uACA9\uD55C \uB300\uC0C1\uC5D0\uAC8C \uCD9C\uD608\uC744 \uBD80\uC5EC\uD55C\uB2E4"
+  skillId: 
+  skillName: 
+  description: 
   icon: {fileID: 0}
   isBasicAttack: 0
-  castType: 1
-  activeRole: 1
+  castType: 0
+  activeRole: 0
   learnTags: 0
   rangeTag: 0
-  passiveGimmick: 3
+  passiveGimmick: 0
   activeGimmick: 0
   usableMinSlotIndex: 0
   usableMaxSlotIndex: 3
   targetMinSlotIndex: 0
   targetMaxSlotIndex: 3
-  targetTeam: 2
+  targetTeam: 0
   targetScope: 0
   resolutionMode: 0
   cooldownTurns: 0
   accuracyCoefficientPercent: 100
-  allowCrit: 0
-  allowGraze: 0
+  allowCrit: 1
+  allowGraze: 1
   selfMoveDirection: 0
   selfMoveSteps: 0
+  selfApplyStatusAfterUse: 0
+  selfApplyStatusDurationTurns: 0
+  useMissingHpPowerBonus: 0
+  missingHpPercentStep: 1
+  bonusPowerPerStep: 0
   secondaryTargetRule: 0
   secondaryAccuracyCoefficientPercent: 100
   secondaryDamagePercent: 0
   secondaryApplyNonDamageEffects: 0
   forcedTargetMoveToRank: 1
   forcedTargetMoveSteps: 1
+  pushBackFailFinalPowerPercent: 0
   effects: []
   disableAfterUseInBattle: 0
