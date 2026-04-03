@@ -265,6 +265,7 @@ public class BattleLogController : MonoBehaviour
             case StatusEffectType.Taunt: return "도발";
             case StatusEffectType.CounterStance: return "반격 태세";
             case StatusEffectType.DuelArena: return "결투";
+            case StatusEffectType.Stealth: return "은신";
             default: return statusType.ToString();
         }
     }

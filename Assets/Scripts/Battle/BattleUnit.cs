@@ -73,6 +73,16 @@ public class BattleUnit
         get { return HasActiveDuelLock; }
     }
 
+    public bool HasStealth
+    {
+        get { return HasStatus(StatusEffectType.Stealth); }
+    }
+
+    public bool BlocksDirectSingleTargeting
+    {
+        get { return HasStealth; }
+    }
+
     public CharacterRangeType RangeType { get { return Definition != null ? Definition.rangeType : CharacterRangeType.Melee; } }
 
     public int BaseMaxHP { get { return Definition != null ? Definition.maxHP : 0; } }
@@ -151,7 +161,7 @@ public class BattleUnit
     public int StunResist { get { return BaseStunResist + GetVariance().stunResistDelta; } }
 
     private int endTurnGuardPercent;
-    public int EndTurnGuardPercent { get { return endTurnGuardPercent; } }
+    public int EndTurnGuardPercent { get { return endTurnGuardPercent > 0 ? endTurnGuardPercent : 0; } }
     public bool HasEndTurnGuard { get { return endTurnGuardPercent > 0; } }
 
     public UnitInstanceStatVariance GetVariance()
@@ -352,8 +362,6 @@ public class BattleUnit
             return;
         }
 
-        // 현재 구조는 "자기 턴 시작 시 1 감소"이므로,
-        // 사용 후 N번의 자기 턴 동안 사용 불가를 원하면 N+1로 넣어야 한다.
         skillCooldowns[key] = configuredCooldown + 1;
     }
 

@@ -29,9 +29,9 @@ MonoBehaviour:
     affectedByResistance: 0
     powerPercent: 0
     useRandomPowerPercentRange: 0
-    randomPowerPercentMin: 100
-    randomPowerPercentMax: 100
+    randomPowerPercentMin: 0
+    randomPowerPercentMax: 0
     flatValue: 50
-    valueReference: 0
+    valueReference: 1
     durationTurns: 0
     displayIcon: {fileID: 0}

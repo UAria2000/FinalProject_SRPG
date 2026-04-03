@@ -1,0 +1,76 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b0ec0aa42fa160a46a6330d7ff30c770, type: 3}
+  m_Name: SK_StealthAttack
+  m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
+  skillId: sstealth_attack
+  skillName: "\uADF8\uB9BC\uC790 \uC228\uAE30"
+  description: "\uB300\uC0C1\uC5D0\uAC8C \uD53C\uD574\uB97C \uC785\uD788\uACE0 \uBAB8\uC744
+    \uC228\uAE34\uB2E4"
+  icon: {fileID: 0}
+  isBasicAttack: 0
+  castType: 0
+  activeRole: 0
+  learnTags: 0
+  rangeTag: 1
+  passiveGimmick: 0
+  activeGimmick: 0
+  usableMinSlotIndex: 1
+  usableMaxSlotIndex: 2
+  targetMinSlotIndex: 1
+  targetMaxSlotIndex: 2
+  targetTeam: 0
+  targetScope: 0
+  resolutionMode: 0
+  cooldownTurns: 2
+  accuracyCoefficientPercent: 100
+  allowCrit: 1
+  allowGraze: 1
+  selfMoveDirection: 0
+  selfMoveSteps: 0
+  selfApplyStatusAfterUse: 7
+  selfApplyStatusDurationTurns: 1
+  useMissingHpPowerBonus: 0
+  missingHpPercentStep: 1
+  bonusPowerPerStep: 0
+  secondaryTargetRule: 0
+  secondaryAccuracyCoefficientPercent: 100
+  secondaryDamagePercent: 0
+  secondaryApplyNonDamageEffects: 0
+  forcedTargetMoveToRank: 1
+  forcedTargetMoveSteps: 1
+  pushBackFailFinalPowerPercent: 0
+  delayedReinforcementDelayRounds: 2
+  abyssReboundRecoilPercentFromTotalDamage: 20
+  blackArenaDuelDurationTurns: 2
+  battleStartEnemyTeamDmgDownPercent: 10
+  battleStartEnemyTeamDmgDownDurationTurns: 0
+  battleStartEnemyTeamDmgDownPermanent: 1
+  shieldedHitBleedChancePercent: 100
+  shieldedHitBleedStacks: 1
+  blackAuraShieldGainPercentFromHpDamage: 100
+  blackAuraShieldFlatBonus: 0
+  effects:
+  - kind: 0
+    statusType: 0
+    statModifierType: 0
+    successChancePercent: 100
+    affectedByResistance: 0
+    powerPercent: 0
+    useRandomPowerPercentRange: 0
+    randomPowerPercentMin: 80
+    randomPowerPercentMax: 120
+    flatValue: 0
+    valueReference: 0
+    durationTurns: 0
+    displayIcon: {fileID: 0}
+  disableAfterUseInBattle: 0

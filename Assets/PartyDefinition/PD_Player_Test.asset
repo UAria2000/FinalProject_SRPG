@@ -36,7 +36,7 @@ MonoBehaviour:
     learnedSkills:
     - {fileID: 11400000, guid: 4590116fc0c2a964f8b86f55e73d19d6, type: 2}
     - {fileID: 11400000, guid: 0b5128ca7574a654f9764aca549c0069, type: 2}
-    persistentCurrentHP: 123
+    persistentCurrentHP: 155
   - unitDefinition: {fileID: 11400000, guid: c3a62349039360b4e8b840de022ccf36, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: 9a9cea643cf1ac947b7117d79b5e806f, type: 2}
     startSlotIndex: 1
@@ -58,9 +58,9 @@ MonoBehaviour:
       stunResistDelta: 0
     learnedSkills:
     - {fileID: 11400000, guid: a3b8512a81221d64db0984b2ac39086c, type: 2}
-    - {fileID: 11400000, guid: 91227cc56e2295344bcfa20488328adb, type: 2}
+    - {fileID: 11400000, guid: a7924fe2c0f9445468229c9bcee2513a, type: 2}
     - {fileID: 11400000, guid: bbecd59581b088c4393e6d8ebdec3d8c, type: 2}
-    persistentCurrentHP: 144
+    persistentCurrentHP: 150
   - unitDefinition: {fileID: 11400000, guid: f8f9adbf09c124c4f841e0510acbe903, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: db5ea6affc7c81a4ab640be9675790dd, type: 2}
     startSlotIndex: 2
@@ -80,14 +80,10 @@ MonoBehaviour:
       poisonResistDelta: 0
       bleedResistDelta: 0
       stunResistDelta: 0
-    learnedSkills: []
+    learnedSkills:
+    - {fileID: 11400000, guid: df2c88b97964f4742b88c58d6bcc44d0, type: 2}
+    - {fileID: 11400000, guid: 6bb52dca9f386cd42a22372990628cf9, type: 2}
     persistentCurrentHP: 100
   inventory:
   - item: {fileID: 11400000, guid: dc8e2206841c82046aa61dcee0403866, type: 2}
-    amount: 7
-  - item: {fileID: 11400000, guid: 8f03032dd35fbe04e8a76cfc5d0e08bb, type: 2}
-    amount: 1
-  - item: {fileID: 11400000, guid: 8f03032dd35fbe04e8a76cfc5d0e08bb, type: 2}
-    amount: 1
-  - item: {fileID: 11400000, guid: 8f03032dd35fbe04e8a76cfc5d0e08bb, type: 2}
-    amount: 1
+    amount: 10

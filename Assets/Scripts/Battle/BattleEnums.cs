@@ -72,12 +72,12 @@ public enum SkillSelfMoveDirection
 [Flags]
 public enum SkillLearnTag
 {
-    None    = 0,
-    Unique  = 1 << 0,
-    Common  = 1 << 1,
-    Melee   = 1 << 2,
-    Mid     = 1 << 3,
-    Ranged  = 1 << 4
+    None = 0,
+    Unique = 1 << 0,
+    Common = 1 << 1,
+    Melee = 1 << 2,
+    Mid = 1 << 3,
+    Ranged = 1 << 4
 }
 
 public enum SkillTargetTeam
@@ -130,7 +130,8 @@ public enum StatusEffectType
     Stun,
     Taunt,
     CounterStance,
-    DuelArena
+    DuelArena,
+    Stealth
 }
 
 public enum StatModifierType
