@@ -15,7 +15,7 @@ MonoBehaviour:
   skillId: revenge
   skillName: "\uBCF5\uC218"
   description: "\uB370\uBBF8\uC9C0\uB97C \uACBD\uAC10\uD558\uACE0 \uBC18\uACA9\uD55C\uB2E4"
-  icon: {fileID: 0}
+  icon: {fileID: 5553918073550965805, guid: dbe7fcca28c627948b89fd942f2ef0c1, type: 3}
   isBasicAttack: 0
   castType: 0
   activeRole: 1
@@ -36,6 +36,11 @@ MonoBehaviour:
   allowGraze: 0
   selfMoveDirection: 0
   selfMoveSteps: 0
+  selfApplyStatusAfterUse: 0
+  selfApplyStatusDurationTurns: 0
+  useMissingHpPowerBonus: 0
+  missingHpPercentStep: 1
+  bonusPowerPerStep: 0
   secondaryTargetRule: 0
   secondaryAccuracyCoefficientPercent: 100
   secondaryDamagePercent: 0
@@ -43,6 +48,16 @@ MonoBehaviour:
   forcedTargetMoveToRank: 1
   forcedTargetMoveSteps: 1
   pushBackFailFinalPowerPercent: 0
+  delayedReinforcementDelayRounds: 2
+  abyssReboundRecoilPercentFromTotalDamage: 20
+  blackArenaDuelDurationTurns: 2
+  battleStartEnemyTeamDmgDownPercent: 10
+  battleStartEnemyTeamDmgDownDurationTurns: 0
+  battleStartEnemyTeamDmgDownPermanent: 1
+  shieldedHitBleedChancePercent: 100
+  shieldedHitBleedStacks: 1
+  blackAuraShieldGainPercentFromHpDamage: 100
+  blackAuraShieldFlatBonus: 0
   effects:
   - kind: 3
     statusType: 0

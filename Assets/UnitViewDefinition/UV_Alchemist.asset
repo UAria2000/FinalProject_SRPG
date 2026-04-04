@@ -12,6 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e662b7d56d718594a8e435db9e994010, type: 3}
   m_Name: UV_Alchemist
   m_EditorClassIdentifier: Assembly-CSharp::UnitViewDefinition
-  portrait: {fileID: 21300000, guid: 6600794642fd6d8458ab04eb411bb05b, type: 3}
+  portrait: {fileID: 21300000, guid: b622ffcb112b3db448c83cdf736c7a8e, type: 3}
   bodySprite: {fileID: 21300000, guid: b622ffcb112b3db448c83cdf736c7a8e, type: 3}
   viewPrefab: {fileID: 5061461418041598090, guid: edca2cd44571b8f4c80b0dfce99d6e95, type: 3}

@@ -16,7 +16,7 @@ MonoBehaviour:
   skillName: "\uC704\uC555\uC758 \uC624\uB77C"
   description: "\uC704\uC555\uC801\uC778 \uC624\uB77C\uB85C \uC801 \uC804\uCCB4\uC758
     DMG\uB97C \uAC10\uC18C\uC2DC\uD0A8\uB2E4."
-  icon: {fileID: 0}
+  icon: {fileID: 8530889235992783434, guid: b3106cefc4c4c934e93ecd3730e1607d, type: 3}
   isBasicAttack: 0
   castType: 1
   activeRole: 2
@@ -39,6 +39,9 @@ MonoBehaviour:
   selfMoveSteps: 0
   selfApplyStatusAfterUse: 0
   selfApplyStatusDurationTurns: 0
+  useMissingHpPowerBonus: 0
+  missingHpPercentStep: 1
+  bonusPowerPerStep: 0
   secondaryTargetRule: 0
   secondaryAccuracyCoefficientPercent: 100
   secondaryDamagePercent: 0
@@ -46,5 +49,15 @@ MonoBehaviour:
   forcedTargetMoveToRank: 1
   forcedTargetMoveSteps: 1
   pushBackFailFinalPowerPercent: 0
+  delayedReinforcementDelayRounds: 2
+  abyssReboundRecoilPercentFromTotalDamage: 20
+  blackArenaDuelDurationTurns: 2
+  battleStartEnemyTeamDmgDownPercent: 10
+  battleStartEnemyTeamDmgDownDurationTurns: 0
+  battleStartEnemyTeamDmgDownPermanent: 1
+  shieldedHitBleedChancePercent: 100
+  shieldedHitBleedStacks: 1
+  blackAuraShieldGainPercentFromHpDamage: 100
+  blackAuraShieldFlatBonus: 0
   effects: []
   disableAfterUseInBattle: 0

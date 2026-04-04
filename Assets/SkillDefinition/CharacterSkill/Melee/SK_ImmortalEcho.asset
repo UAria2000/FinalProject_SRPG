@@ -16,7 +16,7 @@ MonoBehaviour:
   skillName: "\uBD88\uBA78\uC758 \uBA54\uC544\uB9AC"
   description: "\uD53C\uD574\uB97C \uBC1B\uC744 \uB54C\uB9C8\uB2E4 \uBCF4\uD638\uB9C9\uC744
     \uC0DD\uC131\uD55C\uB2E4"
-  icon: {fileID: 0}
+  icon: {fileID: -4295039307428948894, guid: 5aab397debdccc642a5a7670020423cf, type: 3}
   isBasicAttack: 0
   castType: 1
   activeRole: 1
@@ -37,21 +37,27 @@ MonoBehaviour:
   allowGraze: 0
   selfMoveDirection: 0
   selfMoveSteps: 0
+  selfApplyStatusAfterUse: 0
+  selfApplyStatusDurationTurns: 0
+  useMissingHpPowerBonus: 0
+  missingHpPercentStep: 1
+  bonusPowerPerStep: 0
   secondaryTargetRule: 0
   secondaryAccuracyCoefficientPercent: 100
   secondaryDamagePercent: 0
   secondaryApplyNonDamageEffects: 0
   forcedTargetMoveToRank: 1
   forcedTargetMoveSteps: 1
-  gimmickSettings:
-    delayedReinforcementDelayRounds: 2
-    abyssReboundSelfRecoilPercent: 20
-    blackArenaDuelDurationTurns: 2
-    battleStartEnemyTeamDmgDownPercent: 20
-    battleStartEnemyTeamDmgDownDurationTurns: 2
-    shieldedHitBleedChancePercent: 25
-    shieldedHitBleedStacks: 1
-    blackAuraShieldGainPercentFromHpDamage: 100
-    blackAuraShieldFlatBonus: 0
+  pushBackFailFinalPowerPercent: 0
+  delayedReinforcementDelayRounds: 2
+  abyssReboundRecoilPercentFromTotalDamage: 20
+  blackArenaDuelDurationTurns: 2
+  battleStartEnemyTeamDmgDownPercent: 10
+  battleStartEnemyTeamDmgDownDurationTurns: 0
+  battleStartEnemyTeamDmgDownPermanent: 1
+  shieldedHitBleedChancePercent: 100
+  shieldedHitBleedStacks: 1
+  blackAuraShieldGainPercentFromHpDamage: 100
+  blackAuraShieldFlatBonus: 0
   effects: []
   disableAfterUseInBattle: 0
