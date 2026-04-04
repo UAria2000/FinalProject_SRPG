@@ -15,7 +15,7 @@ MonoBehaviour:
   skillId: duel
   skillName: "\uACB0\uD22C"
   description: "\uB300\uC0C1\uC5D0\uAC8C \uACB0\uD22C\uB97C \uC2E0\uCCAD\uD55C\uB2E4"
-  icon: {fileID: 0}
+  icon: {fileID: -6578280660335621614, guid: 9c7236b200de3ab4f813f20301edcc97, type: 3}
   isBasicAttack: 0
   castType: 0
   activeRole: 0
