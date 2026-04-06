@@ -12,6 +12,16 @@ public class WorldMapDragPan : MonoBehaviour
 
     [Header("Pan")]
     [SerializeField] private float dragThreshold = 12f;
+    [SerializeField] private bool clampPanToBounds = true;
+
+    [Header("Dynamic Pan Padding")]
+    [SerializeField] private bool useDynamicPanPadding = true;
+    [SerializeField] private Vector2 panPaddingPercent = new Vector2(0.15f, 0.15f);
+    [SerializeField] private Vector2 minPanPadding = new Vector2(120f, 120f);
+    [SerializeField] private Vector2 maxPanPadding = new Vector2(450f, 350f);
+
+    [Header("Fallback Fixed Pan Padding")]
+    [SerializeField] private Vector2 panPadding = new Vector2(300f, 220f);
 
     [Header("Zoom")]
     [SerializeField] private bool enableZoom = true;
@@ -20,24 +30,45 @@ public class WorldMapDragPan : MonoBehaviour
     [SerializeField] private float maxZoom = 2.0f;
     [SerializeField] private bool clampToMinAfterConfigure = true;
 
+    [Header("Initial Fit")]
+    [SerializeField] private bool autoFitInitialZoom = true;
+    [SerializeField] private Vector2 initialFitPadding = new Vector2(220f, 220f);
+
     private bool pressed;
     private bool dragging;
     private Vector2 pressScreenPosition;
     private Vector2 contentStartPosition;
     private int suppressClickFrames;
 
-    public float CurrentZoom => contentRoot != null ? contentRoot.localScale.x : 1f;
+    private Bounds contentBounds;
+    private bool hasContentBounds;
 
+    public float CurrentZoom => contentRoot != null ? contentRoot.localScale.x : 1f;
     public bool IsDragging => dragging;
 
     public void Configure(RectTransform inContentRoot)
     {
         contentRoot = inContentRoot;
-        if (contentRoot != null && clampToMinAfterConfigure)
+
+        if (contentRoot == null)
+            return;
+
+        if (clampToMinAfterConfigure)
         {
             float clamped = Mathf.Clamp(contentRoot.localScale.x, minZoom, maxZoom);
             contentRoot.localScale = new Vector3(clamped, clamped, 1f);
         }
+    }
+
+    public void SetContentBounds(Bounds bounds)
+    {
+        contentBounds = bounds;
+        hasContentBounds = true;
+
+        if (autoFitInitialZoom)
+            FitContentToViewport();
+
+        ClampContentToBounds();
     }
 
     public bool ShouldSuppressClick()
@@ -50,7 +81,11 @@ public class WorldMapDragPan : MonoBehaviour
         if (contentRoot == null)
             return;
 
-        contentRoot.anchoredPosition = -targetAnchoredPosition;
+        float scale = Mathf.Max(0.0001f, contentRoot.localScale.x);
+        Vector2 centered = -targetAnchoredPosition * scale;
+        contentRoot.anchoredPosition = centered;
+
+        ClampContentToBounds();
     }
 
     private void Update()
@@ -82,6 +117,7 @@ public class WorldMapDragPan : MonoBehaviour
             return;
 
         contentRoot.localScale = new Vector3(nextScale, nextScale, 1f);
+        ClampContentToBounds();
     }
 
     private void HandlePan()
@@ -110,7 +146,10 @@ public class WorldMapDragPan : MonoBehaviour
                 dragging = true;
 
             if (dragging)
+            {
                 contentRoot.anchoredPosition = contentStartPosition + delta;
+                ClampContentToBounds();
+            }
         }
 
         if (pressed && Mouse.current.leftButton.wasReleasedThisFrame)
@@ -164,5 +203,87 @@ public class WorldMapDragPan : MonoBehaviour
             return null;
 
         return canvas.worldCamera;
+    }
+
+    private void FitContentToViewport()
+    {
+        if (!hasContentBounds || viewportRect == null || contentRoot == null)
+            return;
+
+        float contentWidth = Mathf.Max(1f, contentBounds.size.x);
+        float contentHeight = Mathf.Max(1f, contentBounds.size.y);
+
+        float viewportWidth = Mathf.Max(1f, viewportRect.rect.width - initialFitPadding.x * 2f);
+        float viewportHeight = Mathf.Max(1f, viewportRect.rect.height - initialFitPadding.y * 2f);
+
+        float fitScaleX = viewportWidth / contentWidth;
+        float fitScaleY = viewportHeight / contentHeight;
+        float fitScale = Mathf.Min(fitScaleX, fitScaleY);
+        fitScale = Mathf.Clamp(fitScale, minZoom, maxZoom);
+
+        contentRoot.localScale = new Vector3(fitScale, fitScale, 1f);
+    }
+
+    private void ClampContentToBounds()
+    {
+        if (!clampPanToBounds || !hasContentBounds || viewportRect == null || contentRoot == null)
+            return;
+
+        float scale = Mathf.Max(0.0001f, contentRoot.localScale.x);
+
+        float contentHalfWidth = contentBounds.extents.x * scale;
+        float contentHalfHeight = contentBounds.extents.y * scale;
+
+        float viewportHalfWidth = viewportRect.rect.width * 0.5f;
+        float viewportHalfHeight = viewportRect.rect.height * 0.5f;
+
+        Vector2 effectivePadding = GetEffectivePanPadding();
+
+        float minX = -contentHalfWidth + viewportHalfWidth - effectivePadding.x;
+        float maxX = contentHalfWidth - viewportHalfWidth + effectivePadding.x;
+
+        float minY = -contentHalfHeight + viewportHalfHeight - effectivePadding.y;
+        float maxY = contentHalfHeight - viewportHalfHeight + effectivePadding.y;
+
+        Vector2 anchored = contentRoot.anchoredPosition;
+
+        if (minX > maxX)
+        {
+            float centerX = (minX + maxX) * 0.5f;
+            anchored.x = centerX;
+        }
+        else
+        {
+            anchored.x = Mathf.Clamp(anchored.x, minX, maxX);
+        }
+
+        if (minY > maxY)
+        {
+            float centerY = (minY + maxY) * 0.5f;
+            anchored.y = centerY;
+        }
+        else
+        {
+            anchored.y = Mathf.Clamp(anchored.y, minY, maxY);
+        }
+
+        contentRoot.anchoredPosition = anchored;
+    }
+
+    private Vector2 GetEffectivePanPadding()
+    {
+        if (!useDynamicPanPadding || viewportRect == null)
+            return panPadding;
+
+        float viewportWidth = viewportRect.rect.width;
+        float viewportHeight = viewportRect.rect.height;
+
+        float dynamicX = viewportWidth * panPaddingPercent.x;
+        float dynamicY = viewportHeight * panPaddingPercent.y;
+
+        dynamicX = Mathf.Clamp(dynamicX, minPanPadding.x, maxPanPadding.x);
+        dynamicY = Mathf.Clamp(dynamicY, minPanPadding.y, maxPanPadding.y);
+
+        return new Vector2(dynamicX, dynamicY);
     }
 }

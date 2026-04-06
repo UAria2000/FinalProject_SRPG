@@ -36,6 +36,7 @@ public class HexWorldMapUI : MonoBehaviour
     private readonly Dictionary<int, HexTileView> tileViews = new Dictionary<int, HexTileView>();
     private WorldRunManager runManager;
     private WorldGenerationSettings settings;
+    private Bounds generatedLocalBounds;
 
     public RectTransform ContentRoot => contentRoot;
 
@@ -54,6 +55,10 @@ public class HexWorldMapUI : MonoBehaviour
         }
 
         BuildTiles(mapData);
+
+        if (dragPan != null)
+            dragPan.SetContentBounds(generatedLocalBounds);
+
         RefreshAll(mapData);
 
         if (focusCurrentTileOnGenerate && runManager != null && runManager.CurrentTile != null)
@@ -103,15 +108,17 @@ public class HexWorldMapUI : MonoBehaviour
 
             Sprite tileSprite = settings.GetFactionTileSprite(tile.currentOwner);
             Color tileColor = settings.GetFactionFallbackColor(tile.currentOwner);
-            Sprite eventIcon = settings.GetEventIcon(tile.eventType);
+            Sprite iconSprite = settings.GetTileDisplayIcon(tile);
             bool showQuestionMark = !tile.revealed;
-            bool disableIcon = tile.currentOwner == FactionType.Player;
+            bool iconAlwaysVisible = tile.isPlayerStart && settings != null && settings.StartTileIcon != null;
+            bool iconVisible = iconAlwaysVisible || tile.revealed;
+            bool disableIcon = tile.currentOwner == FactionType.Player && !tile.isPlayerStart;
 
             view.SetVisual(
                 tileSprite,
                 tileColor,
-                eventIcon,
-                tile.revealed,
+                iconSprite,
+                iconVisible,
                 showQuestionMark,
                 showAura,
                 auraSprite,
@@ -146,8 +153,20 @@ public class HexWorldMapUI : MonoBehaviour
     private void BuildTiles(WorldMapData mapData)
     {
         ClearTiles();
+        generatedLocalBounds = new Bounds(Vector3.zero, Vector3.zero);
+
         if (mapData == null || tilePrefab == null || tileContainer == null)
             return;
+
+        float tileWidth = tileRadius * 2f;
+        float tileHeight = Mathf.Sqrt(3f) * tileRadius;
+        float halfWidth = tileWidth * 0.5f;
+        float halfHeight = tileHeight * 0.5f;
+        bool firstBounds = true;
+        float minX = 0f;
+        float minY = 0f;
+        float maxX = 0f;
+        float maxY = 0f;
 
         for (int i = 0; i < mapData.Tiles.Count; i++)
         {
@@ -159,19 +178,44 @@ public class HexWorldMapUI : MonoBehaviour
             view.name = $"Tile_{tile.tileId}_{tile.coord.q}_{tile.coord.r}";
 
             RectTransform rt = view.RectTransform;
+            Vector2 anchoredPosition = CalculateAnchoredPosition(tile.coord);
             if (rt != null)
             {
-                rt.anchoredPosition = CalculateAnchoredPosition(tile.coord);
+                rt.anchoredPosition = anchoredPosition;
                 if (resizeTileRectFromRadius)
-                {
-                    float width = tileRadius * 2f;
-                    float height = Mathf.Sqrt(3f) * tileRadius;
-                    rt.sizeDelta = new Vector2(width, height);
-                }
+                    rt.sizeDelta = new Vector2(tileWidth, tileHeight);
+            }
+
+            float tileMinX = anchoredPosition.x - halfWidth;
+            float tileMaxX = anchoredPosition.x + halfWidth;
+            float tileMinY = anchoredPosition.y - halfHeight;
+            float tileMaxY = anchoredPosition.y + halfHeight;
+
+            if (firstBounds)
+            {
+                minX = tileMinX;
+                minY = tileMinY;
+                maxX = tileMaxX;
+                maxY = tileMaxY;
+                firstBounds = false;
+            }
+            else
+            {
+                minX = Mathf.Min(minX, tileMinX);
+                minY = Mathf.Min(minY, tileMinY);
+                maxX = Mathf.Max(maxX, tileMaxX);
+                maxY = Mathf.Max(maxY, tileMaxY);
             }
 
             view.Initialize(tile.tileId, OnTileClicked);
             tileViews.Add(tile.tileId, view);
+        }
+
+        if (!firstBounds)
+        {
+            Vector3 center = new Vector3((minX + maxX) * 0.5f, (minY + maxY) * 0.5f, 0f);
+            Vector3 size = new Vector3(maxX - minX, maxY - minY, 0f);
+            generatedLocalBounds = new Bounds(center, size);
         }
     }
 

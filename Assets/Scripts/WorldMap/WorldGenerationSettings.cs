@@ -18,6 +18,8 @@ public class WorldGenerationSettings : ScriptableObject
     [Header("Events")]
     public WorldEventWeightSettings eventWeightSettings;
     public List<WorldEventPresentation> eventPresentations = new List<WorldEventPresentation>();
+    [SerializeField] private Sprite startTileIcon;
+    public Sprite StartTileIcon => startTileIcon;
 
     [Header("Rules")]
     public bool forbidBossNearCenter = true;
@@ -64,6 +66,17 @@ public class WorldGenerationSettings : ScriptableObject
                 return factionPresentations[i].enemyPortraitPool;
         }
         return Array.Empty<Sprite>();
+    }
+
+    public Sprite GetTileDisplayIcon(WorldTileData tile)
+    {
+        if (tile == null)
+            return null;
+
+        if (tile.isPlayerStart && StartTileIcon != null)
+            return StartTileIcon;
+
+        return GetEventIcon(tile.eventType);
     }
 
     public Sprite GetEventIcon(WorldTileEventType eventType)

@@ -12,63 +12,61 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e3aee9dc63679754db587d0b8e8dd93b, type: 3}
   m_Name: WorldGenerationSetting
   m_EditorClassIdentifier: Assembly-CSharp::WorldGenerationSettings
-  radius: 3
-  enemyFactions: 0a0000000b000000
-  graveyardCount: 1
-  minCombatPreviewCount: 1
-  maxCombatPreviewCount: 6
-  forbidBossNearCenter: 1
-  forbidEliteNearCenter: 1
+  radius: 6
   maxGenerationAttempts: 200
-  factionPresentationEntries:
-  - factionType: 1
+  enemyPortraitMinCount: 1
+  enemyPortraitMaxCount: 6
+  enemyFactions: 010000000200000003000000
+  factionPresentations:
+  - faction: 1
     displayName: Player
-    tileSprite: {fileID: 21300000, guid: de05e031abea3384d88f919ad1e818d2, type: 3}
-    fallbackColor: {r: 0, g: 0, b: 0, a: 0}
-    battlePreviewPortraits: []
-    elitePreviewPortraits: []
-    bossPreviewPortraits: []
-  - factionType: 10
+    tileSprite: {fileID: 21300000, guid: 44e8f2a1c0c6512488cf093e07793e75, type: 3}
+    fallbackColor: {r: 0.24705884, g: 0.19607845, b: 0.25490198, a: 1}
+    enemyPortraitPool: []
+  - faction: 2
     displayName: Human
-    tileSprite: {fileID: 21300000, guid: d25aa6864da174244bf27589e5a23ad2, type: 3}
-    fallbackColor: {r: 0, g: 0, b: 0, a: 0}
-    battlePreviewPortraits: []
-    elitePreviewPortraits: []
-    bossPreviewPortraits: []
-  - factionType: 11
+    tileSprite: {fileID: 21300000, guid: cf71423dbdef7c54b99bffbda7875fdf, type: 3}
+    fallbackColor: {r: 0.34901962, g: 0.49411768, b: 0.8078432, a: 0}
+    enemyPortraitPool: []
+  - faction: 3
     displayName: Elf
-    tileSprite: {fileID: 21300000, guid: 9764c06ab0455b04a8f02f5577d33339, type: 3}
-    fallbackColor: {r: 0, g: 0, b: 0, a: 0}
-    battlePreviewPortraits: []
-    elitePreviewPortraits: []
-    bossPreviewPortraits: []
-  eventPresentationEntries:
+    tileSprite: {fileID: 21300000, guid: b343e2b9a70d71d45af9f572dfbed86e, type: 3}
+    fallbackColor: {r: 0.47058827, g: 0.6784314, b: 0.30980393, a: 0}
+    enemyPortraitPool: []
+  eventWeightSettings: {fileID: 11400000, guid: 82ff351194af72e41b858f3570803be3, type: 2}
+  eventPresentations:
   - eventType: 1
     displayName: "\uC804\uD22C"
     description: 
-    icon: {fileID: 21300000, guid: 11010207f1291ef4182e6b31d165b118, type: 3}
+    icon: {fileID: 21300000, guid: 3f3909ae75f240d4693586fa0df1f4bd, type: 3}
   - eventType: 2
     displayName: "\uD734\uC2DD"
     description: 
-    icon: {fileID: -6578280660335621614, guid: 9c7236b200de3ab4f813f20301edcc97, type: 3}
+    icon: {fileID: 21300000, guid: 0ffb778fd0201ae4f8073e57f2d5391b, type: 3}
   - eventType: 3
     displayName: "\uBCF4\uBB3C"
     description: 
-    icon: {fileID: 21300000, guid: 76ce85d46751c44478af0a4e960afcd2, type: 3}
+    icon: {fileID: 21300000, guid: 02897fcbc5ecf724b826c72ef5bdec35, type: 3}
   - eventType: 4
     displayName: "\uC0C1\uC778"
     description: 
-    icon: {fileID: 21300000, guid: 74754edf7b2c8bb4780449cfddc05067, type: 3}
+    icon: {fileID: 21300000, guid: de6aeb849fe3ced4bb3e26d49883cf67, type: 3}
   - eventType: 5
     displayName: "\uD018\uC2A4\uD2B8"
     description: 
-    icon: {fileID: 21300000, guid: fce64da38c3fdba42863dc4989f838ba, type: 3}
+    icon: {fileID: 21300000, guid: 051db559cff69b2479ffe5d12bf4aca1, type: 3}
   - eventType: 7
     displayName: "\uC5D8\uB9AC\uD2B8"
     description: 
-    icon: {fileID: 21300000, guid: 915deebef943a594f8027a4c66b5288c, type: 3}
+    icon: {fileID: 21300000, guid: 830e01018a1c1cd45a245949b3ce583c, type: 3}
   - eventType: 8
     displayName: "\uBCF4\uC2A4"
     description: 
-    icon: {fileID: 21300000, guid: b82a608c5778ca840a0aaf5b01ea36d3, type: 3}
-  eventWeightSettings: {fileID: 11400000, guid: 82ff351194af72e41b858f3570803be3, type: 2}
+    icon: {fileID: 21300000, guid: 3efe96ea50db72b47899b0ac82809431, type: 3}
+  - eventType: 6
+    displayName: "\uBB18\uC9C0"
+    description: 
+    icon: {fileID: 21300000, guid: 3a950aa8b3d02e645b1aa3e672717cd7, type: 3}
+  startTileIcon: {fileID: 21300000, guid: 63ef065399d225c41aeea16154d7ed91, type: 3}
+  forbidBossNearCenter: 1
+  forbidEliteNearCenter: 1
