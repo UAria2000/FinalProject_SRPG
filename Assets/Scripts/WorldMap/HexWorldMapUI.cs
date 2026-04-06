@@ -4,202 +4,217 @@ using UnityEngine.UI;
 
 public class HexWorldMapUI : MonoBehaviour
 {
-    [Header("References")]
+    [Header("Roots")]
     [SerializeField] private RectTransform contentRoot;
     [SerializeField] private RectTransform tileContainer;
+
+    [Header("Prefabs")]
     [SerializeField] private HexTileView tilePrefab;
+
+    [Header("Optional UI")]
     [SerializeField] private Button backgroundButton;
     [SerializeField] private WorldMapDragPan dragPan;
 
-    [Header("Layout")]
-    [SerializeField, Min(1f)] private float tileRadius = 64f;
-    [SerializeField, Min(0.1f)] private float horizontalSpacingMultiplier = 1f;
-    [SerializeField, Min(0.1f)] private float verticalSpacingMultiplier = 1f;
+    [Header("Tile Layout")]
+    [SerializeField] private float tileRadius = 200f;
     [SerializeField] private bool resizeTileRectFromRadius = true;
+    [SerializeField] private float horizontalSpacingMultiplier = 1f;
+    [SerializeField] private float verticalSpacingMultiplier = 1f;
 
-    [Header("Aura")]
+    [Header("Aura Sprites")]
     [SerializeField] private Sprite currentAuraSprite;
+    [SerializeField] private Color currentAuraColor = Color.white;
+    [SerializeField] private Sprite selectedAuraSprite;
+    [SerializeField] private Color selectedAuraColor = Color.white;
     [SerializeField] private Sprite reachableAuraSprite;
-    [SerializeField] private Color currentAuraColor = new Color(0.72f, 0.38f, 0.95f, 0.95f);
-    [SerializeField] private Color reachableAuraColor = new Color(0.35f, 0.75f, 1f, 0.9f);
+    [SerializeField] private Color reachableAuraColor = Color.white;
+
+    [Header("Camera Follow")]
+    [SerializeField] private bool focusCurrentTileOnGenerate = true;
+    [SerializeField] private bool focusCurrentTileOnMove = true;
 
     private readonly Dictionary<int, HexTileView> tileViews = new Dictionary<int, HexTileView>();
-
     private WorldRunManager runManager;
-    private WorldMapData mapData;
     private WorldGenerationSettings settings;
 
-    public void Build(WorldRunManager inRunManager, WorldMapData inMapData, WorldGenerationSettings inSettings)
+    public RectTransform ContentRoot => contentRoot;
+
+    public void Initialize(WorldRunManager manager, WorldMapData mapData, WorldGenerationSettings generationSettings)
     {
-        runManager = inRunManager;
-        mapData = inMapData;
-        settings = inSettings;
-
-        ClearAll();
-
-        if (runManager == null || mapData == null || tilePrefab == null || tileContainer == null)
-            return;
-
-        CreateTiles();
-        PositionTiles();
-
-        if (backgroundButton != null)
-        {
-            backgroundButton.onClick.RemoveAllListeners();
-            backgroundButton.onClick.AddListener(HandleBackgroundClicked);
-        }
+        runManager = manager;
+        settings = generationSettings;
 
         if (dragPan != null)
             dragPan.Configure(contentRoot);
 
-        runManager.OnWorldStateChanged -= Refresh;
-        runManager.OnWorldStateChanged += Refresh;
+        if (backgroundButton != null)
+        {
+            backgroundButton.onClick.RemoveAllListeners();
+            backgroundButton.onClick.AddListener(OnBackgroundClicked);
+        }
 
-        Refresh();
+        BuildTiles(mapData);
+        RefreshAll(mapData);
+
+        if (focusCurrentTileOnGenerate && runManager != null && runManager.CurrentTile != null)
+            FocusOnTile(runManager.CurrentTile, true);
     }
 
-    public void Refresh()
+    public void RefreshAll(WorldMapData mapData)
     {
         if (mapData == null || settings == null || runManager == null)
             return;
 
-        for (int i = 0; i < mapData.tiles.Count; i++)
+        for (int i = 0; i < mapData.Tiles.Count; i++)
         {
-            WorldTileData tile = mapData.tiles[i];
+            WorldTileData tile = mapData.Tiles[i];
             if (tile == null)
                 continue;
 
-            HexTileView view;
-            if (!tileViews.TryGetValue(tile.tileId, out view) || view == null)
+            if (!tileViews.TryGetValue(tile.tileId, out HexTileView view) || view == null)
                 continue;
 
-            FactionType displayFaction = tile.currentOwner == FactionType.Player ? FactionType.Player : tile.nativeFaction;
-            Sprite tileSprite = settings.GetFactionTileSprite(displayFaction);
-            Color fallbackColor = settings.GetFactionFallbackColor(displayFaction);
+            bool isCurrent = runManager.IsCurrentTile(tile);
+            bool isSelected = runManager.IsSelectedTile(tile);
+            bool isReachable = !isSelected && !isCurrent && runManager.IsAdjacentReachable(tile);
 
-            bool revealed = tile.revealed || tile.isPlayerStart;
-            bool showQuestionMark = !revealed;
-            Sprite iconSprite = revealed ? settings.GetEventIcon(tile.eventType) : null;
-            bool disableIcon = tile.currentOwner == FactionType.Player && tile.eventType != WorldTileEventType.None;
-
-            bool showAura = false;
             Sprite auraSprite = null;
             Color auraColor = Color.white;
+            bool showAura = false;
 
-            if (runManager.IsCurrentTile(tile))
+            if (isCurrent)
             {
-                showAura = true;
                 auraSprite = currentAuraSprite;
                 auraColor = currentAuraColor;
+                showAura = auraSprite != null;
             }
-            else if (runManager.IsAdjacentReachable(tile))
+            else if (isSelected)
             {
-                showAura = true;
+                auraSprite = selectedAuraSprite;
+                auraColor = selectedAuraColor;
+                showAura = auraSprite != null;
+            }
+            else if (isReachable)
+            {
                 auraSprite = reachableAuraSprite;
                 auraColor = reachableAuraColor;
+                showAura = auraSprite != null;
             }
 
-            view.SetVisual(tileSprite, fallbackColor, iconSprite, revealed, showQuestionMark, showAura, auraSprite, auraColor, disableIcon);
+            Sprite tileSprite = settings.GetFactionTileSprite(tile.currentOwner);
+            Color tileColor = settings.GetFactionFallbackColor(tile.currentOwner);
+            Sprite eventIcon = settings.GetEventIcon(tile.eventType);
+            bool showQuestionMark = !tile.revealed;
+            bool disableIcon = tile.currentOwner == FactionType.Player;
+
+            view.SetVisual(
+                tileSprite,
+                tileColor,
+                eventIcon,
+                tile.revealed,
+                showQuestionMark,
+                showAura,
+                auraSprite,
+                auraColor,
+                disableIcon);
         }
     }
 
-    private void CreateTiles()
+    public void FocusOnCurrentTile(bool instant = true)
     {
-        for (int i = 0; i < mapData.tiles.Count; i++)
-        {
-            WorldTileData tile = mapData.tiles[i];
-            HexTileView view = Instantiate(tilePrefab, tileContainer);
-            view.Initialize(tile.tileId, HandleTileClicked);
-            tileViews[tile.tileId] = view;
-        }
+        if (runManager == null || runManager.CurrentTile == null)
+            return;
+
+        FocusOnTile(runManager.CurrentTile, instant);
     }
 
-    private void PositionTiles()
+    public void FocusOnTile(WorldTileData tile, bool instant = true)
     {
-        Dictionary<int, Vector2> positions = new Dictionary<int, Vector2>();
-        float minX = float.MaxValue;
-        float maxX = float.MinValue;
-        float minY = float.MaxValue;
-        float maxY = float.MinValue;
+        if (tile == null || dragPan == null)
+            return;
 
-        for (int i = 0; i < mapData.tiles.Count; i++)
+        Vector2 anchored = CalculateAnchoredPosition(tile.coord);
+        dragPan.CenterOnAnchoredPosition(anchored);
+    }
+
+    public void NotifyMovedToTile(WorldTileData tile)
+    {
+        if (focusCurrentTileOnMove)
+            FocusOnTile(tile, true);
+    }
+
+    private void BuildTiles(WorldMapData mapData)
+    {
+        ClearTiles();
+        if (mapData == null || tilePrefab == null || tileContainer == null)
+            return;
+
+        for (int i = 0; i < mapData.Tiles.Count; i++)
         {
-            WorldTileData tile = mapData.tiles[i];
-            Vector2 pos = AxialToAnchoredPosition(tile.coord);
-            positions[tile.tileId] = pos;
-
-            if (pos.x < minX) minX = pos.x;
-            if (pos.x > maxX) maxX = pos.x;
-            if (pos.y < minY) minY = pos.y;
-            if (pos.y > maxY) maxY = pos.y;
-        }
-
-        Vector2 centerOffset = new Vector2((minX + maxX) * 0.5f, (minY + maxY) * 0.5f);
-
-        for (int i = 0; i < mapData.tiles.Count; i++)
-        {
-            WorldTileData tile = mapData.tiles[i];
-            HexTileView view = tileViews[tile.tileId];
-            RectTransform rt = view.RectTransform;
-            if (rt == null)
+            WorldTileData tile = mapData.Tiles[i];
+            if (tile == null)
                 continue;
 
-            rt.anchorMin = new Vector2(0.5f, 0.5f);
-            rt.anchorMax = new Vector2(0.5f, 0.5f);
-            rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = positions[tile.tileId] - centerOffset;
+            HexTileView view = Instantiate(tilePrefab, tileContainer);
+            view.name = $"Tile_{tile.tileId}_{tile.coord.q}_{tile.coord.r}";
 
-            if (resizeTileRectFromRadius)
-                rt.sizeDelta = new Vector2(TileWidth, TileHeight);
+            RectTransform rt = view.RectTransform;
+            if (rt != null)
+            {
+                rt.anchoredPosition = CalculateAnchoredPosition(tile.coord);
+                if (resizeTileRectFromRadius)
+                {
+                    float width = tileRadius * 2f;
+                    float height = Mathf.Sqrt(3f) * tileRadius;
+                    rt.sizeDelta = new Vector2(width, height);
+                }
+            }
+
+            view.Initialize(tile.tileId, OnTileClicked);
+            tileViews.Add(tile.tileId, view);
         }
-
-        float contentWidth = (maxX - minX) + TileWidth * 1.25f;
-        float contentHeight = (maxY - minY) + TileHeight * 1.25f;
-        if (contentRoot != null)
-            contentRoot.sizeDelta = new Vector2(contentWidth, contentHeight);
-        if (tileContainer != null)
-            tileContainer.sizeDelta = new Vector2(contentWidth, contentHeight);
     }
 
-    private float TileWidth => tileRadius * 2f;
-    private float TileHeight => Mathf.Sqrt(3f) * tileRadius;
-    private float HorizontalStep => tileRadius * 1.5f * horizontalSpacingMultiplier;
-    private float VerticalStep => TileHeight * verticalSpacingMultiplier;
-
-    private Vector2 AxialToAnchoredPosition(HexCoord coord)
+    private void ClearTiles()
     {
-        float x = HorizontalStep * coord.q;
-        float y = VerticalStep * (coord.r + coord.q * 0.5f);
+        foreach (KeyValuePair<int, HexTileView> pair in tileViews)
+        {
+            if (pair.Value != null)
+                Destroy(pair.Value.gameObject);
+        }
+
+        tileViews.Clear();
+    }
+
+    private Vector2 CalculateAnchoredPosition(HexCoord coord)
+    {
+        float horizontalStep = tileRadius * 1.5f * horizontalSpacingMultiplier;
+        float verticalStep = Mathf.Sqrt(3f) * tileRadius * verticalSpacingMultiplier;
+
+        float x = coord.q * horizontalStep;
+        float y = (coord.r + coord.q * 0.5f) * verticalStep;
         return new Vector2(x, -y);
     }
 
-    private void HandleTileClicked(int tileId)
+    private void OnTileClicked(int tileId)
     {
+        if (runManager == null)
+            return;
+
         if (dragPan != null && dragPan.ShouldSuppressClick())
             return;
 
-        runManager?.HandleTileClicked(tileId);
+        runManager.HandleTileClicked(tileId);
     }
 
-    private void HandleBackgroundClicked()
+    private void OnBackgroundClicked()
     {
+        if (runManager == null)
+            return;
+
         if (dragPan != null && dragPan.ShouldSuppressClick())
             return;
 
-        runManager?.HandleBackgroundClicked();
-    }
-
-    private void ClearAll()
-    {
-        if (runManager != null)
-            runManager.OnWorldStateChanged -= Refresh;
-
-        tileViews.Clear();
-
-        if (tileContainer == null)
-            return;
-
-        for (int i = tileContainer.childCount - 1; i >= 0; i--)
-            Destroy(tileContainer.GetChild(i).gameObject);
+        runManager.HandleBackgroundClicked();
     }
 }

@@ -1,98 +1,119 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-[CreateAssetMenu(menuName = "World/World Generation Settings", fileName = "WorldGenerationSettings")]
+[CreateAssetMenu(menuName = "World Map/Generation Settings", fileName = "WorldGenerationSettings")]
 public class WorldGenerationSettings : ScriptableObject
 {
     [Header("World")]
     [Range(3, 6)] public int radius = 3;
-    public List<FactionType> enemyFactions = new List<FactionType> { FactionType.FactionA, FactionType.FactionB };
+    [Min(1)] public int maxGenerationAttempts = 250;
+    [Min(1)] public int enemyPortraitMinCount = 1;
+    [Range(1, 6)] public int enemyPortraitMaxCount = 6;
 
-    [Header("Fixed Rules")]
-    [Min(0)] public int graveyardCount = 1;
-    [Min(1)] public int minCombatPreviewCount = 1;
-    [Min(1)] public int maxCombatPreviewCount = 6;
+    [Header("Factions")]
+    public List<FactionType> enemyFactions = new List<FactionType> { FactionType.FactionA, FactionType.FactionB };
+    public List<FactionPresentation> factionPresentations = new List<FactionPresentation>();
+
+    [Header("Events")]
+    public WorldEventWeightSettings eventWeightSettings;
+    public List<WorldEventPresentation> eventPresentations = new List<WorldEventPresentation>();
+
+    [Header("Rules")]
     public bool forbidBossNearCenter = true;
     public bool forbidEliteNearCenter = true;
 
-    [Header("Generation Retry")]
-    [Min(1)] public int maxGenerationAttempts = 200;
-
-    [Header("Presentation")]
-    public List<WorldFactionPresentationEntry> factionPresentationEntries = new List<WorldFactionPresentationEntry>();
-    public List<WorldEventPresentationEntry> eventPresentationEntries = new List<WorldEventPresentationEntry>();
-    public WorldEventWeightSettings eventWeightSettings;
-
-    public string GetFactionDisplayName(FactionType factionType)
+    public Sprite GetFactionTileSprite(FactionType faction)
     {
-        WorldFactionPresentationEntry entry = FindFactionEntry(factionType);
-        return entry != null && !string.IsNullOrWhiteSpace(entry.displayName) ? entry.displayName : factionType.ToString();
+        for (int i = 0; i < factionPresentations.Count; i++)
+        {
+            if (factionPresentations[i] != null && factionPresentations[i].faction == faction)
+                return factionPresentations[i].tileSprite;
+        }
+        return null;
     }
 
-    public Sprite GetFactionTileSprite(FactionType factionType)
+    public Color GetFactionFallbackColor(FactionType faction)
     {
-        WorldFactionPresentationEntry entry = FindFactionEntry(factionType);
-        return entry != null ? entry.tileSprite : null;
+        for (int i = 0; i < factionPresentations.Count; i++)
+        {
+            if (factionPresentations[i] != null && factionPresentations[i].faction == faction)
+                return factionPresentations[i].fallbackColor;
+        }
+        return Color.white;
     }
 
-    public Color GetFactionFallbackColor(FactionType factionType)
+    public string GetFactionDisplayName(FactionType faction)
     {
-        WorldFactionPresentationEntry entry = FindFactionEntry(factionType);
-        return entry != null ? entry.fallbackColor : Color.white;
+        for (int i = 0; i < factionPresentations.Count; i++)
+        {
+            if (factionPresentations[i] != null && factionPresentations[i].faction == faction)
+            {
+                if (!string.IsNullOrWhiteSpace(factionPresentations[i].displayName))
+                    return factionPresentations[i].displayName;
+            }
+        }
+        return faction.ToString();
     }
 
-    public string GetEventDisplayName(WorldTileEventType eventType)
+    public IReadOnlyList<Sprite> GetFactionEnemyPortraitPool(FactionType faction)
     {
-        WorldEventPresentationEntry entry = FindEventEntry(eventType);
-        return entry != null && !string.IsNullOrWhiteSpace(entry.displayName) ? entry.displayName : eventType.ToString();
-    }
-
-    public string GetEventDescription(WorldTileEventType eventType)
-    {
-        WorldEventPresentationEntry entry = FindEventEntry(eventType);
-        return entry != null ? entry.description : string.Empty;
+        for (int i = 0; i < factionPresentations.Count; i++)
+        {
+            if (factionPresentations[i] != null && factionPresentations[i].faction == faction)
+                return factionPresentations[i].enemyPortraitPool;
+        }
+        return Array.Empty<Sprite>();
     }
 
     public Sprite GetEventIcon(WorldTileEventType eventType)
     {
-        WorldEventPresentationEntry entry = FindEventEntry(eventType);
-        return entry != null ? entry.icon : null;
+        WorldEventPresentation presentation = GetEventPresentation(eventType);
+        return presentation != null ? presentation.icon : null;
     }
 
-    public List<Sprite> GetPreviewPortraitPool(FactionType factionType, WorldTileEventType eventType)
+    public string GetEventDisplayName(WorldTileEventType eventType)
     {
-        WorldFactionPresentationEntry entry = FindFactionEntry(factionType);
-        if (entry == null)
-            return null;
-
-        if (eventType == WorldTileEventType.Boss && entry.bossPreviewPortraits != null && entry.bossPreviewPortraits.Count > 0)
-            return entry.bossPreviewPortraits;
-
-        if (eventType == WorldTileEventType.EliteBattle && entry.elitePreviewPortraits != null && entry.elitePreviewPortraits.Count > 0)
-            return entry.elitePreviewPortraits;
-
-        return entry.battlePreviewPortraits;
+        WorldEventPresentation presentation = GetEventPresentation(eventType);
+        if (presentation != null && !string.IsNullOrWhiteSpace(presentation.displayName))
+            return presentation.displayName;
+        return eventType.ToString();
     }
 
-    private WorldFactionPresentationEntry FindFactionEntry(FactionType factionType)
+    public string GetEventDescription(WorldTileEventType eventType)
     {
-        for (int i = 0; i < factionPresentationEntries.Count; i++)
+        WorldEventPresentation presentation = GetEventPresentation(eventType);
+        if (presentation != null)
+            return presentation.description;
+        return string.Empty;
+    }
+
+    private WorldEventPresentation GetEventPresentation(WorldTileEventType eventType)
+    {
+        for (int i = 0; i < eventPresentations.Count; i++)
         {
-            if (factionPresentationEntries[i] != null && factionPresentationEntries[i].factionType == factionType)
-                return factionPresentationEntries[i];
+            if (eventPresentations[i] != null && eventPresentations[i].eventType == eventType)
+                return eventPresentations[i];
         }
-
         return null;
     }
+}
 
-    private WorldEventPresentationEntry FindEventEntry(WorldTileEventType eventType)
-    {
-        for (int i = 0; i < eventPresentationEntries.Count; i++)
-        {
-            if (eventPresentationEntries[i] != null && eventPresentationEntries[i].eventType == eventType)
-                return eventPresentationEntries[i];
-        }
+[Serializable]
+public class FactionPresentation
+{
+    public FactionType faction = FactionType.None;
+    public string displayName;
+    public Sprite tileSprite;
+    public Color fallbackColor = Color.white;
+    public List<Sprite> enemyPortraitPool = new List<Sprite>();
+}
 
-        return null;
-    }
+[Serializable]
+public class WorldEventPresentation
+{
+    public WorldTileEventType eventType = WorldTileEventType.None;
+    public string displayName;
+    [TextArea(2, 5)] public string description;
+    public Sprite icon;
 }
