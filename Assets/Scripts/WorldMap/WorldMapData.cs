@@ -11,6 +11,8 @@ public class WorldMapData
     private Dictionary<int, WorldTileData> tileById;
     private Dictionary<HexCoord, WorldTileData> tileByCoord;
 
+    public IReadOnlyList<WorldTileData> Tiles => tiles;
+
     public void RebuildLookup()
     {
         tileById = new Dictionary<int, WorldTileData>(tiles.Count);
@@ -30,20 +32,20 @@ public class WorldMapData
     public WorldTileData GetTileById(int tileId)
     {
         EnsureLookup();
-        WorldTileData tile;
-        return tileById.TryGetValue(tileId, out tile) ? tile : null;
+        tileById.TryGetValue(tileId, out WorldTileData tile);
+        return tile;
     }
 
     public WorldTileData GetTileByCoord(HexCoord coord)
     {
         EnsureLookup();
-        WorldTileData tile;
-        return tileByCoord.TryGetValue(coord, out tile) ? tile : null;
+        tileByCoord.TryGetValue(coord, out WorldTileData tile);
+        return tile;
     }
 
     public List<WorldTileData> GetNeighbors(WorldTileData tile)
     {
-        List<WorldTileData> result = new List<WorldTileData>();
+        List<WorldTileData> result = new List<WorldTileData>(6);
         if (tile == null)
             return result;
 
@@ -64,6 +66,7 @@ public class WorldMapData
     {
         if (a == null || b == null)
             return false;
+
         return HexCoord.Distance(a.coord, b.coord) == 1;
     }
 

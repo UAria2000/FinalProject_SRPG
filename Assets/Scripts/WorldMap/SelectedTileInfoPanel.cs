@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -15,106 +16,91 @@ public class SelectedTileInfoPanel : MonoBehaviour
 
     [Header("Enemy Preview")]
     [SerializeField] private GameObject enemyPreviewRoot;
-    [SerializeField] private Image[] enemyPortraitSlots = new Image[6];
-    [SerializeField] private Color portraitVisibleColor = Color.white;
-    [SerializeField] private Color portraitHiddenColor = new Color(1f, 1f, 1f, 0f);
+    [SerializeField] private List<Image> enemyPortraitSlots = new List<Image>(6);
 
     private WorldRunManager runManager;
     private WorldGenerationSettings settings;
+    private WorldTileData currentTile;
 
-    public void Initialize(WorldRunManager inRunManager, WorldGenerationSettings inSettings)
+    public void Initialize(WorldRunManager manager, WorldGenerationSettings generationSettings)
     {
-        runManager = inRunManager;
-        settings = inSettings;
-
-        if (runManager != null)
-        {
-            runManager.OnTileSelectionChanged -= HandleSelectionChanged;
-            runManager.OnTileSelectionChanged += HandleSelectionChanged;
-        }
+        runManager = manager;
+        settings = generationSettings;
 
         if (moveButton != null)
         {
             moveButton.onClick.RemoveAllListeners();
-            moveButton.onClick.AddListener(HandleMoveClicked);
+            moveButton.onClick.AddListener(HandleMoveButtonClicked);
         }
 
         if (closeButton != null)
         {
             closeButton.onClick.RemoveAllListeners();
-            closeButton.onClick.AddListener(HideAndClearSelection);
+            closeButton.onClick.AddListener(HidePanel);
         }
-
-        HidePanel();
     }
 
-    public void HidePanel()
+    public void ShowTile(WorldTileData tile)
     {
-        gameObject.SetActive(false);
-    }
-
-    private void HandleSelectionChanged(WorldTileData tile)
-    {
-        if (tile == null || tile.IsPlayerOwned)
+        currentTile = tile;
+        if (tile == null)
         {
             HidePanel();
             return;
         }
 
         gameObject.SetActive(true);
-        Bind(tile);
-    }
-
-    private void Bind(WorldTileData tile)
-    {
-        if (tile == null || settings == null)
-        {
-            HidePanel();
-            return;
-        }
 
         if (factionNameText != null)
-            factionNameText.text = settings.GetFactionDisplayName(tile.nativeFaction);
+            factionNameText.text = settings != null ? settings.GetFactionDisplayName(tile.nativeFaction) : tile.nativeFaction.ToString();
 
-        bool isRevealed = tile.revealed || tile.isPlayerStart;
         if (eventNameText != null)
-            eventNameText.text = isRevealed ? settings.GetEventDisplayName(tile.eventType) : "미공개";
+            eventNameText.text = settings != null ? settings.GetEventDisplayName(tile.eventType) : tile.eventType.ToString();
 
         if (eventDescriptionText != null)
-            eventDescriptionText.text = isRevealed ? settings.GetEventDescription(tile.eventType) : "아직 이 타일의 정보가 공개되지 않았습니다.";
+            eventDescriptionText.text = settings != null ? settings.GetEventDescription(tile.eventType) : string.Empty;
 
-        if (moveButton != null)
-            moveButton.interactable = runManager != null && runManager.CanMoveTo(tile);
+        RefreshEnemyPreview(tile);
 
-        RefreshEnemyPreview(tile, isRevealed);
+        if (moveButton != null && runManager != null)
+            moveButton.interactable = runManager.CanMoveTo(tile);
     }
 
-    private void RefreshEnemyPreview(WorldTileData tile, bool isRevealed)
+    public void HidePanel()
     {
-        bool showPreview = isRevealed && tile != null && tile.IsCombatEvent;
+        currentTile = null;
+        gameObject.SetActive(false);
+    }
+
+    private void RefreshEnemyPreview(WorldTileData tile)
+    {
+        bool showPreview = tile != null && tile.IsCombatEvent;
         if (enemyPreviewRoot != null)
             enemyPreviewRoot.SetActive(showPreview);
 
-        for (int i = 0; i < enemyPortraitSlots.Length; i++)
+        for (int i = 0; i < enemyPortraitSlots.Count; i++)
         {
             Image slot = enemyPortraitSlots[i];
             if (slot == null)
                 continue;
 
-            bool visible = showPreview && tile.previewEnemyPortraits != null && i < tile.previewEnemyPortraits.Count && tile.previewEnemyPortraits[i] != null;
-            slot.gameObject.SetActive(visible);
-            slot.sprite = visible ? tile.previewEnemyPortraits[i] : null;
-            slot.color = visible ? portraitVisibleColor : portraitHiddenColor;
+            bool hasSprite = showPreview && tile.previewEnemyPortraits != null && i < tile.previewEnemyPortraits.Count && tile.previewEnemyPortraits[i] != null;
+            slot.gameObject.SetActive(hasSprite);
+            if (hasSprite)
+            {
+                slot.sprite = tile.previewEnemyPortraits[i];
+                slot.color = Color.white;
+                slot.preserveAspect = true;
+            }
         }
     }
 
-    private void HandleMoveClicked()
+    private void HandleMoveButtonClicked()
     {
-        runManager?.TryMoveToSelectedTile();
-    }
+        if (runManager == null)
+            return;
 
-    private void HideAndClearSelection()
-    {
-        runManager?.ClearSelection();
+        if (runManager.TryMoveToSelectedTile())
+            HidePanel();
     }
 }

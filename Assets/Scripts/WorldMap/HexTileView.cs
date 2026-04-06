@@ -14,7 +14,6 @@ public class HexTileView : MonoBehaviour
     [Header("Colors")]
     [SerializeField] private Color iconNormalColor = Color.white;
     [SerializeField] private Color iconDisabledColor = new Color(0.5f, 0.5f, 0.5f, 1f);
-    [SerializeField] private Color hiddenQuestionMarkColor = Color.white;
 
     private int tileId;
     private Action<int> clickHandler;
@@ -48,13 +47,15 @@ public class HexTileView : MonoBehaviour
         {
             tileImage.sprite = tileSprite;
             tileImage.color = tileSprite != null ? Color.white : tileFallbackColor;
+            tileImage.preserveAspect = true;
         }
 
         if (auraImage != null)
         {
-            auraImage.gameObject.SetActive(showAura);
+            auraImage.gameObject.SetActive(showAura && auraSprite != null);
             auraImage.sprite = auraSprite;
             auraImage.color = auraColor;
+            auraImage.preserveAspect = true;
         }
 
         if (iconImage != null)
@@ -63,15 +64,11 @@ public class HexTileView : MonoBehaviour
             iconImage.gameObject.SetActive(showIcon);
             iconImage.sprite = iconSprite;
             iconImage.color = disableIcon ? iconDisabledColor : iconNormalColor;
+            iconImage.preserveAspect = true;
         }
 
         if (questionMarkRoot != null)
-        {
             questionMarkRoot.SetActive(showQuestionMark);
-            Graphic graphic = questionMarkRoot.GetComponent<Graphic>();
-            if (graphic != null)
-                graphic.color = hiddenQuestionMarkColor;
-        }
     }
 
     private void HandleClick()

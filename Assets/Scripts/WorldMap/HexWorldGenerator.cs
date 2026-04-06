@@ -32,7 +32,7 @@ public class HexWorldGenerator
                 return mapData;
         }
 
-        Debug.LogError("[HexWorldGenerator] Failed to generate a valid world map within the retry limit.");
+        Debug.LogError("[HexWorldGenerator] Failed to generate a valid world map.");
         return null;
     }
 
@@ -46,15 +46,8 @@ public class HexWorldGenerator
         if (startTile == null)
             return null;
 
-        List<WorldTileData> nonStartTiles = new List<WorldTileData>();
-        for (int i = 0; i < mapData.tiles.Count; i++)
-        {
-            if (mapData.tiles[i] != null && !mapData.tiles[i].isPlayerStart)
-                nonStartTiles.Add(mapData.tiles[i]);
-        }
-
-        int[] allocations = CreateFactionAllocations(nonStartTiles.Count, enemyFactions.Count);
-        if (!AssignFactionTerritories(mapData, startTile, enemyFactions, allocations))
+        int[] allocations = CreateFactionAllocations(mapData.tiles.Count - 1, enemyFactions.Count);
+        if (!AssignFactionTerritories(mapData, enemyFactions, allocations))
             return null;
 
         if (!AssignEvents(mapData, startTile, enemyFactions))
@@ -66,14 +59,18 @@ public class HexWorldGenerator
 
     private WorldMapData CreateBaseMap()
     {
-        WorldMapData mapData = new WorldMapData();
-        mapData.radius = settings.radius;
+        WorldMapData mapData = new WorldMapData
+        {
+            radius = settings.radius,
+        };
 
         int nextId = 0;
-        for (int q = -settings.radius + 1; q <= settings.radius - 1; q++)
+        int worldRadius = settings.radius - 1;
+
+        for (int q = -worldRadius; q <= worldRadius; q++)
         {
-            int rMin = Mathf.Max(-settings.radius + 1, -q - settings.radius + 1);
-            int rMax = Mathf.Min(settings.radius - 1, -q + settings.radius - 1);
+            int rMin = Mathf.Max(-worldRadius, -q - worldRadius);
+            int rMax = Mathf.Min(worldRadius, -q + worldRadius);
 
             for (int r = rMin; r <= rMax; r++)
             {
@@ -81,9 +78,9 @@ public class HexWorldGenerator
                 {
                     tileId = nextId++,
                     coord = new HexCoord(q, r),
-                    eventType = WorldTileEventType.None,
                     nativeFaction = FactionType.None,
                     currentOwner = FactionType.None,
+                    eventType = WorldTileEventType.None,
                     revealed = false,
                     isPlayerStart = (q == 0 && r == 0),
                     isResolved = false,
@@ -109,16 +106,13 @@ public class HexWorldGenerator
     private int[] CreateFactionAllocations(int availableTileCount, int factionCount)
     {
         int[] result = new int[factionCount];
-        if (factionCount <= 0)
-            return result;
-
         int baseCount = availableTileCount / factionCount;
         int remainder = availableTileCount % factionCount;
 
         for (int i = 0; i < factionCount; i++)
             result[i] = baseCount;
 
-        List<int> indices = new List<int>();
+        List<int> indices = new List<int>(factionCount);
         for (int i = 0; i < factionCount; i++)
             indices.Add(i);
 
@@ -129,68 +123,63 @@ public class HexWorldGenerator
         return result;
     }
 
-    private bool AssignFactionTerritories(WorldMapData mapData, WorldTileData startTile, List<FactionType> enemyFactions, int[] allocations)
+    private bool AssignFactionTerritories(WorldMapData mapData, List<FactionType> enemyFactions, int[] allocations)
     {
-        List<WorldTileData> candidates = new List<WorldTileData>();
+        List<WorldTileData> availableTiles = new List<WorldTileData>();
         for (int i = 0; i < mapData.tiles.Count; i++)
         {
             WorldTileData tile = mapData.tiles[i];
             if (tile != null && !tile.isPlayerStart)
-                candidates.Add(tile);
+                availableTiles.Add(tile);
         }
 
-        Shuffle(candidates);
+        Shuffle(availableTiles);
 
-        Dictionary<FactionType, List<WorldTileData>> territoryByFaction = new Dictionary<FactionType, List<WorldTileData>>();
-        Dictionary<FactionType, HashSet<int>> territoryIdsByFaction = new Dictionary<FactionType, HashSet<int>>();
+        Dictionary<FactionType, List<WorldTileData>> territories = new Dictionary<FactionType, List<WorldTileData>>();
+        Dictionary<FactionType, HashSet<int>> territoryIds = new Dictionary<FactionType, HashSet<int>>();
 
         for (int i = 0; i < enemyFactions.Count; i++)
         {
-            territoryByFaction[enemyFactions[i]] = new List<WorldTileData>();
-            territoryIdsByFaction[enemyFactions[i]] = new HashSet<int>();
+            territories[enemyFactions[i]] = new List<WorldTileData>();
+            territoryIds[enemyFactions[i]] = new HashSet<int>();
         }
 
-        List<WorldTileData> availableSeeds = new List<WorldTileData>(candidates);
+        List<WorldTileData> unusedSeedCandidates = new List<WorldTileData>(availableTiles);
         for (int i = 0; i < enemyFactions.Count; i++)
         {
-            if (allocations[i] <= 0)
+            if (allocations[i] <= 0 || unusedSeedCandidates.Count <= 0)
                 return false;
 
-            if (availableSeeds.Count <= 0)
-                return false;
-
-            WorldTileData seed = availableSeeds[0];
-            availableSeeds.RemoveAt(0);
-            AssignTileToFaction(seed, enemyFactions[i], territoryByFaction, territoryIdsByFaction);
+            WorldTileData seed = unusedSeedCandidates[0];
+            unusedSeedCandidates.RemoveAt(0);
+            AssignTileToFaction(seed, enemyFactions[i], territories, territoryIds);
         }
 
-        int totalAssigned = enemyFactions.Count;
-        int totalNeeded = candidates.Count;
-        int safeGuard = totalNeeded * 30;
+        int assignedCount = enemyFactions.Count;
+        int totalNeeded = availableTiles.Count;
+        int guard = totalNeeded * 30;
 
-        while (totalAssigned < totalNeeded && safeGuard-- > 0)
+        while (assignedCount < totalNeeded && guard-- > 0)
         {
             bool progress = false;
-            List<int> factionIndices = new List<int>();
+            List<int> factionOrder = new List<int>(enemyFactions.Count);
             for (int i = 0; i < enemyFactions.Count; i++)
-                factionIndices.Add(i);
-            Shuffle(factionIndices);
+                factionOrder.Add(i);
+            Shuffle(factionOrder);
 
-            for (int orderIndex = 0; orderIndex < factionIndices.Count; orderIndex++)
+            for (int i = 0; i < factionOrder.Count; i++)
             {
-                int factionIndex = factionIndices[orderIndex];
-                FactionType factionType = enemyFactions[factionIndex];
-                if (territoryByFaction[factionType].Count >= allocations[factionIndex])
+                int factionIndex = factionOrder[i];
+                FactionType faction = enemyFactions[factionIndex];
+                if (territories[faction].Count >= allocations[factionIndex])
                     continue;
 
-                List<WorldTileData> frontier = BuildFrontier(mapData, territoryByFaction[factionType], territoryIdsByFaction[factionType]);
-                if (frontier.Count <= 0)
+                WorldTileData nextTile = FindExpansionTile(mapData, territories[faction], territoryIds[faction]);
+                if (nextTile == null)
                     continue;
 
-                Shuffle(frontier);
-                WorldTileData selected = frontier[0];
-                AssignTileToFaction(selected, factionType, territoryByFaction, territoryIdsByFaction);
-                totalAssigned++;
+                AssignTileToFaction(nextTile, faction, territories, territoryIds);
+                assignedCount++;
                 progress = true;
             }
 
@@ -198,191 +187,203 @@ public class HexWorldGenerator
                 return false;
         }
 
-        if (totalAssigned != totalNeeded)
-            return false;
-
-        return true;
+        return assignedCount == totalNeeded;
     }
 
-    private List<WorldTileData> BuildFrontier(WorldMapData mapData, List<WorldTileData> territory, HashSet<int> territoryIds)
+    private WorldTileData FindExpansionTile(WorldMapData mapData, List<WorldTileData> territory, HashSet<int> territoryIds)
     {
-        List<WorldTileData> result = new List<WorldTileData>();
-        HashSet<int> added = new HashSet<int>();
+        List<WorldTileData> shuffledTerritory = new List<WorldTileData>(territory);
+        Shuffle(shuffledTerritory);
 
-        for (int i = 0; i < territory.Count; i++)
+        for (int i = 0; i < shuffledTerritory.Count; i++)
         {
-            List<WorldTileData> neighbors = mapData.GetNeighbors(territory[i]);
-            for (int j = 0; j < neighbors.Count; j++)
+            List<WorldTileData> neighbors = mapData.GetNeighbors(shuffledTerritory[i]);
+            Shuffle(neighbors);
+            for (int n = 0; n < neighbors.Count; n++)
             {
-                WorldTileData neighbor = neighbors[j];
-                if (neighbor == null || neighbor.isPlayerStart)
+                WorldTileData candidate = neighbors[n];
+                if (candidate.isPlayerStart)
                     continue;
-                if (neighbor.nativeFaction != FactionType.None)
+                if (candidate.nativeFaction != FactionType.None)
                     continue;
-                if (added.Contains(neighbor.tileId) || territoryIds.Contains(neighbor.tileId))
+                if (territoryIds.Contains(candidate.tileId))
                     continue;
-
-                added.Add(neighbor.tileId);
-                result.Add(neighbor);
+                return candidate;
             }
         }
 
-        return result;
+        return null;
     }
 
     private void AssignTileToFaction(
         WorldTileData tile,
-        FactionType factionType,
-        Dictionary<FactionType, List<WorldTileData>> territoryByFaction,
-        Dictionary<FactionType, HashSet<int>> territoryIdsByFaction)
+        FactionType faction,
+        Dictionary<FactionType, List<WorldTileData>> territories,
+        Dictionary<FactionType, HashSet<int>> territoryIds)
     {
-        tile.nativeFaction = factionType;
-        tile.currentOwner = factionType;
-        territoryByFaction[factionType].Add(tile);
-        territoryIdsByFaction[factionType].Add(tile.tileId);
+        tile.nativeFaction = faction;
+        tile.currentOwner = faction;
+        territories[faction].Add(tile);
+        territoryIds[faction].Add(tile.tileId);
     }
 
     private bool AssignEvents(WorldMapData mapData, WorldTileData startTile, List<FactionType> enemyFactions)
     {
-        HashSet<int> blockedNearCenter = new HashSet<int>();
-        List<WorldTileData> centerNeighbors = mapData.GetNeighbors(startTile);
-        for (int i = 0; i < centerNeighbors.Count; i++)
-            blockedNearCenter.Add(centerNeighbors[i].tileId);
-
-        List<WorldTileData> allEnemyTiles = new List<WorldTileData>();
+        List<WorldTileData> pool = new List<WorldTileData>();
         for (int i = 0; i < mapData.tiles.Count; i++)
         {
             WorldTileData tile = mapData.tiles[i];
             if (tile != null && !tile.isPlayerStart)
-                allEnemyTiles.Add(tile);
+                pool.Add(tile);
         }
+
+        HashSet<int> blockedNearCenterIds = new HashSet<int>();
+        List<WorldTileData> startNeighbors = mapData.GetNeighbors(startTile);
+        for (int i = 0; i < startNeighbors.Count; i++)
+            blockedNearCenterIds.Add(startNeighbors[i].tileId);
+
+        if (!AssignSingleGraveyard(pool, blockedNearCenterIds))
+            return false;
 
         for (int i = 0; i < enemyFactions.Count; i++)
         {
-            List<WorldTileData> factionTiles = mapData.GetTilesByNativeFaction(enemyFactions[i]);
-            Shuffle(factionTiles);
-
-            WorldTileData bossTile = null;
-            for (int j = 0; j < factionTiles.Count; j++)
-            {
-                if (settings.forbidBossNearCenter && blockedNearCenter.Contains(factionTiles[j].tileId))
-                    continue;
-
-                bossTile = factionTiles[j];
-                break;
-            }
-
-            if (bossTile == null)
+            if (!AssignSingleBoss(mapData, enemyFactions[i], blockedNearCenterIds))
                 return false;
-
-            bossTile.eventType = WorldTileEventType.Boss;
-            bossTile.previewEnemyPortraits = CreateEnemyPreviewList(enemyFactions[i], WorldTileEventType.Boss);
         }
 
-        List<WorldTileData> graveyardCandidates = new List<WorldTileData>();
-        for (int i = 0; i < allEnemyTiles.Count; i++)
+        return AssignWeightedEvents(mapData, blockedNearCenterIds);
+    }
+
+    private bool AssignSingleGraveyard(List<WorldTileData> pool, HashSet<int> blockedNearCenterIds)
+    {
+        List<WorldTileData> candidates = new List<WorldTileData>();
+        for (int i = 0; i < pool.Count; i++)
         {
-            if (allEnemyTiles[i].eventType == WorldTileEventType.None)
-                graveyardCandidates.Add(allEnemyTiles[i]);
-        }
-
-        if (graveyardCandidates.Count < settings.graveyardCount)
-            return false;
-
-        Shuffle(graveyardCandidates);
-        for (int i = 0; i < settings.graveyardCount; i++)
-            graveyardCandidates[i].eventType = WorldTileEventType.Graveyard;
-
-        for (int i = 0; i < allEnemyTiles.Count; i++)
-        {
-            WorldTileData tile = allEnemyTiles[i];
+            WorldTileData tile = pool[i];
             if (tile.eventType != WorldTileEventType.None)
                 continue;
+            candidates.Add(tile);
+        }
 
-            WorldTileEventType assignedType = PickWeightedEventType(tile, blockedNearCenter);
-            tile.eventType = assignedType;
+        if (candidates.Count == 0)
+            return false;
 
-            if (tile.eventType.IsCombatEvent())
-                tile.previewEnemyPortraits = CreateEnemyPreviewList(tile.nativeFaction, tile.eventType);
+        WorldTileData selected = candidates[Random.Range(0, candidates.Count)];
+        selected.eventType = WorldTileEventType.Graveyard;
+        selected.previewEnemyPortraits.Clear();
+        return true;
+    }
+
+    private bool AssignSingleBoss(WorldMapData mapData, FactionType faction, HashSet<int> blockedNearCenterIds)
+    {
+        List<WorldTileData> candidates = new List<WorldTileData>();
+        List<WorldTileData> factionTiles = mapData.GetTilesByNativeFaction(faction);
+
+        for (int i = 0; i < factionTiles.Count; i++)
+        {
+            WorldTileData tile = factionTiles[i];
+            if (tile.eventType != WorldTileEventType.None)
+                continue;
+            if (settings.forbidBossNearCenter && blockedNearCenterIds.Contains(tile.tileId))
+                continue;
+            candidates.Add(tile);
+        }
+
+        if (candidates.Count == 0)
+            return false;
+
+        WorldTileData selected = candidates[Random.Range(0, candidates.Count)];
+        selected.eventType = WorldTileEventType.Boss;
+        selected.previewEnemyPortraits = BuildEnemyPreviewList(faction, true);
+        return true;
+    }
+
+    private bool AssignWeightedEvents(WorldMapData mapData, HashSet<int> blockedNearCenterIds)
+    {
+        WorldEventWeightSettings weights = settings.eventWeightSettings;
+        if (weights == null)
+        {
+            Debug.LogError("[HexWorldGenerator] WorldEventWeightSettings is missing.");
+            return false;
+        }
+
+        List<WorldTileData> unassigned = new List<WorldTileData>();
+        for (int i = 0; i < mapData.tiles.Count; i++)
+        {
+            WorldTileData tile = mapData.tiles[i];
+            if (tile != null && tile.eventType == WorldTileEventType.None && !tile.isPlayerStart)
+                unassigned.Add(tile);
+        }
+
+        for (int i = 0; i < unassigned.Count; i++)
+        {
+            WorldTileData tile = unassigned[i];
+            WorldTileEventType eventType = PickWeightedEventType(weights, tile, blockedNearCenterIds);
+            tile.eventType = eventType;
+            tile.previewEnemyPortraits = tile.IsCombatEvent ? BuildEnemyPreviewList(tile.nativeFaction, eventType == WorldTileEventType.Boss) : new List<Sprite>();
         }
 
         return true;
     }
 
-    private WorldTileEventType PickWeightedEventType(WorldTileData tile, HashSet<int> blockedNearCenter)
+    private WorldTileEventType PickWeightedEventType(WorldEventWeightSettings weights, WorldTileData tile, HashSet<int> blockedNearCenterIds)
     {
-        List<WorldEventWeightEntry> sourceEntries = new List<WorldEventWeightEntry>();
-        if (settings.eventWeightSettings != null && settings.eventWeightSettings.Entries != null)
+        List<WorldTileEventType> candidates = new List<WorldTileEventType>
         {
-            for (int i = 0; i < settings.eventWeightSettings.Entries.Count; i++)
-                sourceEntries.Add(settings.eventWeightSettings.Entries[i]);
+            WorldTileEventType.Battle,
+            WorldTileEventType.Rest,
+            WorldTileEventType.Treasure,
+            WorldTileEventType.Merchant,
+            WorldTileEventType.Quest,
+            WorldTileEventType.EliteBattle,
+        };
+
+        int totalWeight = 0;
+        List<int> weightValues = new List<int>(candidates.Count);
+
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            WorldTileEventType eventType = candidates[i];
+            int weight = weights.GetWeight(eventType);
+
+            if (eventType == WorldTileEventType.EliteBattle && settings.forbidEliteNearCenter && blockedNearCenterIds.Contains(tile.tileId))
+                weight = 0;
+
+            weightValues.Add(weight);
+            totalWeight += weight;
         }
 
-        if (sourceEntries.Count <= 0)
+        if (totalWeight <= 0)
             return WorldTileEventType.Battle;
 
-        float totalWeight = 0f;
-        List<WorldEventWeightEntry> filteredEntries = new List<WorldEventWeightEntry>();
-        bool isNearCenter = blockedNearCenter.Contains(tile.tileId);
+        int roll = Random.Range(0, totalWeight);
+        int running = 0;
 
-        for (int i = 0; i < sourceEntries.Count; i++)
+        for (int i = 0; i < candidates.Count; i++)
         {
-            WorldEventWeightEntry entry = sourceEntries[i];
-            if (entry == null || entry.weight <= 0f)
-                continue;
-
-            if (entry.eventType == WorldTileEventType.Boss || entry.eventType == WorldTileEventType.Graveyard)
-                continue;
-
-            if (settings.forbidEliteNearCenter && isNearCenter && entry.eventType == WorldTileEventType.EliteBattle)
-                continue;
-
-            filteredEntries.Add(entry);
-            totalWeight += entry.weight;
+            running += weightValues[i];
+            if (roll < running)
+                return candidates[i];
         }
 
-        if (filteredEntries.Count <= 0 || totalWeight <= 0f)
-            return WorldTileEventType.Battle;
-
-        float roll = Random.Range(0f, totalWeight);
-        float cumulative = 0f;
-        for (int i = 0; i < filteredEntries.Count; i++)
-        {
-            cumulative += filteredEntries[i].weight;
-            if (roll <= cumulative)
-                return filteredEntries[i].eventType;
-        }
-
-        return filteredEntries[filteredEntries.Count - 1].eventType;
+        return WorldTileEventType.Battle;
     }
 
-    private List<Sprite> CreateEnemyPreviewList(FactionType factionType, WorldTileEventType eventType)
+    private List<Sprite> BuildEnemyPreviewList(FactionType faction, bool isBoss)
     {
-        List<Sprite> pool = settings.GetPreviewPortraitPool(factionType, eventType);
         List<Sprite> result = new List<Sprite>();
-
-        if (pool == null || pool.Count <= 0)
+        IReadOnlyList<Sprite> pool = settings.GetFactionEnemyPortraitPool(faction);
+        if (pool == null || pool.Count == 0)
             return result;
 
-        int minCount = Mathf.Max(1, settings.minCombatPreviewCount);
-        int maxCount = Mathf.Max(minCount, settings.maxCombatPreviewCount);
-        int previewCount = Random.Range(minCount, maxCount + 1);
-        previewCount = Mathf.Min(previewCount, 6);
+        int minCount = Mathf.Clamp(settings.enemyPortraitMinCount, 1, 6);
+        int maxCount = Mathf.Clamp(settings.enemyPortraitMaxCount, minCount, 6);
+        int count = isBoss ? 1 : Random.Range(minCount, maxCount + 1);
 
-        List<Sprite> working = new List<Sprite>(pool);
-        Shuffle(working);
-
-        for (int i = 0; i < previewCount; i++)
+        for (int i = 0; i < count; i++)
         {
-            if (working.Count > 0)
-            {
-                result.Add(working[0]);
-                working.RemoveAt(0);
-            }
-            else
-            {
-                result.Add(pool[Random.Range(0, pool.Count)]);
-            }
+            Sprite sprite = pool[Random.Range(0, pool.Count)];
+            result.Add(sprite);
         }
 
         return result;
@@ -406,14 +407,12 @@ public class HexWorldGenerator
         return result;
     }
 
-    private void Shuffle<T>(List<T> list)
+    private void Shuffle<T>(IList<T> list)
     {
         for (int i = list.Count - 1; i > 0; i--)
         {
-            int swapIndex = Random.Range(0, i + 1);
-            T temp = list[i];
-            list[i] = list[swapIndex];
-            list[swapIndex] = temp;
+            int j = Random.Range(0, i + 1);
+            (list[i], list[j]) = (list[j], list[i]);
         }
     }
 }

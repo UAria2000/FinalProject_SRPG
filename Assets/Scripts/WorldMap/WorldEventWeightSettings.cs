@@ -1,29 +1,26 @@
-using System.Collections.Generic;
 using UnityEngine;
 
-[CreateAssetMenu(menuName = "World/World Event Weight Settings", fileName = "WorldEventWeightSettings")]
+[CreateAssetMenu(menuName = "World Map/Event Weight Settings", fileName = "WorldEventWeightSettings")]
 public class WorldEventWeightSettings : ScriptableObject
 {
-    [SerializeField] private List<WorldEventWeightEntry> entries = new List<WorldEventWeightEntry>
-    {
-        new WorldEventWeightEntry { eventType = WorldTileEventType.Battle, weight = 50f },
-        new WorldEventWeightEntry { eventType = WorldTileEventType.Rest, weight = 10f },
-        new WorldEventWeightEntry { eventType = WorldTileEventType.Treasure, weight = 12f },
-        new WorldEventWeightEntry { eventType = WorldTileEventType.Merchant, weight = 8f },
-        new WorldEventWeightEntry { eventType = WorldTileEventType.Quest, weight = 10f },
-        new WorldEventWeightEntry { eventType = WorldTileEventType.EliteBattle, weight = 10f },
-    };
+    [Min(0)] public int battleWeight = 50;
+    [Min(0)] public int restWeight = 10;
+    [Min(0)] public int treasureWeight = 10;
+    [Min(0)] public int merchantWeight = 10;
+    [Min(0)] public int questWeight = 10;
+    [Min(0)] public int eliteWeight = 10;
 
-    public IReadOnlyList<WorldEventWeightEntry> Entries => entries;
-
-    public float GetWeight(WorldTileEventType eventType)
+    public int GetWeight(WorldTileEventType eventType)
     {
-        for (int i = 0; i < entries.Count; i++)
+        switch (eventType)
         {
-            if (entries[i].eventType == eventType)
-                return Mathf.Max(0f, entries[i].weight);
+            case WorldTileEventType.Battle: return battleWeight;
+            case WorldTileEventType.Rest: return restWeight;
+            case WorldTileEventType.Treasure: return treasureWeight;
+            case WorldTileEventType.Merchant: return merchantWeight;
+            case WorldTileEventType.Quest: return questWeight;
+            case WorldTileEventType.EliteBattle: return eliteWeight;
+            default: return 0;
         }
-
-        return 0f;
     }
 }

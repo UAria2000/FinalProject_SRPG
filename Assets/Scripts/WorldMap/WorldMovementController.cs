@@ -23,6 +23,17 @@ public class WorldMovementController
         return mapData.AreNeighbors(currentTile, targetTile);
     }
 
+    public bool IsAdjacentReachable(WorldTileData currentTile, WorldTileData targetTile)
+    {
+        if (mapData == null || currentTile == null || targetTile == null)
+            return false;
+
+        if (targetTile.IsPlayerOwned)
+            return false;
+
+        return mapData.AreNeighbors(currentTile, targetTile);
+    }
+
     public List<WorldTileData> GetAdjacentReachableTiles(WorldTileData currentTile)
     {
         List<WorldTileData> result = new List<WorldTileData>();

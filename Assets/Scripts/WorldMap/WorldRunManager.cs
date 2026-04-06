@@ -18,6 +18,7 @@ public class WorldRunManager : MonoBehaviour
 
     public event Action OnWorldStateChanged;
     public event Action<WorldTileData> OnTileSelectionChanged;
+    public event Action<WorldTileData> OnCurrentTileChanged;
 
     private WorldRevealController revealController;
     private WorldMovementController movementController;
@@ -35,17 +36,12 @@ public class WorldRunManager : MonoBehaviour
         if (MapData == null)
             return;
 
-        movementController = new WorldMovementController(MapData);
         revealController = new WorldRevealController(MapData);
+        movementController = new WorldMovementController(MapData);
 
         CurrentTile = MapData.GetStartTile();
         SelectedTile = null;
-
-        if (CurrentTile != null)
-            revealController.RevealAround(CurrentTile);
-
-        if (worldMapUI != null)
-            worldMapUI.Build(this, MapData, generationSettings);
+        revealController.RevealAround(CurrentTile);
 
         if (selectedTileInfoPanel != null)
         {
@@ -53,8 +49,12 @@ public class WorldRunManager : MonoBehaviour
             selectedTileInfoPanel.HidePanel();
         }
 
-        RaiseWorldStateChanged();
+        if (worldMapUI != null)
+            worldMapUI.Initialize(this, MapData, generationSettings);
+
         RaiseSelectionChanged();
+        RaiseWorldStateChanged();
+        OnCurrentTileChanged?.Invoke(CurrentTile);
     }
 
     public void HandleTileClicked(int tileId)
@@ -114,42 +114,49 @@ public class WorldRunManager : MonoBehaviour
 
     public bool CanMoveTo(WorldTileData tile)
     {
-        return movementController != null && movementController.CanMoveTo(CurrentTile, tile);
+        return tile != null && movementController != null && movementController.CanMoveTo(CurrentTile, tile);
     }
 
     public bool TryMoveToSelectedTile()
     {
-        if (SelectedTile == null)
-            return false;
-
-        if (!CanMoveTo(SelectedTile))
+        if (SelectedTile == null || !CanMoveTo(SelectedTile))
             return false;
 
         MoveToTile(SelectedTile);
         return true;
     }
 
-    public bool IsAdjacentReachable(WorldTileData tile)
-    {
-        if (tile == null || CurrentTile == null || movementController == null)
-            return false;
-
-        return !tile.IsPlayerOwned && MapData.AreNeighbors(CurrentTile, tile);
-    }
-
     public bool IsCurrentTile(WorldTileData tile)
     {
-        return CurrentTile != null && tile != null && CurrentTile.tileId == tile.tileId;
+        return tile != null && CurrentTile != null && tile.tileId == CurrentTile.tileId;
+    }
+
+    public bool IsSelectedTile(WorldTileData tile)
+    {
+        return tile != null && SelectedTile != null && tile.tileId == SelectedTile.tileId;
+    }
+
+    public bool IsAdjacentReachable(WorldTileData tile)
+    {
+        return tile != null && CurrentTile != null && movementController != null && movementController.IsAdjacentReachable(CurrentTile, tile);
     }
 
     private void MoveToTile(WorldTileData tile)
     {
-        if (tile == null)
+        if (tile == null || !CanMoveTo(tile))
             return;
 
         CurrentTile = tile;
-        revealController?.RevealAround(tile);
         SelectedTile = null;
+        revealController?.RevealAround(tile);
+
+        if (selectedTileInfoPanel != null)
+            selectedTileInfoPanel.HidePanel();
+
+        if (worldMapUI != null)
+            worldMapUI.NotifyMovedToTile(tile);
+
+        OnCurrentTileChanged?.Invoke(CurrentTile);
         RaiseSelectionChanged();
         RaiseWorldStateChanged();
     }
@@ -157,10 +164,20 @@ public class WorldRunManager : MonoBehaviour
     private void RaiseWorldStateChanged()
     {
         OnWorldStateChanged?.Invoke();
+        if (worldMapUI != null && MapData != null)
+            worldMapUI.RefreshAll(MapData);
     }
 
     private void RaiseSelectionChanged()
     {
         OnTileSelectionChanged?.Invoke(SelectedTile);
+
+        if (selectedTileInfoPanel == null)
+            return;
+
+        if (SelectedTile == null)
+            selectedTileInfoPanel.HidePanel();
+        else
+            selectedTileInfoPanel.ShowTile(SelectedTile);
     }
 }
