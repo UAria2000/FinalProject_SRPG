@@ -18,4 +18,19 @@ public class WorldTileData
 
     public bool IsPlayerOwned => currentOwner == FactionType.Player;
     public bool IsCombatEvent => eventType.IsCombatEvent();
+    public bool IsReusableEvent => eventType == WorldTileEventType.Graveyard;
+
+    public bool ShouldTriggerEventOnArrival
+    {
+        get
+        {
+            if (isPlayerStart)
+                return false;
+
+            if (IsReusableEvent)
+                return true;
+
+            return !isResolved;
+        }
+    }
 }

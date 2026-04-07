@@ -112,7 +112,7 @@ public class HexWorldMapUI : MonoBehaviour
             bool showQuestionMark = !tile.revealed;
             bool iconAlwaysVisible = tile.isPlayerStart && settings != null && settings.StartTileIcon != null;
             bool iconVisible = iconAlwaysVisible || tile.revealed;
-            bool disableIcon = tile.currentOwner == FactionType.Player && !tile.isPlayerStart;
+            bool disableIcon = tile.isIconDisabled;
 
             view.SetVisual(
                 tileSprite,

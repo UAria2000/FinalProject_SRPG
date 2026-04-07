@@ -7,6 +7,7 @@ public class WorldRunManager : MonoBehaviour
     [SerializeField] private WorldGenerationSettings generationSettings;
     [SerializeField] private HexWorldMapUI worldMapUI;
     [SerializeField] private SelectedTileInfoPanel selectedTileInfoPanel;
+    [SerializeField] private WorldEventController eventController;
 
     [Header("Startup")]
     [SerializeField] private bool generateOnStart = true;
@@ -15,6 +16,7 @@ public class WorldRunManager : MonoBehaviour
     public WorldTileData CurrentTile { get; private set; }
     public WorldTileData SelectedTile { get; private set; }
     public WorldGenerationSettings Settings => generationSettings;
+    public bool IsBusy => eventController != null && eventController.IsBusy;
 
     public event Action OnWorldStateChanged;
     public event Action<WorldTileData> OnTileSelectionChanged;
@@ -49,6 +51,9 @@ public class WorldRunManager : MonoBehaviour
             selectedTileInfoPanel.HidePanel();
         }
 
+        if (eventController != null)
+            eventController.Initialize(this, generationSettings);
+
         if (worldMapUI != null)
             worldMapUI.Initialize(this, MapData, generationSettings);
 
@@ -59,7 +64,7 @@ public class WorldRunManager : MonoBehaviour
 
     public void HandleTileClicked(int tileId)
     {
-        if (MapData == null)
+        if (IsBusy || MapData == null)
             return;
 
         WorldTileData tile = MapData.GetTileById(tileId);
@@ -68,7 +73,7 @@ public class WorldRunManager : MonoBehaviour
 
     public void HandleTileClicked(WorldTileData tile)
     {
-        if (tile == null || CurrentTile == null || movementController == null)
+        if (IsBusy || tile == null || CurrentTile == null || movementController == null)
             return;
 
         if (tile.tileId == CurrentTile.tileId)
@@ -79,7 +84,7 @@ public class WorldRunManager : MonoBehaviour
 
         if (tile.IsPlayerOwned)
         {
-            MoveToTile(tile);
+            MoveToTileInternal(tile, true);
             return;
         }
 
@@ -87,7 +92,7 @@ public class WorldRunManager : MonoBehaviour
         {
             if (movementController.CanMoveTo(CurrentTile, tile))
             {
-                MoveToTile(tile);
+                MoveToTileInternal(tile, true);
                 return;
             }
         }
@@ -99,6 +104,9 @@ public class WorldRunManager : MonoBehaviour
 
     public void HandleBackgroundClicked()
     {
+        if (IsBusy)
+            return;
+
         ClearSelection();
     }
 
@@ -119,10 +127,10 @@ public class WorldRunManager : MonoBehaviour
 
     public bool TryMoveToSelectedTile()
     {
-        if (SelectedTile == null || !CanMoveTo(SelectedTile))
+        if (IsBusy || SelectedTile == null || !CanMoveTo(SelectedTile))
             return false;
 
-        MoveToTile(SelectedTile);
+        MoveToTileInternal(SelectedTile, true);
         return true;
     }
 
@@ -141,7 +149,50 @@ public class WorldRunManager : MonoBehaviour
         return tile != null && CurrentTile != null && movementController != null && movementController.IsAdjacentReachable(CurrentTile, tile);
     }
 
-    private void MoveToTile(WorldTileData tile)
+    public void ResolveMapEvent(WorldTileData tile, bool conquerTile, bool markResolved, bool disableIcon)
+    {
+        if (tile == null)
+            return;
+
+        tile.revealed = true;
+
+        if (conquerTile)
+            tile.currentOwner = FactionType.Player;
+
+        tile.isResolved = markResolved;
+        tile.isIconDisabled = disableIcon;
+
+        RaiseWorldStateChanged();
+    }
+
+    public void ResolveCombatVictory(WorldTileData tile)
+    {
+        if (tile == null)
+            return;
+
+        ResolveMapEvent(tile, true, true, true);
+        FocusCurrentTile();
+    }
+
+    public void ResolveCombatDefeat(WorldTileData tile, bool returnToStartTile)
+    {
+        if (returnToStartTile && MapData != null)
+        {
+            WorldTileData startTile = MapData.GetStartTile();
+            if (startTile != null)
+                MoveToTileInternal(startTile, false);
+        }
+
+        RaiseWorldStateChanged();
+    }
+
+    public void FocusCurrentTile()
+    {
+        if (worldMapUI != null)
+            worldMapUI.FocusOnCurrentTile(true);
+    }
+
+    private void MoveToTileInternal(WorldTileData tile, bool triggerArrivalEvent)
     {
         if (tile == null || !CanMoveTo(tile))
             return;
@@ -159,6 +210,9 @@ public class WorldRunManager : MonoBehaviour
         OnCurrentTileChanged?.Invoke(CurrentTile);
         RaiseSelectionChanged();
         RaiseWorldStateChanged();
+
+        if (triggerArrivalEvent && eventController != null)
+            eventController.TryHandleArrival(tile);
     }
 
     private void RaiseWorldStateChanged()

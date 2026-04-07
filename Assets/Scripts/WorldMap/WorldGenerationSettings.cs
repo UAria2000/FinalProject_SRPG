@@ -21,6 +21,9 @@ public class WorldGenerationSettings : ScriptableObject
     [SerializeField] private Sprite startTileIcon;
     public Sprite StartTileIcon => startTileIcon;
 
+    [Header("Battle Event Config")]
+    public List<FactionBattleConfig> factionBattleConfigs = new List<FactionBattleConfig>();
+
     [Header("Rules")]
     public bool forbidBossNearCenter = true;
     public bool forbidEliteNearCenter = true;
@@ -101,6 +104,18 @@ public class WorldGenerationSettings : ScriptableObject
         return string.Empty;
     }
 
+    public FactionBattleConfig GetFactionBattleConfig(FactionType faction)
+    {
+        for (int i = 0; i < factionBattleConfigs.Count; i++)
+        {
+            FactionBattleConfig config = factionBattleConfigs[i];
+            if (config != null && config.faction == faction)
+                return config;
+        }
+
+        return null;
+    }
+
     private WorldEventPresentation GetEventPresentation(WorldTileEventType eventType)
     {
         for (int i = 0; i < eventPresentations.Count; i++)
@@ -129,4 +144,54 @@ public class WorldEventPresentation
     public string displayName;
     [TextArea(2, 5)] public string description;
     public Sprite icon;
+}
+
+[Serializable]
+public class FactionBattleConfig
+{
+    public FactionType faction = FactionType.None;
+
+    [Header("Normal Battle Tables")]
+    public EnemyEncounterTable battleTier1Table;
+    public EnemyEncounterTable battleTier2Table;
+    public EnemyEncounterTable battleTier3Table;
+
+    [Header("Elite Battle Tables")]
+    public EnemyEncounterTable eliteTier1Table;
+    public EnemyEncounterTable eliteTier2Table;
+    public EnemyEncounterTable eliteTier3Table;
+
+    [Header("Boss")]
+    public PartyDefinition bossPartyDefinition;
+    public EnemyEncounterTable bossEncounterTable;
+
+    public EnemyEncounterTable GetEncounterTable(WorldTileEventType eventType, int tierIndex)
+    {
+        int tier = Mathf.Clamp(tierIndex, 0, 2);
+
+        if (eventType == WorldTileEventType.Battle)
+        {
+            switch (tier)
+            {
+                case 0: return battleTier1Table;
+                case 1: return battleTier2Table;
+                default: return battleTier3Table;
+            }
+        }
+
+        if (eventType == WorldTileEventType.EliteBattle)
+        {
+            switch (tier)
+            {
+                case 0: return eliteTier1Table;
+                case 1: return eliteTier2Table;
+                default: return eliteTier3Table;
+            }
+        }
+
+        if (eventType == WorldTileEventType.Boss)
+            return bossEncounterTable;
+
+        return null;
+    }
 }
