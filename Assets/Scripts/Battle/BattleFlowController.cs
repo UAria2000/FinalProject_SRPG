@@ -472,11 +472,29 @@ private void ClearInvalidDuelLocks()
         if (battleManager.BattleResult == BattleResultType.Flee)
             return;
 
-        if (captureController != null && !captureController.IsMainPlayerAliveInBattle())
+        bool mainAlive = captureController == null || captureController.IsMainPlayerAliveInBattle();
+        if (!mainAlive)
         {
-            battleManager.SetBattleResult(BattleResultType.WorldFailure);
+            battleManager.SetPendingWorldFailure(true);
+
+            BattleUnit actingUnit = battleManager.CurrentActingUnit;
+            bool canFinalizeWorldFailure = actingUnit == null
+                                           || actingUnit.IsDead
+                                           || battleManager.CurrentTurnSkippedByStatus
+                                           || battleManager.CurrentState == TurnState.TurnEnding
+                                           || battleManager.CurrentState == TurnState.BattleEnded;
+
+            if (canFinalizeWorldFailure)
+            {
+                battleManager.SetBattleResult(BattleResultType.WorldFailure);
+                return;
+            }
+
+            battleManager.SetBattleResult(BattleResultType.None);
             return;
         }
+
+        battleManager.SetPendingWorldFailure(false);
 
         if (alliesAlive && enemiesAlive)
             battleManager.SetBattleResult(BattleResultType.None);
