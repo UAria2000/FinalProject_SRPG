@@ -198,14 +198,14 @@ public class BattleActionController : MonoBehaviour
 
     public IEnumerator ExecuteItem(BattleUnit actor, int inventoryIndex, BattleUnit clickedTarget)
     {
-        PartyDefinition allyParty = battleManager.AllyPartyDefinition;
-        if (allyParty == null || inventoryIndex < 0 || inventoryIndex >= allyParty.inventory.Count)
+        List<InventoryStackData> allyInventory = battleManager.GetActiveAllyInventory();
+        if (allyInventory == null || inventoryIndex < 0 || inventoryIndex >= allyInventory.Count)
         {
             battleManager.OnActionExecutionFinished(false);
             yield break;
         }
 
-        InventoryStackData stack = allyParty.inventory[inventoryIndex];
+        InventoryStackData stack = allyInventory[inventoryIndex];
         if (stack == null || stack.item == null || stack.amount <= 0)
         {
             battleManager.OnActionExecutionFinished(false);
@@ -249,7 +249,7 @@ public class BattleActionController : MonoBehaviour
         {
             stack.amount = Mathf.Max(0, stack.amount - 1);
             if (stack.amount <= 0)
-                allyParty.inventory.RemoveAt(inventoryIndex);
+                allyInventory.RemoveAt(inventoryIndex);
         }
 
         yield return StartCoroutine(battleManager.HandleDeathsAndCompressionRoutine());

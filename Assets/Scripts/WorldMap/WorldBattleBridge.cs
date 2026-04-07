@@ -14,6 +14,11 @@ public class WorldBattleBridge : MonoBehaviour
     [SerializeField] private bool hideWorldMapDuringBattle = true;
     [SerializeField] private bool showBattleRootDuringBattle = true;
     [SerializeField] private bool waitOneFrameAfterBattleRootActivation = true;
+    [SerializeField] private SimpleScreenFader screenFader;
+    [SerializeField] private float battleEnterFadeOutDuration = 0.2f;
+    [SerializeField] private float battleEnterFadeInDuration = 0.2f;
+    [SerializeField] private float battleExitFadeOutDuration = 0.2f;
+    [SerializeField] private float battleExitFadeInDuration = 0.2f;
 
     private WorldRunManager runManager;
     private WorldGenerationSettings settings;
@@ -72,19 +77,30 @@ public class WorldBattleBridge : MonoBehaviour
 
     private IEnumerator BeginBattleRoutine(WorldTileData tile, FactionBattleConfig config)
     {
-        SetWorldBattleRoots(isInBattle: true);
+        if (screenFader != null)
+            yield return screenFader.FadeOut(battleEnterFadeOutDuration);
 
-        if (battleRoot != null && battleRoot.activeInHierarchy && waitOneFrameAfterBattleRootActivation)
-            yield return null;
+        SetWorldBattleRoots(true);
+
+        yield return null;
+
+        BattlePartyRuntimeState allyState = runManager.GetOrCreatePlayerPartyRuntimeState();
+        battleManager.SetAllyRuntimePartyState(allyState);
 
         if (!PrepareEnemyParty(tile, config))
         {
-            isBattleRunning = false;
-            SetWorldBattleRoots(isInBattle: false);
+            SetWorldBattleRoots(false);
+
+            if (screenFader != null)
+                yield return screenFader.FadeIn(battleEnterFadeInDuration);
+
             yield break;
         }
 
         battleManager.StartBattle();
+
+        if (screenFader != null)
+            yield return screenFader.FadeIn(battleEnterFadeInDuration);
     }
 
     private bool PrepareEnemyParty(WorldTileData tile, FactionBattleConfig config)
@@ -98,6 +114,7 @@ public class WorldBattleBridge : MonoBehaviour
         EnemyEncounterTable table = config.GetEncounterTable(tile.eventType, ResolveProgressTier(tile.nativeFaction));
         if (table == null)
         {
+            Debug.LogWarning($"[WorldBattleBridge] No encounter table configured for {tile.nativeFaction} / {tile.eventType}.");
             Debug.LogWarning($"[WorldBattleBridge] No encounter table configured for {tile.nativeFaction} / {tile.eventType}.");
             return false;
         }
@@ -148,6 +165,14 @@ public class WorldBattleBridge : MonoBehaviour
         if (!isBattleRunning)
             return;
 
+        StartCoroutine(HandleBattleEndedRoutine(result));
+    }
+
+    private IEnumerator HandleBattleEndedRoutine(BattleResultType result)
+    {
+        if (screenFader != null)
+            yield return screenFader.FadeOut(battleExitFadeOutDuration);
+
         SetWorldBattleRoots(isInBattle: false);
         isBattleRunning = false;
 
@@ -160,6 +185,9 @@ public class WorldBattleBridge : MonoBehaviour
         }
 
         pendingTile = null;
+
+        if (screenFader != null)
+            yield return screenFader.FadeIn(battleExitFadeInDuration);
     }
 
     private void SetWorldBattleRoots(bool isInBattle)

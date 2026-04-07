@@ -57,8 +57,10 @@ public class BattleFlowController : MonoBehaviour
         if (logController != null)
             logController.ClearBattleLog();
 
-        SpawnPartyIntoFormation(battleManager.AllyPartyDefinition, TeamType.Ally, battleManager.AllyFormation);
-        SpawnPartyIntoFormation(battleManager.EnemyPartyDefinition, TeamType.Enemy, battleManager.EnemyFormation);
+        battleManager.EnsureRuntimePartyStates();
+
+        SpawnPartyIntoFormation(battleManager.AllyRuntimePartyState, TeamType.Ally, battleManager.AllyFormation);
+        SpawnPartyIntoFormation(battleManager.EnemyRuntimePartyState, TeamType.Enemy, battleManager.EnemyFormation);
 
         battleManager.AllyFormation.RemoveDeadAndCompress();
         battleManager.EnemyFormation.RemoveDeadAndCompress();
@@ -174,32 +176,32 @@ public class BattleFlowController : MonoBehaviour
                (battleManager.EnemyFormation != null && battleManager.EnemyFormation.Contains(unit));
     }
 
-    private void SpawnPartyIntoFormation(PartyDefinition partyDefinition, TeamType team, BattleFormation formation)
+    private void SpawnPartyIntoFormation(BattlePartyRuntimeState partyState, TeamType team, BattleFormation formation)
     {
-        if (partyDefinition == null || formation == null)
+        if (partyState == null || formation == null)
             return;
 
-        if (!partyDefinition.IsValidMemberCount())
+        if (!partyState.IsValidMemberCount())
         {
             Debug.LogWarning("[BattleManager] Party member count must be 1~4.");
             return;
         }
 
-        if (partyDefinition.HasDuplicateSlotIndex())
+        if (partyState.HasDuplicateSlotIndex())
         {
             Debug.LogWarning("[BattleManager] Duplicate start slot index.");
             return;
         }
 
-        if (partyDefinition.HasNullDefinitions())
+        if (partyState.HasNullDefinitions())
         {
             Debug.LogWarning("[BattleManager] Null unit/view definition found.");
             return;
         }
 
-        for (int i = 0; i < partyDefinition.members.Count; i++)
+        for (int i = 0; i < partyState.members.Count; i++)
         {
-            PartyMemberData data = partyDefinition.members[i];
+            PartyMemberData data = partyState.members[i];
             if (data == null)
                 continue;
 

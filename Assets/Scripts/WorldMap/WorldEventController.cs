@@ -101,18 +101,18 @@ public class WorldEventController : MonoBehaviour
 
     private void RestorePartyToFull()
     {
-        PartyDefinition allyParty = battleManager != null ? battleManager.AllyPartyDefinition : null;
-        if (allyParty == null || allyParty.members == null)
+        BattlePartyRuntimeState partyState = null;
+
+        if (runManager != null)
+            partyState = runManager.GetOrCreatePlayerPartyRuntimeState();
+
+        if (partyState == null && battleManager != null)
+            partyState = battleManager.AllyRuntimePartyState;
+
+        if (partyState == null)
             return;
 
-        for (int i = 0; i < allyParty.members.Count; i++)
-        {
-            PartyMemberData member = allyParty.members[i];
-            if (member == null)
-                continue;
-
-            member.ResetPersistentHPToFull();
-        }
+        partyState.ResetPersistentHPToFull();
     }
 
     private string BuildEventBody(WorldTileData tile)

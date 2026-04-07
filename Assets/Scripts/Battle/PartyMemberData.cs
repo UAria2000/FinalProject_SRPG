@@ -31,6 +31,23 @@ public class PartyMemberData
     [Tooltip("-1이면 아직 초기화되지 않은 상태로 간주하고 전투 시작 시 최대 체력을 사용한다.")]
     public int persistentCurrentHP = -1;
 
+    public PartyMemberData CloneRuntime()
+    {
+        PartyMemberData clone = new PartyMemberData();
+        clone.unitDefinition = unitDefinition;
+        clone.unitViewDefinition = unitViewDefinition;
+        clone.startSlotIndex = startSlotIndex;
+        clone.instanceId = instanceId;
+        clone.instanceDisplayNameOverride = instanceDisplayNameOverride;
+        clone.fixedEpitaph = fixedEpitaph;
+        clone.currentLevel = currentLevel;
+        clone.originalLevel = originalLevel;
+        clone.statVariance = statVariance != null ? statVariance.CloneRuntime() : new UnitInstanceStatVariance();
+        clone.learnedSkills = learnedSkills != null ? new List<SkillDefinition>(learnedSkills) : new List<SkillDefinition>();
+        clone.persistentCurrentHP = persistentCurrentHP;
+        return clone;
+    }
+
     public string GetDisplayName()
     {
         if (!string.IsNullOrEmpty(instanceDisplayNameOverride))
@@ -42,7 +59,7 @@ public class PartyMemberData
     public void ResetPersistentHPToFull()
     {
         if (unitDefinition == null)
-                {
+        {
             persistentCurrentHP = -1;
             return;
         }

@@ -6,11 +6,32 @@ public class PartyDefinition : ScriptableObject
 {
     public string partyName;
 
-    [Tooltip("전투 외부에서 이미 준비된 파티 상태")]
+    [Tooltip("파티 템플릿 멤버 목록. 실제 전투 런타임에서는 복제본을 사용한다.")]
     public List<PartyMemberData> members = new List<PartyMemberData>();
 
-    [Tooltip("파티 공용 인벤토리. 적 파티는 비워두면 된다.")]
+    [Tooltip("월드 시작 시 사용할 기본 인벤토리 템플릿. 유닛 상태와 별개로 월드마다 새로 복제된다.")]
     public List<InventoryStackData> inventory = new List<InventoryStackData>();
+
+    public BattlePartyRuntimeState CreateRuntimeState()
+    {
+        return BattlePartyRuntimeState.CreateFromDefinition(this);
+    }
+
+    public List<InventoryStackData> CreateInventoryRuntime()
+    {
+        List<InventoryStackData> runtimeInventory = new List<InventoryStackData>();
+        if (inventory == null)
+            return runtimeInventory;
+
+        for (int i = 0; i < inventory.Count; i++)
+        {
+            InventoryStackData stack = inventory[i];
+            if (stack != null)
+                runtimeInventory.Add(stack.CloneRuntime());
+        }
+
+        return runtimeInventory;
+    }
 
     public bool IsValidMemberCount()
     {

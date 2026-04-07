@@ -16,6 +16,10 @@ public class BattlePersistenceController : MonoBehaviour
         if (battleManager == null || battleManager.AllyFormation == null)
             return;
 
+        BattlePartyRuntimeState allyPartyState = battleManager.GetActiveAllyPartyState();
+        if (allyPartyState == null || allyPartyState.members == null)
+            return;
+
         List<BattleUnit> allies = battleManager.AllyFormation.GetAllUnits();
         for (int i = 0; i < allies.Count; i++)
         {
@@ -26,13 +30,9 @@ public class BattlePersistenceController : MonoBehaviour
             ally.SavePersistentHPToMemberData();
         }
 
-        PartyDefinition allyPartyDefinition = battleManager.AllyPartyDefinition;
-        if (allyPartyDefinition == null || allyPartyDefinition.members == null)
-            return;
-
-        for (int i = 0; i < allyPartyDefinition.members.Count; i++)
+        for (int i = 0; i < allyPartyState.members.Count; i++)
         {
-            PartyMemberData member = allyPartyDefinition.members[i];
+            PartyMemberData member = allyPartyState.members[i];
             if (member == null)
                 continue;
 
@@ -57,17 +57,10 @@ public class BattlePersistenceController : MonoBehaviour
         if (battleManager == null)
             return;
 
-        PartyDefinition allyPartyDefinition = battleManager.AllyPartyDefinition;
-        if (allyPartyDefinition == null || allyPartyDefinition.members == null)
+        BattlePartyRuntimeState allyPartyState = battleManager.GetActiveAllyPartyState();
+        if (allyPartyState == null)
             return;
 
-        for (int i = 0; i < allyPartyDefinition.members.Count; i++)
-        {
-            PartyMemberData member = allyPartyDefinition.members[i];
-            if (member == null)
-                continue;
-
-            member.ResetPersistentHPToFull();
-        }
+        allyPartyState.ResetPersistentHPToFull();
     }
 }

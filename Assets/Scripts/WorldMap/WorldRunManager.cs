@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class WorldRunManager : MonoBehaviour
@@ -11,6 +12,16 @@ public class WorldRunManager : MonoBehaviour
 
     [Header("Startup")]
     [SerializeField] private bool generateOnStart = true;
+
+    [Header("Player Party")]
+    [SerializeField] private PartyDefinition playerPartyTemplate;
+
+    private BattlePartyRuntimeState playerPartyRuntimeState;
+    private WorldRunTransientState currentWorldRunState;
+
+    public BattlePartyRuntimeState PlayerPartyRuntimeState => playerPartyRuntimeState;
+    public PartyDefinition PlayerPartyTemplate => playerPartyTemplate;
+    public WorldRunTransientState CurrentWorldRunState => currentWorldRunState;
 
     public WorldMapData MapData { get; private set; }
     public WorldTileData CurrentTile { get; private set; }
@@ -27,12 +38,15 @@ public class WorldRunManager : MonoBehaviour
 
     private void Start()
     {
+        GetOrCreatePlayerPartyRuntimeState();
         if (generateOnStart)
             GenerateNewWorld();
     }
 
     public void GenerateNewWorld()
     {
+        ResetWorldRunStateForNewWorld();
+
         HexWorldGenerator generator = new HexWorldGenerator(generationSettings);
         MapData = generator.Generate();
         if (MapData == null)
@@ -190,6 +204,36 @@ public class WorldRunManager : MonoBehaviour
     {
         if (worldMapUI != null)
             worldMapUI.FocusOnCurrentTile(true);
+    }
+
+    public BattlePartyRuntimeState GetOrCreatePlayerPartyRuntimeState()
+    {
+        if (playerPartyRuntimeState == null && playerPartyTemplate != null)
+            playerPartyRuntimeState = playerPartyTemplate.CreateRuntimeState();
+
+        return playerPartyRuntimeState;
+    }
+
+    public WorldRunTransientState GetOrCreateWorldRunState()
+    {
+        if (currentWorldRunState == null)
+            currentWorldRunState = WorldRunTransientState.CreateForNewWorld(playerPartyTemplate);
+
+        return currentWorldRunState;
+    }
+
+    public List<InventoryStackData> GetActiveWorldInventory()
+    {
+        WorldRunTransientState state = GetOrCreateWorldRunState();
+        return state != null ? state.inventory : null;
+    }
+
+    public void ResetWorldRunStateForNewWorld()
+    {
+        if (currentWorldRunState == null)
+            currentWorldRunState = WorldRunTransientState.CreateForNewWorld(playerPartyTemplate);
+        else
+            currentWorldRunState.ResetForNewWorld(playerPartyTemplate);
     }
 
     private void MoveToTileInternal(WorldTileData tile, bool triggerArrivalEvent)

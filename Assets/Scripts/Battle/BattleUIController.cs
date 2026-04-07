@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -279,12 +280,12 @@ public class BattleUIController : MonoBehaviour
         RefreshCancelButtonState();
     }
 
-    public void RefreshInventory(BattleManager manager, PartyDefinition allyParty, int selectedIndex)
+    public void RefreshInventory(BattleManager manager, List<InventoryStackData> stacks, int selectedIndex)
     {
         if (inventoryPanelUI == null)
             return;
 
-        inventoryPanelUI.Bind(manager, allyParty != null ? allyParty.inventory : null, selectedIndex);
+        inventoryPanelUI.Bind(manager, stacks, selectedIndex);
     }
 
     public void SetBottomContext(BottomContextType mode)

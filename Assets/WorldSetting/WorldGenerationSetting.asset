@@ -68,5 +68,15 @@ MonoBehaviour:
     description: 
     icon: {fileID: 21300000, guid: 3a950aa8b3d02e645b1aa3e672717cd7, type: 3}
   startTileIcon: {fileID: 21300000, guid: 63ef065399d225c41aeea16154d7ed91, type: 3}
+  factionBattleConfigs:
+  - faction: 2
+    battleTier1Table: {fileID: 11400000, guid: f0c6dd39b4cb01f4db559dcbcaeac869, type: 2}
+    battleTier2Table: {fileID: 11400000, guid: 92ed3439a4f475946b6faf0f36eb5d80, type: 2}
+    battleTier3Table: {fileID: 11400000, guid: 9a9b7ab8e51e93143b6536a5c4187977, type: 2}
+    eliteTier1Table: {fileID: 0}
+    eliteTier2Table: {fileID: 0}
+    eliteTier3Table: {fileID: 0}
+    bossPartyDefinition: {fileID: 11400000, guid: 455474ca878829e48b422f020e896f3b, type: 2}
+    bossEncounterTable: {fileID: 0}
   forbidBossNearCenter: 1
   forbidEliteNearCenter: 1

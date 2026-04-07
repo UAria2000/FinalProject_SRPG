@@ -128,11 +128,11 @@ public class BattleInputController : MonoBehaviour
         if (!CanAcceptPlayerInput())
             return;
 
-        PartyDefinition allyParty = battleManager.AllyPartyDefinition;
-        if (allyParty == null || inventoryIndex < 0 || inventoryIndex >= allyParty.inventory.Count)
+        List<InventoryStackData> allyInventory = battleManager.GetActiveAllyInventory();
+        if (allyInventory == null || inventoryIndex < 0 || inventoryIndex >= allyInventory.Count)
             return;
 
-        InventoryStackData stack = allyParty.inventory[inventoryIndex];
+        InventoryStackData stack = allyInventory[inventoryIndex];
         if (stack == null || stack.item == null || stack.amount <= 0)
             return;
 
@@ -310,11 +310,11 @@ public class BattleInputController : MonoBehaviour
             return;
 
         int index = battleManager.SelectedInventoryIndex;
-        PartyDefinition allyParty = battleManager.AllyPartyDefinition;
-        if (allyParty == null || index < 0 || index >= allyParty.inventory.Count)
+        List<InventoryStackData> allyInventory = battleManager.GetActiveAllyInventory();
+        if (allyInventory == null || index < 0 || index >= allyInventory.Count)
             return;
 
-        ItemDefinition item = allyParty.inventory[index].item;
+        ItemDefinition item = allyInventory[index].item;
         List<BattleUnit> validTargets = BattleTargeting.GetValidItemTargets(
             battleManager.CurrentActingUnit,
             item,

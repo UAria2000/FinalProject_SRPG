@@ -84,6 +84,4 @@ MonoBehaviour:
     - {fileID: 11400000, guid: df2c88b97964f4742b88c58d6bcc44d0, type: 2}
     - {fileID: 11400000, guid: 6bb52dca9f386cd42a22372990628cf9, type: 2}
     persistentCurrentHP: 100
-  inventory:
-  - item: {fileID: 11400000, guid: dc8e2206841c82046aa61dcee0403866, type: 2}
-    amount: 10
+  inventory: []
