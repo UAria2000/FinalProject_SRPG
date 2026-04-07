@@ -87,10 +87,8 @@ public class BattleCaptureController : MonoBehaviour
 
     public bool HasInventorySpaceForCapture()
     {
-        return battleManager != null &&
-               battleManager.AllyPartyDefinition != null &&
-               battleManager.AllyPartyDefinition.inventory != null &&
-               battleManager.AllyPartyDefinition.inventory.Count < GetInventoryCapacity();
+        List<InventoryStackData> inventory = battleManager != null ? battleManager.GetActiveAllyInventory() : null;
+        return inventory != null && inventory.Count < GetInventoryCapacity();
     }
 
     public bool CanActorUseCaptureCommand(BattleUnit actor)
@@ -106,48 +104,43 @@ public class BattleCaptureController : MonoBehaviour
 
     public List<BattleUnit> GetValidCaptureTargets(BattleUnit actor)
     {
-        return BattleTargeting.GetValidCaptureTargets(
-            actor,
-            battleManager != null ? battleManager.EnemyFormation : null,
-            delegate (BattleUnit target)
-            {
-                return CanTargetBeCaptured(actor, target);
-            });
+        List<BattleUnit> results = new List<BattleUnit>();
+        if (!CanActorUseCaptureCommand(actor) || battleManager == null || battleManager.EnemyFormation == null)
+            return results;
+
+        List<BattleUnit> enemies = battleManager.EnemyFormation.GetAllUnits();
+        for (int i = 0; i < enemies.Count; i++)
+        {
+            BattleUnit enemy = enemies[i];
+            if (CanTargetBeCaptured(actor, enemy))
+                results.Add(enemy);
+        }
+
+        return results;
     }
 
     public bool HasAnyCaptureTarget(BattleUnit actor)
     {
-        List<BattleUnit> validTargets = GetValidCaptureTargets(actor);
-        return validTargets != null && validTargets.Count > 0;
+        List<BattleUnit> targets = GetValidCaptureTargets(actor);
+        return targets.Count > 0;
     }
 
     public bool CanTargetBeCaptured(BattleUnit actor, BattleUnit target)
     {
-        if (actor == null || target == null || battleManager == null)
+        if (!IsMainPlayerCharacter(actor) || target == null)
             return false;
 
-        if (!IsMainPlayerCharacter(actor))
+        if (target.Team != TeamType.Enemy || target.IsDead || !battleManager.IsUnitInBattle(target))
             return false;
 
-        if (actor.IsDead || target.IsDead)
-            return false;
-
-        if (!battleManager.IsUnitInBattle(actor) || !battleManager.IsUnitInBattle(target))
-            return false;
-
-        if (target.Team != TeamType.Enemy)
-            return false;
-
-        if (target.Definition == null || !target.Definition.canBeCaptured)
-            return false;
-
-        if (target.Definition.captureRewardItem == null)
+        if (GetRemainingCaptureAttempts(target) <= 0)
             return false;
 
         if (!HasInventorySpaceForCapture())
             return false;
 
-        return GetRemainingCaptureAttempts(target) > 0;
+        int chancePercent = GetCaptureChancePercent(target);
+        return chancePercent > 0;
     }
 
     public int GetRemainingCaptureAttempts(BattleUnit target)
@@ -155,11 +148,11 @@ public class BattleCaptureController : MonoBehaviour
         if (target == null)
             return 0;
 
-        int remaining;
-        if (remainingCaptureAttemptsByUnit.TryGetValue(target, out remaining))
-            return Mathf.Max(0, remaining);
+        int value;
+        if (!remainingCaptureAttemptsByUnit.TryGetValue(target, out value))
+            return 0;
 
-        return Mathf.Max(0, maxCaptureAttemptsPerEnemyInstance);
+        return Mathf.Max(0, value);
     }
 
     public bool TryConsumeCaptureAttempt(BattleUnit target)
@@ -181,8 +174,7 @@ public class BattleCaptureController : MonoBehaviour
             return;
 
         int remaining = GetRemainingCaptureAttempts(target);
-        int restored = Mathf.Min(Mathf.Max(0, maxCaptureAttemptsPerEnemyInstance), remaining + 1);
-        remainingCaptureAttemptsByUnit[target] = restored;
+        remainingCaptureAttemptsByUnit[target] = Mathf.Min(maxCaptureAttemptsPerEnemyInstance, remaining + 1);
     }
 
     public int GetCaptureChancePercent(BattleUnit target)
@@ -190,7 +182,8 @@ public class BattleCaptureController : MonoBehaviour
         if (target == null || target.MaxHP <= 0)
             return 0;
 
-        float hpPercent = Mathf.Clamp((target.CurrentHP / (float)target.MaxHP) * 100f, 0f, 100f);
+        float hpPercent = target.CurrentHP / (float)target.MaxHP * 100f;
+
         if (captureChanceRanges != null)
         {
             for (int i = 0; i < captureChanceRanges.Count; i++)
@@ -215,8 +208,8 @@ public class BattleCaptureController : MonoBehaviour
             return false;
 
         ItemDefinition rewardItem = target.Definition.captureRewardItem;
-        PartyDefinition allyParty = battleManager.AllyPartyDefinition;
-        if (rewardItem == null || allyParty == null || allyParty.inventory == null)
+        List<InventoryStackData> inventory = battleManager.GetActiveAllyInventory();
+        if (rewardItem == null || inventory == null)
             return false;
 
         if (!HasInventorySpaceForCapture())
@@ -225,7 +218,7 @@ public class BattleCaptureController : MonoBehaviour
         InventoryStackData newStack = new InventoryStackData();
         newStack.item = rewardItem;
         newStack.amount = 1;
-        allyParty.inventory.Add(newStack);
+        inventory.Add(newStack);
 
         addedItem = rewardItem;
         return true;
@@ -233,12 +226,13 @@ public class BattleCaptureController : MonoBehaviour
 
     private bool HasConfiguredMainPlayerCharacter()
     {
-        if (battleManager == null || battleManager.AllyPartyDefinition == null || battleManager.AllyPartyDefinition.members == null)
+        BattlePartyRuntimeState allyState = battleManager != null ? battleManager.GetActiveAllyPartyState() : null;
+        if (allyState == null || allyState.members == null)
             return false;
 
-        for (int i = 0; i < battleManager.AllyPartyDefinition.members.Count; i++)
+        for (int i = 0; i < allyState.members.Count; i++)
         {
-            PartyMemberData member = battleManager.AllyPartyDefinition.members[i];
+            PartyMemberData member = allyState.members[i];
             if (member == null || member.unitDefinition == null)
                 continue;
 

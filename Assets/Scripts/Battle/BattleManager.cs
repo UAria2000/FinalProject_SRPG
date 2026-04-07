@@ -9,6 +9,14 @@ public class BattleManager : MonoBehaviour
     [SerializeField] private PartyDefinition allyPartyDefinition;
     [SerializeField] private PartyDefinition enemyPartyDefinition;
 
+    [Header("Runtime Party State")]
+    [SerializeField] private bool autoCreateRuntimePartyStateFromDefinitions = true;
+    [SerializeField] private bool autoCreateRuntimeInventoryFromPartyDefinition = true;
+
+    private BattlePartyRuntimeState allyRuntimePartyState;
+    private BattlePartyRuntimeState enemyRuntimePartyState;
+    private List<InventoryStackData> allyRuntimeInventory;
+
     [Header("Exploration")]
     [SerializeField] private bool autoStartBattleOnStart = true;
 
@@ -68,6 +76,9 @@ public class BattleManager : MonoBehaviour
     public BattleFormation EnemyFormation { get { return enemyFormation; } }
     public PartyDefinition AllyPartyDefinition { get { return allyPartyDefinition; } }
     public PartyDefinition EnemyPartyDefinition { get { return enemyPartyDefinition; } }
+    public BattlePartyRuntimeState AllyRuntimePartyState { get { return GetActiveAllyPartyState(); } }
+    public BattlePartyRuntimeState EnemyRuntimePartyState { get { return GetActiveEnemyPartyState(); } }
+    public List<InventoryStackData> AllyRuntimeInventory { get { return GetActiveAllyInventory(); } }
     public BattleActionController ActionController { get { return actionController; } }
     public BattleInputController InputController { get { return inputController; } }
     public BattleViewManager ViewManager { get { return viewManager; } }
@@ -104,6 +115,75 @@ public class BattleManager : MonoBehaviour
     public float AttackMoveRatio { get { return attackMoveRatio; } }
     public float AttackMoveMaxDistance { get { return attackMoveMaxDistance; } }
     public float AttackMoveDuration { get { return attackMoveDuration; } }
+
+    public BattlePartyRuntimeState GetActiveAllyPartyState()
+    {
+        if (allyRuntimePartyState == null && autoCreateRuntimePartyStateFromDefinitions && allyPartyDefinition != null)
+            allyRuntimePartyState = allyPartyDefinition.CreateRuntimeState();
+
+        return allyRuntimePartyState;
+    }
+
+    public BattlePartyRuntimeState GetActiveEnemyPartyState()
+    {
+        if (enemyRuntimePartyState == null && autoCreateRuntimePartyStateFromDefinitions && enemyPartyDefinition != null)
+            enemyRuntimePartyState = enemyPartyDefinition.CreateRuntimeState();
+
+        return enemyRuntimePartyState;
+    }
+
+    public List<InventoryStackData> GetActiveAllyInventory()
+    {
+        if (allyRuntimeInventory == null && autoCreateRuntimeInventoryFromPartyDefinition && allyPartyDefinition != null)
+            allyRuntimeInventory = allyPartyDefinition.CreateInventoryRuntime();
+
+        return allyRuntimeInventory;
+    }
+
+    public void EnsureRuntimePartyStates()
+    {
+        GetActiveAllyPartyState();
+        GetActiveEnemyPartyState();
+        GetActiveAllyInventory();
+    }
+
+    public void SetAllyPartyDefinition(PartyDefinition definition)
+    {
+        allyPartyDefinition = definition;
+        allyRuntimePartyState = null;
+        allyRuntimeInventory = null;
+        GetActiveAllyPartyState();
+        GetActiveAllyInventory();
+    }
+
+    public void SetEnemyPartyDefinition(PartyDefinition definition)
+    {
+        enemyPartyDefinition = definition;
+        enemyRuntimePartyState = null;
+        GetActiveEnemyPartyState();
+    }
+
+    public void SetAllyRuntimePartyState(BattlePartyRuntimeState state)
+    {
+        allyRuntimePartyState = state;
+    }
+
+    public void SetEnemyRuntimePartyState(BattlePartyRuntimeState state)
+    {
+        enemyRuntimePartyState = state;
+    }
+
+    public void SetAllyRuntimeInventory(List<InventoryStackData> inventory)
+    {
+        allyRuntimeInventory = inventory;
+    }
+
+    public void PrepareBattle(BattlePartyRuntimeState allyState, BattlePartyRuntimeState enemyState, List<InventoryStackData> allyInventory = null)
+    {
+        allyRuntimePartyState = allyState;
+        enemyRuntimePartyState = enemyState;
+        allyRuntimeInventory = allyInventory;
+    }
 
     private void Start()
     {
@@ -175,13 +255,11 @@ public class BattleManager : MonoBehaviour
             StartBattle();
     }
 
-    public void SetEnemyPartyDefinition(PartyDefinition definition)
-    {
-        enemyPartyDefinition = definition;
-    }
 
     public void StartBattle()
     {
+        EnsureRuntimePartyStates();
+
         if (flowController != null)
             flowController.StartBattle();
     }

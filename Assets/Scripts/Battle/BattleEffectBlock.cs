@@ -99,6 +99,15 @@ public class InventoryStackData
 {
     public ItemDefinition item;
     [Min(0)] public int amount = 1;
+
+    public InventoryStackData CloneRuntime()
+    {
+        return new InventoryStackData
+        {
+            item = item,
+            amount = amount
+        };
+    }
 }
 
 [Serializable]
@@ -119,6 +128,23 @@ public class UnitInstanceStatVariance
     public int poisonResistDelta;
     public int bleedResistDelta;
     public int stunResistDelta;
+
+    public UnitInstanceStatVariance CloneRuntime()
+    {
+        return new UnitInstanceStatVariance
+        {
+            maxHpDelta = maxHpDelta,
+            dmgDelta = dmgDelta,
+            spdDelta = spdDelta,
+            hitDeltaX10 = hitDeltaX10,
+            acDeltaX10 = acDeltaX10,
+            criDelta = criDelta,
+            crdDelta = crdDelta,
+            poisonResistDelta = poisonResistDelta,
+            bleedResistDelta = bleedResistDelta,
+            stunResistDelta = stunResistDelta
+        };
+    }
 }
 
 [Serializable]

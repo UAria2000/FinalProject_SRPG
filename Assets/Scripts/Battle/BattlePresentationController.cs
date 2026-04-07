@@ -74,7 +74,7 @@ public class BattlePresentationController : MonoBehaviour
         uiController.RefreshCurrentUnitPanel(shownAlly);
         uiController.RefreshEnemyPanels(shownEnemy);
         uiController.RefreshActionButtons(actionOwner, canPlayerAct);
-        uiController.RefreshInventory(battleManager, battleManager.AllyPartyDefinition, battleManager.SelectedInventoryIndex);
+        uiController.RefreshInventory(battleManager, battleManager.GetActiveAllyInventory(), battleManager.SelectedInventoryIndex);
         uiController.SetBottomContext(bottomContextType);
     }
 
