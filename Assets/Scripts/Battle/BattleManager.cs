@@ -17,6 +17,12 @@ public class BattleManager : MonoBehaviour
     private BattlePartyRuntimeState enemyRuntimePartyState;
     private List<InventoryStackData> allyRuntimeInventory;
 
+    [Header("Battle Rewards")]
+    [SerializeField] private int maxEquipmentDropsPerBattle = 3;
+    [SerializeField] [Range(0f,100f)] private float defaultEquipmentDropChancePercent = 20f;
+
+    private readonly BattleRewardSummary currentBattleRewardSummary = new BattleRewardSummary();
+
     [Header("Exploration")]
     [SerializeField] private bool autoStartBattleOnStart = true;
 
@@ -79,6 +85,7 @@ public class BattleManager : MonoBehaviour
     public BattlePartyRuntimeState AllyRuntimePartyState { get { return GetActiveAllyPartyState(); } }
     public BattlePartyRuntimeState EnemyRuntimePartyState { get { return GetActiveEnemyPartyState(); } }
     public List<InventoryStackData> AllyRuntimeInventory { get { return GetActiveAllyInventory(); } }
+    public BattleRewardSummary CurrentBattleRewardSummary { get { return currentBattleRewardSummary; } }
     public BattleActionController ActionController { get { return actionController; } }
     public BattleInputController InputController { get { return inputController; } }
     public BattleViewManager ViewManager { get { return viewManager; } }
@@ -259,6 +266,7 @@ public class BattleManager : MonoBehaviour
     public void StartBattle()
     {
         EnsureRuntimePartyStates();
+        ClearBattleRewardSummary();
 
         if (flowController != null)
             flowController.StartBattle();
@@ -362,6 +370,68 @@ public class BattleManager : MonoBehaviour
         addedItem = null;
         return captureController != null && captureController.TryAddCapturedRewardToInventory(target, out addedItem);
     }
+
+    public bool IsMainPlayerAliveInBattle()
+    {
+        return captureController != null && captureController.IsMainPlayerAliveInBattle();
+    }
+
+    public void ClearBattleRewardSummary()
+    {
+        currentBattleRewardSummary.Clear();
+    }
+
+    public void RegisterDefeatedEnemy(BattleUnit unit)
+    {
+        if (unit == null || unit.Definition == null)
+            return;
+
+        currentBattleRewardSummary.defeatedEnemyUnits.Add(unit.Definition);
+        currentBattleRewardSummary.soulReward += Mathf.Max(0, unit.Definition.baseSoulReward);
+
+        int remainingDropSlots = Mathf.Max(0, maxEquipmentDropsPerBattle - currentBattleRewardSummary.droppedItems.Count);
+        if (remainingDropSlots <= 0 || unit.MemberData == null || unit.MemberData.battleLootDrops == null)
+            return;
+
+        for (int i = 0; i < unit.MemberData.battleLootDrops.Count && currentBattleRewardSummary.droppedItems.Count < maxEquipmentDropsPerBattle; i++)
+        {
+            ItemDropDefinition drop = unit.MemberData.battleLootDrops[i];
+            if (drop == null || drop.item == null)
+                continue;
+
+            float chance = drop.dropChancePercent > 0f ? drop.dropChancePercent : defaultEquipmentDropChancePercent;
+            if (UnityEngine.Random.Range(0f, 100f) < chance)
+                currentBattleRewardSummary.droppedItems.Add(drop.item);
+        }
+    }
+
+    public void RegisterCapturedEnemy(BattleUnit unit)
+    {
+        if (unit == null || unit.Definition == null)
+            return;
+
+        currentBattleRewardSummary.capturedPrisoners.Add(unit.Definition);
+    }
+
+    public void GrantCurrentBattleRewardsToInventory(List<InventoryStackData> inventory)
+    {
+        if (inventory == null)
+            return;
+
+        for (int i = 0; i < currentBattleRewardSummary.droppedItems.Count; i++)
+        {
+            ItemDefinition item = currentBattleRewardSummary.droppedItems[i];
+            if (item == null)
+                continue;
+
+            InventoryStackData existing = inventory.Find(stack => stack != null && stack.item == item);
+            if (existing != null)
+                existing.amount += 1;
+            else
+                inventory.Add(new InventoryStackData { item = item, amount = 1 });
+        }
+    }
+
 
     public void SetInputMode(BattleInputMode mode)
     {

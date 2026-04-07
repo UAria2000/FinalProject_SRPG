@@ -65,8 +65,9 @@ public class BattleCaptureController : MonoBehaviour
         if (battleManager == null || battleManager.AllyFormation == null)
             return false;
 
-        bool hasConfiguredMain = HasConfiguredMainPlayerCharacter();
         List<BattleUnit> allies = battleManager.AllyFormation.GetAllUnits();
+        bool hasConfiguredMain = false;
+
         for (int i = 0; i < allies.Count; i++)
         {
             BattleUnit ally = allies[i];
@@ -74,7 +75,11 @@ public class BattleCaptureController : MonoBehaviour
                 continue;
 
             if (IsMainPlayerCharacter(ally))
-                return !ally.IsDead;
+            {
+                hasConfiguredMain = true;
+                if (!ally.IsDead)
+                    return true;
+            }
         }
 
         return !hasConfiguredMain && battleManager.AllyFormation.HasLivingUnits();
@@ -87,25 +92,32 @@ public class BattleCaptureController : MonoBehaviour
 
     public bool HasInventorySpaceForCapture()
     {
-        List<InventoryStackData> inventory = battleManager != null ? battleManager.GetActiveAllyInventory() : null;
-        return inventory != null && inventory.Count < GetInventoryCapacity();
+        // 현재 구조에서는 월드 인벤토리/포로 쪽으로 넘기므로 일단 true 유지.
+        // 추후 월드 포로/창고 용량 체크를 여기로 옮기면 됨.
+        return true;
     }
 
-    public bool CanActorUseCaptureCommand(BattleUnit actor)
+    // 재귀 방지용: "커맨드 자체를 열 수 있는가"의 기본 조건만 검사
+    private bool CanActorUseCaptureCommandCore(BattleUnit actor)
     {
         return actor != null &&
                actor.Team == TeamType.Ally &&
                battleManager != null &&
                battleManager.IsUnitInBattle(actor) &&
                !actor.IsDead &&
-               IsMainPlayerCharacter(actor) &&
-               HasAnyCaptureTarget(actor);
+               IsMainPlayerCharacter(actor);
+    }
+
+    public bool CanActorUseCaptureCommand(BattleUnit actor)
+    {
+        return CanActorUseCaptureCommandCore(actor) && HasAnyCaptureTarget(actor);
     }
 
     public List<BattleUnit> GetValidCaptureTargets(BattleUnit actor)
     {
         List<BattleUnit> results = new List<BattleUnit>();
-        if (!CanActorUseCaptureCommand(actor) || battleManager == null || battleManager.EnemyFormation == null)
+
+        if (!CanActorUseCaptureCommandCore(actor) || battleManager == null || battleManager.EnemyFormation == null)
             return results;
 
         List<BattleUnit> enemies = battleManager.EnemyFormation.GetAllUnits();
@@ -121,16 +133,28 @@ public class BattleCaptureController : MonoBehaviour
 
     public bool HasAnyCaptureTarget(BattleUnit actor)
     {
-        List<BattleUnit> targets = GetValidCaptureTargets(actor);
-        return targets.Count > 0;
+        if (!CanActorUseCaptureCommandCore(actor) || battleManager == null || battleManager.EnemyFormation == null)
+            return false;
+
+        List<BattleUnit> enemies = battleManager.EnemyFormation.GetAllUnits();
+        for (int i = 0; i < enemies.Count; i++)
+        {
+            if (CanTargetBeCaptured(actor, enemies[i]))
+                return true;
+        }
+
+        return false;
     }
 
     public bool CanTargetBeCaptured(BattleUnit actor, BattleUnit target)
     {
-        if (!IsMainPlayerCharacter(actor) || target == null)
+        if (!CanActorUseCaptureCommandCore(actor) || target == null)
             return false;
 
         if (target.Team != TeamType.Enemy || target.IsDead || !battleManager.IsUnitInBattle(target))
+            return false;
+
+        if (target.Definition == null || !target.Definition.canBeCaptured)
             return false;
 
         if (GetRemainingCaptureAttempts(target) <= 0)
@@ -139,8 +163,7 @@ public class BattleCaptureController : MonoBehaviour
         if (!HasInventorySpaceForCapture())
             return false;
 
-        int chancePercent = GetCaptureChancePercent(target);
-        return chancePercent > 0;
+        return GetCaptureChancePercent(target) > 0;
     }
 
     public int GetRemainingCaptureAttempts(BattleUnit target)
@@ -148,18 +171,13 @@ public class BattleCaptureController : MonoBehaviour
         if (target == null)
             return 0;
 
-        int value;
-        if (!remainingCaptureAttemptsByUnit.TryGetValue(target, out value))
-            return 0;
-
-        return Mathf.Max(0, value);
+        return remainingCaptureAttemptsByUnit.TryGetValue(target, out int value)
+            ? Mathf.Max(0, value)
+            : 0;
     }
 
     public bool TryConsumeCaptureAttempt(BattleUnit target)
     {
-        if (target == null)
-            return false;
-
         int remaining = GetRemainingCaptureAttempts(target);
         if (remaining <= 0)
             return false;
@@ -189,10 +207,7 @@ public class BattleCaptureController : MonoBehaviour
             for (int i = 0; i < captureChanceRanges.Count; i++)
             {
                 CaptureChanceRange range = captureChanceRanges[i];
-                if (range == null)
-                    continue;
-
-                if (range.IsInRange(hpPercent))
+                if (range != null && range.IsInRange(hpPercent))
                     return Mathf.Clamp(Mathf.RoundToInt(range.chancePercent), 0, 100);
             }
         }
@@ -202,44 +217,12 @@ public class BattleCaptureController : MonoBehaviour
 
     public bool TryAddCapturedRewardToInventory(BattleUnit target, out ItemDefinition addedItem)
     {
-        addedItem = null;
+        addedItem = target != null && target.Definition != null
+            ? target.Definition.captureRewardItem
+            : null;
 
-        if (target == null || target.Definition == null || battleManager == null)
-            return false;
-
-        ItemDefinition rewardItem = target.Definition.captureRewardItem;
-        List<InventoryStackData> inventory = battleManager.GetActiveAllyInventory();
-        if (rewardItem == null || inventory == null)
-            return false;
-
-        if (!HasInventorySpaceForCapture())
-            return false;
-
-        InventoryStackData newStack = new InventoryStackData();
-        newStack.item = rewardItem;
-        newStack.amount = 1;
-        inventory.Add(newStack);
-
-        addedItem = rewardItem;
-        return true;
-    }
-
-    private bool HasConfiguredMainPlayerCharacter()
-    {
-        BattlePartyRuntimeState allyState = battleManager != null ? battleManager.GetActiveAllyPartyState() : null;
-        if (allyState == null || allyState.members == null)
-            return false;
-
-        for (int i = 0; i < allyState.members.Count; i++)
-        {
-            PartyMemberData member = allyState.members[i];
-            if (member == null || member.unitDefinition == null)
-                continue;
-
-            if (member.unitDefinition.isMainPlayerCharacter)
-                return true;
-        }
-
-        return false;
+        return target != null &&
+               target.Definition != null &&
+               target.Definition.canBeCaptured;
     }
 }

@@ -192,14 +192,24 @@ public class BattleLogController : MonoBehaviour
         return string.Format("포획물 획득: {0}", item != null ? item.itemName : "Unknown");
     }
 
-    public string BuildEndTurnGuardLog(BattleUnit actor, int guardPercent)
+    public string BuildEndTurnLog(BattleUnit actor)
     {
-        return string.Format("{0} 턴 종료 → 다음 자기 턴까지 받는 공격 피해 {1}% 감소", actor.Name, guardPercent);
+        return string.Format("{0} 턴 종료", actor.Name);
     }
 
     public string BuildGuardReductionLog(BattleUnit target, int originalDamage, int reducedDamage)
     {
         return string.Format("{0} 방어/피해변조: 피해 감소 {1} → {2}", target.Name, originalDamage, reducedDamage);
+    }
+
+    public string BuildBattleFleeLog()
+    {
+        return "전투에서 도주했습니다.";
+    }
+
+    public string BuildWorldFailureLog()
+    {
+        return "메인 캐릭터가 사망했습니다. 월드 정복 실패";
     }
 
     public string BuildTurnStartPoisonLog(BattleUnit unit, int damage)

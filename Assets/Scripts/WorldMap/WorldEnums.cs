@@ -1,4 +1,9 @@
-using System;
+public enum WorldDifficulty
+{
+    Easy,
+    Normal,
+    Hard
+}
 
 public enum FactionType
 {

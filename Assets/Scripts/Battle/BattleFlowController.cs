@@ -93,11 +93,22 @@ public class BattleFlowController : MonoBehaviour
 
     public IEnumerator HandleDeathsAndCompressionRoutine()
     {
-        battleManager.MarkDeadUnitPresence(TeamType.Ally, HasDeadUnits(battleManager.AllyFormation));
-        battleManager.MarkDeadUnitPresence(TeamType.Enemy, HasDeadUnits(battleManager.EnemyFormation));
+        List<BattleUnit> deadAllies = battleManager.AllyFormation != null ? battleManager.AllyFormation.GetAllUnits().FindAll(u => u != null && u.IsDead) : new List<BattleUnit>();
+        List<BattleUnit> deadEnemies = battleManager.EnemyFormation != null ? battleManager.EnemyFormation.GetAllUnits().FindAll(u => u != null && u.IsDead) : new List<BattleUnit>();
+
+        battleManager.MarkDeadUnitPresence(TeamType.Ally, deadAllies.Count > 0);
+        battleManager.MarkDeadUnitPresence(TeamType.Enemy, deadEnemies.Count > 0);
+
+        for (int i = 0; i < deadEnemies.Count; i++)
+            battleManager.RegisterDefeatedEnemy(deadEnemies[i]);
 
         List<BattleUnit> movedAllies = battleManager.AllyFormation.RemoveDeadAndCompress();
         List<BattleUnit> movedEnemies = battleManager.EnemyFormation.RemoveDeadAndCompress();
+
+        for (int i = 0; i < deadAllies.Count; i++)
+            NotifyUnitLeftBattle(deadAllies[i]);
+        for (int i = 0; i < deadEnemies.Count; i++)
+            NotifyUnitLeftBattle(deadEnemies[i]);
 
         for (int i = 0; i < movedAllies.Count; i++)
             logController.AppendBattleLog(logController.BuildAutoMoveLog(movedAllies[i]));
@@ -126,7 +137,6 @@ public class BattleFlowController : MonoBehaviour
     public void OnActionExecutionFinished(bool consumeTurn)
     {
         battleManager.ResetSelections();
-        battleManager.SetInputMode(BattleInputMode.WaitingForAction);
         battleManager.ClearTargetMarkers();
 
         if (uiController != null)
@@ -136,17 +146,16 @@ public class BattleFlowController : MonoBehaviour
             uiController.HideFleeTooltip();
         }
 
-        battleManager.ClearUISelection();
-        battleManager.SetTurnState(TurnState.PlayerInput);
-        battleManager.RefreshAllUI();
+        bool endTurn = battleManager.CurrentActingUnit == null ||
+                       battleManager.CurrentActingUnit.Team == TeamType.Enemy ||
+                       consumeTurn ||
+                       battleManager.BattleResult != BattleResultType.None;
 
-        if (battleManager.CurrentActingUnit == null ||
-            battleManager.CurrentActingUnit.Team == TeamType.Enemy ||
-            consumeTurn)
-        {
-            battleManager.SetWaitingForPlayerAction(false);
-            battleManager.SetTurnState(TurnState.TurnEnding);
-        }
+        battleManager.ClearUISelection();
+        battleManager.SetInputMode(endTurn ? BattleInputMode.None : BattleInputMode.WaitingForAction);
+        battleManager.SetWaitingForPlayerAction(!endTurn);
+        battleManager.SetTurnState(endTurn ? TurnState.TurnEnding : TurnState.PlayerInput);
+        battleManager.RefreshAllUI();
     }
 
     public void NotifyUnitLeftBattle(BattleUnit unit)
@@ -333,6 +342,10 @@ public class BattleFlowController : MonoBehaviour
             logController.AppendBattleLog(logController.BuildVictoryLog());
         else if (battleManager.BattleResult == BattleResultType.Defeat)
             logController.AppendBattleLog(logController.BuildDefeatLog());
+        else if (battleManager.BattleResult == BattleResultType.Flee)
+            logController.AppendBattleLog(logController.BuildBattleFleeLog());
+        else if (battleManager.BattleResult == BattleResultType.WorldFailure)
+            logController.AppendBattleLog(logController.BuildWorldFailureLog());
 
         battleManager.RefreshAllUI();
         battleManager.ClearUISelection();
@@ -456,9 +469,12 @@ private void ClearInvalidDuelLocks()
         bool alliesAlive = battleManager.AllyFormation != null && battleManager.AllyFormation.HasLivingUnits();
         bool enemiesAlive = battleManager.EnemyFormation != null && battleManager.EnemyFormation.HasLivingUnits();
 
+        if (battleManager.BattleResult == BattleResultType.Flee)
+            return;
+
         if (captureController != null && !captureController.IsMainPlayerAliveInBattle())
         {
-            battleManager.SetBattleResult(BattleResultType.Defeat);
+            battleManager.SetBattleResult(BattleResultType.WorldFailure);
             return;
         }
 

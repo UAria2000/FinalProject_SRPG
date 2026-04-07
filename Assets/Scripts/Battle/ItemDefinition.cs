@@ -16,6 +16,7 @@ public class ItemDefinition : ScriptableObject
 
     [Header("Usage")]
     public bool usableInBattle = true;
+    [Min(0)] public int baseSoulValue = 0;
     public bool consumeOnUse = true;
     public bool consumeTurnOnUse = true;
 

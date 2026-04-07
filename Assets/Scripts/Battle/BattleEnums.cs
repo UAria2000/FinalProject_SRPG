@@ -28,7 +28,9 @@ public enum BattleResultType
 {
     None,
     Victory,
-    Defeat
+    Defeat,
+    Flee,
+    WorldFailure
 }
 
 public enum BattleInputMode

@@ -32,6 +32,9 @@ public class UnitDefinition : ScriptableObject
     [Tooltip("체크 시 이 유닛 종은 파티의 고정 메인 플레이어 캐릭터로 취급된다.")]
     public bool isMainPlayerCharacter = false;
 
+    [Header("Rewards")]
+    [Min(0)] public int baseSoulReward = 0;
+
     [Header("Capture")]
     [Tooltip("체크 시 이 유닛 종은 포획 대상이 될 수 있다.")]
     public bool canBeCaptured = false;

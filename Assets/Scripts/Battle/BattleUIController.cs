@@ -261,7 +261,7 @@ public class BattleUIController : MonoBehaviour
             captureDisabledEffectRoot.SetActive(!canCapture);
 
         if (fleeButton != null)
-            fleeButton.interactable = canAct;
+            fleeButton.interactable = canAct && battleManager != null && battleManager.IsMainPlayerCharacter(unit);
 
         if (endTurnButton != null)
             endTurnButton.interactable = canAct;

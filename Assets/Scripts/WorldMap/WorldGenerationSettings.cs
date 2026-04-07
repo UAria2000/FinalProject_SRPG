@@ -7,6 +7,7 @@ public class WorldGenerationSettings : ScriptableObject
 {
     [Header("World")]
     [Range(3, 6)] public int radius = 3;
+    public WorldDifficulty difficulty = WorldDifficulty.Normal;
     [Min(1)] public int maxGenerationAttempts = 250;
     [Min(1)] public int enemyPortraitMinCount = 1;
     [Range(1, 6)] public int enemyPortraitMaxCount = 6;
@@ -23,6 +24,20 @@ public class WorldGenerationSettings : ScriptableObject
 
     [Header("Battle Event Config")]
     public List<FactionBattleConfig> factionBattleConfigs = new List<FactionBattleConfig>();
+
+    [Header("Settlement & Victory")]
+    [Range(0,100)] public int conquestRequiredPercentSmall = 50;
+    [Range(0,100)] public int conquestRequiredPercentMedium = 55;
+    [Range(0,100)] public int conquestRequiredPercentLarge = 60;
+    [Range(0,100)] public int conquestRequiredPercentXLarge = 65;
+    public int sizeBonusPercentSmall = 0;
+    public int sizeBonusPercentMedium = 10;
+    public int sizeBonusPercentLarge = 20;
+    public int sizeBonusPercentXLarge = 30;
+    public int difficultyBonusPercentEasy = 0;
+    public int difficultyBonusPercentNormal = 10;
+    public int difficultyBonusPercentHard = 20;
+    public int worldVictoryBonusPercent = 20;
 
     [Header("Rules")]
     public bool forbidBossNearCenter = true;
@@ -114,6 +129,38 @@ public class WorldGenerationSettings : ScriptableObject
         }
 
         return null;
+    }
+
+    public int GetConquestRequiredPercent()
+    {
+        switch (radius)
+        {
+            case 3: return conquestRequiredPercentSmall;
+            case 4: return conquestRequiredPercentMedium;
+            case 5: return conquestRequiredPercentLarge;
+            default: return conquestRequiredPercentXLarge;
+        }
+    }
+
+    public int GetSizeBonusPercent()
+    {
+        switch (radius)
+        {
+            case 3: return sizeBonusPercentSmall;
+            case 4: return sizeBonusPercentMedium;
+            case 5: return sizeBonusPercentLarge;
+            default: return sizeBonusPercentXLarge;
+        }
+    }
+
+    public int GetDifficultyBonusPercent()
+    {
+        switch (difficulty)
+        {
+            case WorldDifficulty.Easy: return difficultyBonusPercentEasy;
+            case WorldDifficulty.Hard: return difficultyBonusPercentHard;
+            default: return difficultyBonusPercentNormal;
+        }
     }
 
     private WorldEventPresentation GetEventPresentation(WorldTileEventType eventType)

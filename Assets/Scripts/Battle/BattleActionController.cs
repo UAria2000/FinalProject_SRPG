@@ -4,7 +4,6 @@ using UnityEngine;
 
 public class BattleActionController : MonoBehaviour
 {
-    private const int EndTurnGuardPercent = 20;
 
     private BattleManager battleManager;
     private BattleViewManager viewManager;
@@ -297,7 +296,10 @@ public class BattleActionController : MonoBehaviour
         }
 
         logController.AppendBattleLog(logController.BuildCaptureSuccessLog(actor, target, chancePercent));
-        logController.AppendBattleLog(logController.BuildCaptureAcquiredLog(capturedItem));
+        if (capturedItem != null)
+            logController.AppendBattleLog(logController.BuildCaptureAcquiredLog(capturedItem));
+
+        battleManager.RegisterCapturedEnemy(target);
 
         BattleFormation enemyFormation = actor.Team == TeamType.Ally
             ? battleManager.EnemyFormation
@@ -331,9 +333,7 @@ public class BattleActionController : MonoBehaviour
         if (success)
         {
             logController.AppendBattleLog(logController.BuildFleeSuccessLog(actor, fleeChancePercent));
-            ownFormation.RemoveUnit(actor);
-            battleManager.NotifyUnitLeftBattle(actor);
-            yield return StartCoroutine(battleManager.HandleDeathsAndCompressionRoutine());
+            battleManager.SetBattleResult(BattleResultType.Flee);
         }
         else
         {
@@ -343,7 +343,7 @@ public class BattleActionController : MonoBehaviour
         battleManager.OnActionExecutionFinished(true);
     }
 
-    public IEnumerator ExecuteEndTurnGuard(BattleUnit actor)
+    public IEnumerator ExecuteEndTurn(BattleUnit actor)
     {
         if (actor == null)
         {
@@ -352,8 +352,7 @@ public class BattleActionController : MonoBehaviour
         }
 
         battleManager.SetTurnState(TurnState.ExecutingAction);
-        actor.ApplyEndTurnGuard(EndTurnGuardPercent);
-        logController.AppendBattleLog(logController.BuildEndTurnGuardLog(actor, EndTurnGuardPercent));
+        logController.AppendBattleLog(logController.BuildEndTurnLog(actor));
         yield return null;
         battleManager.OnActionExecutionFinished(true);
     }

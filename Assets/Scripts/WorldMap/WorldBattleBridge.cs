@@ -1,6 +1,6 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class WorldBattleBridge : MonoBehaviour
 {
@@ -8,22 +8,33 @@ public class WorldBattleBridge : MonoBehaviour
     [SerializeField] private BattleManager battleManager;
     [SerializeField] private RandomEnemyEncounterBootstrapper encounterBootstrapper;
 
-    [Header("Optional Roots")]
+    [Header("Transition Roots")]
     [SerializeField] private GameObject worldMapRoot;
     [SerializeField] private GameObject battleRoot;
     [SerializeField] private bool hideWorldMapDuringBattle = true;
     [SerializeField] private bool showBattleRootDuringBattle = true;
     [SerializeField] private bool waitOneFrameAfterBattleRootActivation = true;
+
+    [Header("UI")]
+    [SerializeField] private BattleRewardPopupUI battleRewardPopupUI;
+    [SerializeField] private BattleOutcomeMessageUI outcomeMessageUI;
+    [SerializeField] private WorldSettlementPopupUI worldSettlementPopupUI;
+
+    [Header("Fade")]
     [SerializeField] private SimpleScreenFader screenFader;
     [SerializeField] private float battleEnterFadeOutDuration = 0.2f;
     [SerializeField] private float battleEnterFadeInDuration = 0.2f;
     [SerializeField] private float battleExitFadeOutDuration = 0.2f;
     [SerializeField] private float battleExitFadeInDuration = 0.2f;
 
+    [Header("Scene Exit")]
+    [SerializeField] private string titleSceneName = "Title";
+
     private WorldRunManager runManager;
     private WorldGenerationSettings settings;
     private WorldTileData pendingTile;
     private bool isBattleRunning;
+    private bool subscribed;
 
     public bool IsBattleRunning => isBattleRunning;
 
@@ -31,36 +42,35 @@ public class WorldBattleBridge : MonoBehaviour
     {
         runManager = manager;
         settings = generationSettings;
+        EnsureBattleEndedSubscription();
     }
 
-    private void OnEnable()
-    {
-        if (battleManager != null)
-            battleManager.BattleEnded += HandleBattleEnded;
-    }
+    private void OnEnable() => EnsureBattleEndedSubscription();
 
     private void OnDisable()
     {
-        if (battleManager != null)
+        if (battleManager != null && subscribed)
+        {
             battleManager.BattleEnded -= HandleBattleEnded;
+            subscribed = false;
+        }
+    }
+
+    private void EnsureBattleEndedSubscription()
+    {
+        if (battleManager == null || subscribed)
+            return;
+
+        battleManager.BattleEnded += HandleBattleEnded;
+        subscribed = true;
     }
 
     public bool StartBattleForTile(WorldTileData tile)
     {
         if (tile == null || !tile.IsCombatEvent)
             return false;
-
-        if (battleManager == null)
-        {
-            Debug.LogWarning("[WorldBattleBridge] BattleManager reference is missing.");
+        if (battleManager == null || settings == null || runManager == null)
             return false;
-        }
-
-        if (settings == null || runManager == null)
-        {
-            Debug.LogWarning("[WorldBattleBridge] WorldRunManager or WorldGenerationSettings is missing.");
-            return false;
-        }
 
         FactionBattleConfig config = settings.GetFactionBattleConfig(tile.nativeFaction);
         if (config == null)
@@ -75,6 +85,14 @@ public class WorldBattleBridge : MonoBehaviour
         return true;
     }
 
+    public void OpenSettlementFromWorldMap(bool wasVictory)
+    {
+        if (runManager == null)
+            return;
+
+        StartCoroutine(OpenSettlementRoutine(wasVictory));
+    }
+
     private IEnumerator BeginBattleRoutine(WorldTileData tile, FactionBattleConfig config)
     {
         if (screenFader != null)
@@ -82,18 +100,19 @@ public class WorldBattleBridge : MonoBehaviour
 
         SetWorldBattleRoots(true);
 
-        yield return null;
+        if (waitOneFrameAfterBattleRootActivation)
+            yield return null;
 
         BattlePartyRuntimeState allyState = runManager.GetOrCreatePlayerPartyRuntimeState();
         battleManager.SetAllyRuntimePartyState(allyState);
+        battleManager.SetAllyRuntimeInventory(runManager.GetActiveWorldInventory());
 
         if (!PrepareEnemyParty(tile, config))
         {
+            isBattleRunning = false;
             SetWorldBattleRoots(false);
-
             if (screenFader != null)
                 yield return screenFader.FadeIn(battleEnterFadeInDuration);
-
             yield break;
         }
 
@@ -112,18 +131,8 @@ public class WorldBattleBridge : MonoBehaviour
         }
 
         EnemyEncounterTable table = config.GetEncounterTable(tile.eventType, ResolveProgressTier(tile.nativeFaction));
-        if (table == null)
-        {
-            Debug.LogWarning($"[WorldBattleBridge] No encounter table configured for {tile.nativeFaction} / {tile.eventType}.");
-            Debug.LogWarning($"[WorldBattleBridge] No encounter table configured for {tile.nativeFaction} / {tile.eventType}.");
+        if (table == null || encounterBootstrapper == null)
             return false;
-        }
-
-        if (encounterBootstrapper == null)
-        {
-            Debug.LogWarning("[WorldBattleBridge] RandomEnemyEncounterBootstrapper reference is missing.");
-            return false;
-        }
 
         encounterBootstrapper.GenerateAndApplyEnemyPartyFromTable(table);
         return true;
@@ -134,29 +143,22 @@ public class WorldBattleBridge : MonoBehaviour
         if (runManager == null || runManager.MapData == null)
             return 0;
 
-        List<WorldTileData> factionTiles = runManager.MapData.GetTilesByNativeFaction(faction);
+        var factionTiles = runManager.MapData.GetTilesByNativeFaction(faction);
         int total = 0;
         int conquered = 0;
-
         for (int i = 0; i < factionTiles.Count; i++)
         {
             WorldTileData tile = factionTiles[i];
             if (tile == null || tile.isPlayerStart)
                 continue;
-
             total++;
             if (tile.currentOwner == FactionType.Player)
                 conquered++;
         }
-
-        if (total <= 0)
-            return 0;
-
+        if (total <= 0) return 0;
         float ratio = conquered / (float)total;
-        if (ratio < 1f / 3f)
-            return 0;
-        if (ratio < 2f / 3f)
-            return 1;
+        if (ratio < 1f / 3f) return 0;
+        if (ratio < 2f / 3f) return 1;
         return 2;
     }
 
@@ -170,19 +172,64 @@ public class WorldBattleBridge : MonoBehaviour
 
     private IEnumerator HandleBattleEndedRoutine(BattleResultType result)
     {
+        isBattleRunning = false;
+
+        switch (result)
+        {
+            case BattleResultType.Victory:
+                yield return StartCoroutine(ShowVictoryRewardRoutine());
+                break;
+
+            case BattleResultType.Flee:
+                if (outcomeMessageUI != null)
+                {
+                    bool waiting = true;
+                    outcomeMessageUI.Open("전투에서 도주했습니다.", "확인", () => waiting = false);
+                    while (waiting) yield return null;
+                }
+                yield return StartCoroutine(ReturnToWorldAfterDefeatRoutine(true, false));
+                break;
+
+            case BattleResultType.WorldFailure:
+                if (outcomeMessageUI != null)
+                {
+                    bool waitingFail = true;
+                    outcomeMessageUI.Open("메인 캐릭터가 사망했습니다. 월드 정복 실패", "확인", () => waitingFail = false);
+                    while (waitingFail) yield return null;
+                }
+                yield return StartCoroutine(ReturnToWorldAfterDefeatRoutine(true, true));
+                break;
+
+            default:
+                yield return StartCoroutine(ReturnToWorldAfterDefeatRoutine(true, false));
+                break;
+        }
+    }
+
+    private IEnumerator ShowVictoryRewardRoutine()
+    {
+        BattleRewardSummary summary = battleManager != null ? battleManager.CurrentBattleRewardSummary : null;
+        if (summary != null && runManager != null)
+        {
+            runManager.AddWorldSoul(summary.soulReward);
+            runManager.AddLootToWorldInventory(summary.droppedItems);
+            runManager.AddCapturedPrisoners(summary.capturedPrisoners);
+        }
+
+        if (battleRewardPopupUI != null && summary != null)
+        {
+            bool waiting = true;
+            battleRewardPopupUI.Open(summary, () => waiting = false);
+            while (waiting) yield return null;
+        }
+
         if (screenFader != null)
             yield return screenFader.FadeOut(battleExitFadeOutDuration);
 
-        SetWorldBattleRoots(isInBattle: false);
-        isBattleRunning = false;
+        SetWorldBattleRoots(false);
 
         if (pendingTile != null && runManager != null)
-        {
-            if (result == BattleResultType.Victory)
-                runManager.ResolveCombatVictory(pendingTile);
-            else
-                runManager.ResolveCombatDefeat(pendingTile, true);
-        }
+            runManager.ResolveCombatVictory(pendingTile);
 
         pendingTile = null;
 
@@ -190,11 +237,55 @@ public class WorldBattleBridge : MonoBehaviour
             yield return screenFader.FadeIn(battleExitFadeInDuration);
     }
 
+    private IEnumerator ReturnToWorldAfterDefeatRoutine(bool returnToStartTile, bool openSettlementAfterReturn)
+    {
+        if (screenFader != null)
+            yield return screenFader.FadeOut(battleExitFadeOutDuration);
+
+        SetWorldBattleRoots(false);
+
+        if (pendingTile != null && runManager != null)
+            runManager.ResolveCombatDefeat(pendingTile, returnToStartTile);
+
+        pendingTile = null;
+
+        if (screenFader != null)
+            yield return screenFader.FadeIn(battleExitFadeInDuration);
+
+        if (openSettlementAfterReturn)
+            yield return StartCoroutine(OpenSettlementRoutine(false));
+    }
+
+    private IEnumerator OpenSettlementRoutine(bool wasVictory)
+    {
+        if (runManager == null)
+            yield break;
+
+        WorldSettlementSummary summary = runManager.BuildSettlementSummary(wasVictory);
+        if (worldSettlementPopupUI != null)
+        {
+            bool waiting = true;
+            worldSettlementPopupUI.Open(summary, () =>
+            {
+                runManager.FinalizeWorldSettlement(summary);
+                waiting = false;
+                if (!string.IsNullOrWhiteSpace(titleSceneName))
+                    SceneManager.LoadScene(titleSceneName);
+            });
+            while (waiting) yield return null;
+        }
+        else
+        {
+            runManager.FinalizeWorldSettlement(summary);
+            if (!string.IsNullOrWhiteSpace(titleSceneName))
+                SceneManager.LoadScene(titleSceneName);
+        }
+    }
+
     private void SetWorldBattleRoots(bool isInBattle)
     {
         if (worldMapRoot != null && hideWorldMapDuringBattle)
             worldMapRoot.SetActive(!isInBattle);
-
         if (battleRoot != null && showBattleRootDuringBattle)
             battleRoot.SetActive(isInBattle);
     }

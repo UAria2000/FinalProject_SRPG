@@ -106,6 +106,9 @@ public class BattleInputController : MonoBehaviour
         if (!CanAcceptPlayerInput())
             return;
 
+        if (!battleManager.IsMainPlayerCharacter(battleManager.CurrentActingUnit))
+            return;
+
         BeginActionExecutionLock();
 
         ClearUISelection();
@@ -120,7 +123,7 @@ public class BattleInputController : MonoBehaviour
         BeginActionExecutionLock();
 
         ClearUISelection();
-        battleManager.StartManagedCoroutine(actionController.ExecuteEndTurnGuard(battleManager.CurrentActingUnit));
+        battleManager.StartManagedCoroutine(actionController.ExecuteEndTurn(battleManager.CurrentActingUnit));
     }
 
     public void HandleInventorySlotPressed(int inventoryIndex)

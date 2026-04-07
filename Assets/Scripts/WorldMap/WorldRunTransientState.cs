@@ -5,28 +5,41 @@ using System.Collections.Generic;
 public class WorldRunTransientState
 {
     public List<InventoryStackData> inventory = new List<InventoryStackData>();
-
-    // 포로/장비 시스템이 월드맵 런 상태에 붙기 시작하면 여기에 보관하고 월드 시작 시 비운다.
-    public List<string> prisonerRuntimeKeys = new List<string>();
-    public List<string> temporaryEquipmentRuntimeKeys = new List<string>();
+    public List<UnitDefinition> capturedPrisoners = new List<UnitDefinition>();
+    public int worldEarnedSoulAlreadyGranted;
 
     public static WorldRunTransientState CreateForNewWorld(PartyDefinition playerPartyTemplate)
     {
         WorldRunTransientState state = new WorldRunTransientState();
-
         if (playerPartyTemplate != null)
             state.inventory = playerPartyTemplate.CreateInventoryRuntime();
-
         return state;
     }
 
     public void ResetForNewWorld(PartyDefinition playerPartyTemplate)
     {
-        inventory = playerPartyTemplate != null
-            ? playerPartyTemplate.CreateInventoryRuntime()
-            : new List<InventoryStackData>();
+        inventory = playerPartyTemplate != null ? playerPartyTemplate.CreateInventoryRuntime() : new List<InventoryStackData>();
+        capturedPrisoners.Clear();
+        worldEarnedSoulAlreadyGranted = 0;
+    }
 
-        prisonerRuntimeKeys.Clear();
-        temporaryEquipmentRuntimeKeys.Clear();
+    public void AddItem(ItemDefinition item, int amount = 1)
+    {
+        if (item == null || amount <= 0)
+            return;
+
+        InventoryStackData existing = inventory.Find(x => x != null && x.item == item);
+        if (existing != null) existing.amount += amount;
+        else inventory.Add(new InventoryStackData { item = item, amount = amount });
+    }
+
+    public void AddPrisoner(UnitDefinition unit)
+    {
+        if (unit != null) capturedPrisoners.Add(unit);
+    }
+
+    public void AddSoulEarnedInWorld(int amount)
+    {
+        worldEarnedSoulAlreadyGranted += Math.Max(0, amount);
     }
 }

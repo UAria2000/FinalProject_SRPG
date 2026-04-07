@@ -34,16 +34,21 @@ public class WorldEventController : MonoBehaviour
 
     public bool TryHandleArrival(WorldTileData tile)
     {
-        if (tile == null)
-            return false;
-
-        if (!tile.ShouldTriggerEventOnArrival)
+        if (tile == null || !tile.ShouldTriggerEventOnArrival)
             return false;
 
         if (tile.IsCombatEvent)
             return TryStartCombatEvent(tile);
 
         return TryOpenSimpleEvent(tile);
+    }
+
+    public void OpenWorldSettlementFromMap()
+    {
+        if (battleBridge == null || runManager == null || !runManager.IsWorldConquestAvailable())
+            return;
+
+        battleBridge.OpenSettlementFromWorldMap(true);
     }
 
     private bool TryStartCombatEvent(WorldTileData tile)
@@ -102,17 +107,11 @@ public class WorldEventController : MonoBehaviour
     private void RestorePartyToFull()
     {
         BattlePartyRuntimeState partyState = null;
-
         if (runManager != null)
             partyState = runManager.GetOrCreatePlayerPartyRuntimeState();
-
         if (partyState == null && battleManager != null)
             partyState = battleManager.AllyRuntimePartyState;
-
-        if (partyState == null)
-            return;
-
-        partyState.ResetPersistentHPToFull();
+        partyState?.ResetPersistentHPToFull();
     }
 
     private string BuildEventBody(WorldTileData tile)
@@ -123,23 +122,12 @@ public class WorldEventController : MonoBehaviour
 
         switch (tile.eventType)
         {
-            case WorldTileEventType.Rest:
-                sb.Append(restResolvedSuffix);
-                break;
-            case WorldTileEventType.Treasure:
-                sb.Append(treasureSuffix);
-                break;
-            case WorldTileEventType.Merchant:
-                sb.Append(merchantSuffix);
-                break;
-            case WorldTileEventType.Quest:
-                sb.Append(questSuffix);
-                break;
-            case WorldTileEventType.Graveyard:
-                sb.Append(graveyardSuffix);
-                break;
+            case WorldTileEventType.Rest: sb.Append(restResolvedSuffix); break;
+            case WorldTileEventType.Treasure: sb.Append(treasureSuffix); break;
+            case WorldTileEventType.Merchant: sb.Append(merchantSuffix); break;
+            case WorldTileEventType.Quest: sb.Append(questSuffix); break;
+            case WorldTileEventType.Graveyard: sb.Append(graveyardSuffix); break;
         }
-
         return sb.ToString();
     }
 
