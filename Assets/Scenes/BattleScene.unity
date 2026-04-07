@@ -1017,14 +1017,53 @@ MonoBehaviour:
   originOffset: {x: 40, y: 20}
   nodeSize: {x: 30, y: 30}
   lineThickness: 5
-  hiddenNodeColor: {r: 0.35, g: 0.35, b: 0.35, a: 1}
-  battleColor: {r: 0.8, g: 0.3, b: 0.3, a: 1}
-  treasureColor: {r: 0.92, g: 0.74, b: 0.2, a: 1}
-  restColor: {r: 0.3, g: 0.72, b: 0.42, a: 1}
-  bossColor: {r: 0.55, g: 0.25, b: 0.8, a: 1}
-  startColor: {r: 0.2, g: 0.56, b: 0.95, a: 1}
-  reachableLineColor: {r: 1, g: 1, b: 1, a: 0.95}
-  normalLineColor: {r: 1, g: 1, b: 1, a: 0.25}
+  hiddenNodeColor:
+    r: 0.35
+    g: 0.35
+    b: 0.35
+    a: 1
+  battleColor:
+    r: 0.8
+    g: 0.3
+    b: 0.3
+    a: 1
+  treasureColor:
+    r: 0.92
+    g: 0.74
+    b: 0.2
+    a: 1
+  restColor:
+    r: 0.3
+    g: 0.72
+    b: 0.42
+    a: 1
+  bossColor:
+    r: 0.55
+    g: 0.25
+    b: 0.8
+    a: 1
+  startColor:
+    r: 0.2
+    g: 0.56
+    b: 0.95
+    a: 1
+  reachableLineColor:
+    r: 1
+    g: 1
+    b: 1
+    a: 0.95
+  normalLineColor:
+    r: 1
+    g: 1
+    b: 1
+    a: 0.25
+  runController: {fileID: 0}
+  mapData:
+    width: 0
+    height: 0
+    startCoord: {x: 0, y: 0}
+    currentNodeId: 0
+    nodes: []
 --- !u!1 &71838299
 GameObject:
   m_ObjectHideFlags: 0
@@ -2737,7 +2776,7 @@ GameObject:
   - component: {fileID: 199467243}
   - component: {fileID: 199467241}
   m_Layer: 5
-  m_Name: BaseCanvas
+  m_Name: FadeCanvas
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
