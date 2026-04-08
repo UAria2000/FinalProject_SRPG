@@ -75,6 +75,7 @@ public class BattleManager : MonoBehaviour
     private bool allyDeadUnitPresentThisTurn;
     private bool enemyDeadUnitPresentThisTurn;
     private bool battleEndEventSent;
+    private bool pendingWorldFailure;
 
     public event Action<BattleResultType> BattleEnded;
 
@@ -108,6 +109,7 @@ public class BattleManager : MonoBehaviour
     public bool AllyDeadUnitPresentThisTurn { get { return allyDeadUnitPresentThisTurn; } }
     public bool EnemyDeadUnitPresentThisTurn { get { return enemyDeadUnitPresentThisTurn; } }
     public bool BattleEndEventSent { get { return battleEndEventSent; } }
+    public bool PendingWorldFailure { get { return pendingWorldFailure; } }
 
     public BattleUnit CurrentActingUnit { get; private set; }
     public BattleUnit LastShownAllyUnit { get; private set; }
@@ -606,6 +608,12 @@ public class BattleManager : MonoBehaviour
     public void SetBattleStarted(bool started)
     {
         battleStarted = started;
+    }
+
+
+    public void SetPendingWorldFailure(bool value)
+    {
+        pendingWorldFailure = value;
     }
 
     public void SetBattleResult(BattleResultType result)

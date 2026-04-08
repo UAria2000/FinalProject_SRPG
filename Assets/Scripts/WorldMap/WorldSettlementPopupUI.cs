@@ -51,8 +51,17 @@ public class WorldSettlementPopupUI : MonoBehaviour
         if (s == null) return string.Empty;
         StringBuilder sb = new StringBuilder();
         sb.AppendLine($"월드 중 획득한 소울: {s.worldEarnedSoulAlreadyGranted}");
+        sb.AppendLine();
+        sb.AppendLine("정산 대상 아이템:");
+        if (s.inventoryItems.Count == 0) sb.AppendLine("- 없음");
+        else foreach (var item in s.inventoryItems) sb.AppendLine($"- {(item != null ? item.itemName : "Unknown")} ({(item != null ? item.baseSoulValue : 0)})");
         sb.AppendLine($"아이템 환산 소울: {s.convertedItemSoul}");
+        sb.AppendLine();
+        sb.AppendLine("정산 대상 포로:");
+        if (s.prisonerUnits.Count == 0) sb.AppendLine("- 없음");
+        else foreach (var unit in s.prisonerUnits) sb.AppendLine($"- {(unit != null ? unit.unitName : "Unknown")} ({(unit != null ? unit.baseSoulReward : 0)})");
         sb.AppendLine($"포로 환산 소울: {s.convertedPrisonerSoul}");
+        sb.AppendLine();
         sb.AppendLine($"맵 크기 보너스: +{s.sizeBonusPercent}%");
         sb.AppendLine($"난이도 보너스: +{s.difficultyBonusPercent}%");
         sb.AppendLine($"월드 승리 보너스: +{s.victoryBonusPercent}%");
