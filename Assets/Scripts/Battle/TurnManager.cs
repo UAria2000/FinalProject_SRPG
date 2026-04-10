@@ -37,4 +37,9 @@ public class TurnManager
             return null;
         return turnQueue.Dequeue();
     }
+
+    public List<BattleUnit> GetOrderedUnitsSnapshot()
+    {
+        return new List<BattleUnit>(turnQueue);
+    }
 }

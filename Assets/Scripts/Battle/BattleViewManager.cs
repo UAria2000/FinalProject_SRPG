@@ -168,6 +168,30 @@ public class BattleViewManager : MonoBehaviour
                 pair.Value.SetTargetMark(false);
     }
 
+
+    public void RefreshBattleVisualStates(BattleManager manager)
+    {
+        if (manager == null)
+            return;
+
+        foreach (KeyValuePair<BattleUnit, BattleUnitView> pair in unitViews)
+        {
+            BattleUnit unit = pair.Key;
+            BattleUnitView view = pair.Value;
+            if (unit == null || view == null)
+                continue;
+
+            bool isCurrent = manager.CurrentActingUnit == unit;
+            bool isInfoSelected = manager.SelectedAllyInfoUnit == unit || manager.SelectedEnemyInfoUnit == unit;
+            bool isFinished = manager.HasUnitFinishedTurnThisRound(unit);
+            bool isUpcoming = manager.IsUnitUpcomingThisRound(unit);
+
+            view.SetActionOwnerRing(isCurrent);
+            view.SetInfoSelectedRing(isInfoSelected);
+            view.SetRoundStateOverlay(isUpcoming, isFinished);
+        }
+    }
+
     private string GetSlotLabel(TeamType team, int slotIndex)
     {
         string prefix = team == TeamType.Ally ? "A" : "E";

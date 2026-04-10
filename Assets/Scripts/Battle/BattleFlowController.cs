@@ -76,7 +76,8 @@ public class BattleFlowController : MonoBehaviour
             viewManager.RefreshAllPositionsInstant(battleManager.AllyFormation, battleManager.EnemyFormation);
 
         battleManager.SetLastShownAllyUnit(battleManager.GetDefaultShownAllyUnit());
-        battleManager.SelectedEnemyInfoUnit = battleManager.GetDefaultShownEnemyUnit();
+        battleManager.SelectedAllyInfoUnit = null;
+        battleManager.SelectedEnemyInfoUnit = null;
         battleManager.SetBattleStarted(true);
         battleManager.SetBattleEndEventSent(false);
 
@@ -246,10 +247,14 @@ public class BattleFlowController : MonoBehaviour
             alive.AddRange(battleManager.AllyFormation.GetAliveUnits());
             alive.AddRange(battleManager.EnemyFormation.GetAliveUnits());
             turnManager.BuildTurnQueue(alive);
+            battleManager.SetCurrentRoundTurnOrder(turnManager.GetOrderedUnitsSnapshot());
 
+            int roundTurnCursor = 0;
             while (turnManager.HasNextTurn() && battleManager.BattleResult == BattleResultType.None)
             {
                 BattleUnit unit = turnManager.GetNextUnit();
+                battleManager.SetCurrentRoundTurnCursor(roundTurnCursor);
+                roundTurnCursor++;
                 if (unit == null || unit.IsDead || !IsUnitInBattle(unit))
                     continue;
 

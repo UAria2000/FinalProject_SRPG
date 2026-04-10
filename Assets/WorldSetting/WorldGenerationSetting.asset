@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: WorldGenerationSetting
   m_EditorClassIdentifier: Assembly-CSharp::WorldGenerationSettings
   radius: 6
+  difficulty: 1
   maxGenerationAttempts: 200
   enemyPortraitMinCount: 1
   enemyPortraitMaxCount: 6
@@ -20,7 +21,7 @@ MonoBehaviour:
   factionPresentations:
   - faction: 1
     displayName: Player
-    tileSprite: {fileID: 21300000, guid: 44e8f2a1c0c6512488cf093e07793e75, type: 3}
+    tileSprite: {fileID: 21300000, guid: 0cdbea9abb603a44790e296a0108bf9c, type: 3}
     fallbackColor: {r: 0.24705884, g: 0.19607845, b: 0.25490198, a: 1}
     enemyPortraitPool: []
   - faction: 2
@@ -67,7 +68,7 @@ MonoBehaviour:
     displayName: "\uBB18\uC9C0"
     description: 
     icon: {fileID: 21300000, guid: 3a950aa8b3d02e645b1aa3e672717cd7, type: 3}
-  startTileIcon: {fileID: 21300000, guid: 63ef065399d225c41aeea16154d7ed91, type: 3}
+  startTileIcon: {fileID: 21300000, guid: dcbbeddc435224748a1aff0cef431208, type: 3}
   factionBattleConfigs:
   - faction: 2
     battleTier1Table: {fileID: 11400000, guid: f0c6dd39b4cb01f4db559dcbcaeac869, type: 2}
@@ -78,5 +79,17 @@ MonoBehaviour:
     eliteTier3Table: {fileID: 0}
     bossPartyDefinition: {fileID: 11400000, guid: 455474ca878829e48b422f020e896f3b, type: 2}
     bossEncounterTable: {fileID: 0}
+  conquestRequiredPercentSmall: 50
+  conquestRequiredPercentMedium: 55
+  conquestRequiredPercentLarge: 60
+  conquestRequiredPercentXLarge: 65
+  sizeBonusPercentSmall: 0
+  sizeBonusPercentMedium: 10
+  sizeBonusPercentLarge: 20
+  sizeBonusPercentXLarge: 30
+  difficultyBonusPercentEasy: 0
+  difficultyBonusPercentNormal: 10
+  difficultyBonusPercentHard: 20
+  worldVictoryBonusPercent: 20
   forbidBossNearCenter: 1
   forbidEliteNearCenter: 1

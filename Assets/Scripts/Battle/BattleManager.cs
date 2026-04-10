@@ -114,6 +114,11 @@ public class BattleManager : MonoBehaviour
     public BattleUnit CurrentActingUnit { get; private set; }
     public BattleUnit LastShownAllyUnit { get; private set; }
     public BattleUnit SelectedEnemyInfoUnit { get; set; }
+    public BattleUnit SelectedAllyInfoUnit { get; set; }
+
+    private readonly List<BattleUnit> currentRoundTurnOrder = new List<BattleUnit>();
+    public IReadOnlyList<BattleUnit> CurrentRoundTurnOrder => currentRoundTurnOrder;
+    public int CurrentRoundTurnCursor { get; private set; } = -1;
 
     public SkillDefinition SelectedSkill { get; set; }
     public int SelectedSkillSlotIndex { get; set; } = -1;
@@ -588,6 +593,9 @@ public class BattleManager : MonoBehaviour
         CurrentActingUnit = null;
         LastShownAllyUnit = null;
         SelectedEnemyInfoUnit = null;
+        SelectedAllyInfoUnit = null;
+        currentRoundTurnOrder.Clear();
+        CurrentRoundTurnCursor = -1;
 
         ResetSelections();
     }
@@ -683,6 +691,49 @@ public class BattleManager : MonoBehaviour
     {
         List<BattleUnit> enemies = enemyFormation != null ? enemyFormation.GetAliveUnits() : null;
         return enemies != null && enemies.Count > 0 ? enemies[0] : null;
+    }
+
+    public void SetCurrentRoundTurnOrder(List<BattleUnit> units)
+    {
+        currentRoundTurnOrder.Clear();
+        if (units != null)
+            currentRoundTurnOrder.AddRange(units);
+        CurrentRoundTurnCursor = -1;
+    }
+
+    public void SetCurrentRoundTurnCursor(int cursor)
+    {
+        CurrentRoundTurnCursor = cursor;
+    }
+
+    public bool HasUnitFinishedTurnThisRound(BattleUnit unit)
+    {
+        if (unit == null || CurrentRoundTurnCursor < 0)
+            return false;
+
+        int idx = currentRoundTurnOrder.IndexOf(unit);
+        return idx >= 0 && idx < CurrentRoundTurnCursor;
+    }
+
+    public bool IsUnitUpcomingThisRound(BattleUnit unit)
+    {
+        if (unit == null)
+            return false;
+
+        int idx = currentRoundTurnOrder.IndexOf(unit);
+        if (idx < 0)
+            return false;
+
+        if (CurrentRoundTurnCursor < 0)
+            return true;
+
+        return idx > CurrentRoundTurnCursor;
+    }
+
+    public void ClearInfoSelections()
+    {
+        SelectedAllyInfoUnit = null;
+        SelectedEnemyInfoUnit = null;
     }
 
     public void ClearUISelection()

@@ -190,8 +190,11 @@ public class BattleInputController : MonoBehaviour
 
         BattleUnit clickedUnit = clickedView.Unit;
 
-        if (clickedUnit.Team == TeamType.Enemy)
-            battleManager.SelectedEnemyInfoUnit = clickedUnit;
+        if (battleManager.PresentationController != null)
+            battleManager.PresentationController.SelectUnitForInfo(clickedUnit);
+
+        if (uiController != null)
+            uiController.HandleCurrentActorClicked(clickedUnit);
 
         switch (battleManager.InputMode)
         {
@@ -208,6 +211,17 @@ public class BattleInputController : MonoBehaviour
                 HandleCaptureTargetClick(clickedUnit);
                 break;
         }
+
+        battleManager.RefreshAllUI();
+    }
+
+    public void OnBattlefieldBackgroundLeftClicked()
+    {
+        if (battleManager == null || battleManager.CurrentState != TurnState.PlayerInput)
+            return;
+
+        if (battleManager.PresentationController != null)
+            battleManager.PresentationController.OnBlankBattlefieldLeftClicked();
 
         battleManager.RefreshAllUI();
     }

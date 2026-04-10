@@ -13,14 +13,16 @@ public class BattleUnitView : MonoBehaviour
     [SerializeField] private Image highlightImage;
     [SerializeField] private RectTransform hoverAnchor;
 
+    [Header("Optional New Overlays")]
+    [SerializeField] private GameObject activeRingRoot;
+    [SerializeField] private GameObject infoSelectedRingRoot;
+    [SerializeField] private Image upcomingGrayOverlayImage;
+    [SerializeField] private Image finishedGrayOverlayImage;
+
     private RectTransform rectTransform;
 
     public BattleUnit Unit { get; private set; }
-
-    public RectTransform HoverAnchor
-    {
-        get { return hoverAnchor != null ? hoverAnchor : rectTransform; }
-    }
+    public RectTransform HoverAnchor => hoverAnchor != null ? hoverAnchor : rectTransform;
 
     private void Awake()
     {
@@ -44,6 +46,9 @@ public class BattleUnitView : MonoBehaviour
         SetTurnMark(false);
         SetTargetMark(false);
         SetHighlighted(false);
+        SetActionOwnerRing(false);
+        SetInfoSelectedRing(false);
+        SetRoundStateOverlay(false, false);
         RefreshHPInstant();
     }
 
@@ -91,6 +96,26 @@ public class BattleUnitView : MonoBehaviour
     {
         if (highlightImage != null)
             highlightImage.gameObject.SetActive(active);
+    }
+
+    public void SetActionOwnerRing(bool active)
+    {
+        if (activeRingRoot != null)
+            activeRingRoot.SetActive(active);
+    }
+
+    public void SetInfoSelectedRing(bool active)
+    {
+        if (infoSelectedRingRoot != null)
+            infoSelectedRingRoot.SetActive(active);
+    }
+
+    public void SetRoundStateOverlay(bool upcoming, bool finished)
+    {
+        if (upcomingGrayOverlayImage != null)
+            upcomingGrayOverlayImage.gameObject.SetActive(upcoming);
+        if (finishedGrayOverlayImage != null)
+            finishedGrayOverlayImage.gameObject.SetActive(finished);
     }
 
     public void SetPositionInstant(Vector3 worldPosition)

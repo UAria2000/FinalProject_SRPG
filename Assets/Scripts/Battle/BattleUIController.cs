@@ -11,6 +11,9 @@ public class BattleUIController : MonoBehaviour
     [SerializeField] private EnemyInfoPanel enemyInfoPanel;
     [SerializeField] private EnemyDetailPopupUI enemyDetailPopupUI;
     [SerializeField] private InventoryPanelUI inventoryPanelUI;
+    [SerializeField] private BattleActionWheelUI actionWheelUI;
+    [SerializeField] private BattleTurnOrderStripUI turnOrderStripUI;
+    [SerializeField] private BattleBackgroundClickCatcherUI backgroundClickCatcherUI;
 
     [Header("Tooltips")]
     [SerializeField] private SkillTooltipUI skillTooltipUI;
@@ -18,12 +21,12 @@ public class BattleUIController : MonoBehaviour
     [SerializeField] private TargetPreviewHoverUI targetPreviewHoverUI;
     [SerializeField] private FleeTooltipUI fleeTooltipUI;
 
-    [Header("Bottom Context Roots")]
+    [Header("Legacy Bottom Context Roots")]
     [SerializeField] private GameObject enemyInfoContextRoot;
     [SerializeField] private GameObject inventoryContextRoot;
     [SerializeField] private GameObject mapContextRoot;
 
-    [Header("Action Buttons")]
+    [Header("Legacy Action Buttons")]
     [SerializeField] private Button[] actionButtons = new Button[4];
     [SerializeField] private Image[] actionIcons = new Image[4];
     [SerializeField] private Image[] actionCooldownOverlays = new Image[4];
@@ -56,6 +59,7 @@ public class BattleUIController : MonoBehaviour
     [SerializeField] private Color cancelEnabledPressed = new Color(0.66f, 0.12f, 0.12f, 1f);
 
     private BattleManager battleManager;
+    private BattlePresentationController presentationController;
 
     public void Initialize(BattleManager manager)
     {
@@ -67,12 +71,22 @@ public class BattleUIController : MonoBehaviour
         if (enemyDetailPopupUI != null)
             enemyDetailPopupUI.Hide();
 
+        if (currentUnitInfoPanel != null)
+            currentUnitInfoPanel.Hide();
+
+        if (enemyInfoPanel != null)
+            enemyInfoPanel.Hide();
+
         HideSkillTooltip();
         HideEnemySkillTooltip();
         HideTargetPreview();
         HideFleeTooltip();
 
         SetBottomContext(BottomContextType.Inventory);
+
+        if (actionWheelUI != null)
+            actionWheelUI.Initialize(manager);
+
 
         ApplyButtonNavigationNone(moveButton);
         ApplyButtonNavigationNone(captureButton);
@@ -86,6 +100,14 @@ public class BattleUIController : MonoBehaviour
 
         for (int i = 0; i < actionButtons.Length; i++)
             ApplyButtonNavigationNone(actionButtons[i]);
+    }
+
+
+    public void SetPresentationController(BattlePresentationController controller)
+    {
+        presentationController = controller;
+        if (turnOrderStripUI != null)
+            turnOrderStripUI.Initialize(controller);
     }
 
     public void BindButtonEvents()
@@ -108,12 +130,7 @@ public class BattleUIController : MonoBehaviour
             handler.Initialize(battleManager, slotIndex);
         }
 
-        if (moveButton != null)
-        {
-            moveButton.onClick.RemoveAllListeners();
-            moveButton.onClick.AddListener(battleManager.OnMoveButtonPressed);
-        }
-
+        Bind(moveButton, battleManager.OnMoveButtonPressed);
         if (captureButton != null)
         {
             captureButton.onClick.RemoveAllListeners();
@@ -124,48 +141,21 @@ public class BattleUIController : MonoBehaviour
         {
             fleeButton.onClick.RemoveAllListeners();
             fleeButton.onClick.AddListener(battleManager.OnFleeButtonPressed);
-
             FleeButtonHoverHandler handler = fleeButton.GetComponent<FleeButtonHoverHandler>();
             if (handler == null)
                 handler = fleeButton.gameObject.AddComponent<FleeButtonHoverHandler>();
             handler.Initialize(battleManager);
         }
 
-        if (endTurnButton != null)
-        {
-            endTurnButton.onClick.RemoveAllListeners();
-            endTurnButton.onClick.AddListener(battleManager.OnEndTurnButtonPressed);
-        }
+        Bind(endTurnButton, battleManager.OnEndTurnButtonPressed);
+        Bind(inventoryButton, battleManager.OnInventoryTogglePressed);
+        Bind(cancelButton, battleManager.OnCancelButtonPressed);
+        Bind(popupLogButton, battleManager.OnPopupLogButtonPressed);
+        Bind(mapButton, battleManager.OnMapButtonPressed);
+        Bind(enemyDetailPopupButton, battleManager.OnEnemyDetailPopupButtonPressed);
 
-        if (inventoryButton != null)
-        {
-            inventoryButton.onClick.RemoveAllListeners();
-            inventoryButton.onClick.AddListener(battleManager.OnInventoryTogglePressed);
-        }
-
-        if (cancelButton != null)
-        {
-            cancelButton.onClick.RemoveAllListeners();
-            cancelButton.onClick.AddListener(battleManager.OnCancelButtonPressed);
-        }
-
-        if (popupLogButton != null)
-        {
-            popupLogButton.onClick.RemoveAllListeners();
-            popupLogButton.onClick.AddListener(battleManager.OnPopupLogButtonPressed);
-        }
-
-        if (mapButton != null)
-        {
-            mapButton.onClick.RemoveAllListeners();
-            mapButton.onClick.AddListener(battleManager.OnMapButtonPressed);
-        }
-
-        if (enemyDetailPopupButton != null)
-        {
-            enemyDetailPopupButton.onClick.RemoveAllListeners();
-            enemyDetailPopupButton.onClick.AddListener(battleManager.OnEnemyDetailPopupButtonPressed);
-        }
+        if (enemyInfoPanel != null)
+            enemyInfoPanel.SetLastWillButtonAction(battleManager.OnEnemyDetailPopupButtonPressed);
     }
 
     public void BindEnemySkillHoverEvents(GameObject[] enemySkillTargets)
@@ -185,19 +175,35 @@ public class BattleUIController : MonoBehaviour
         }
     }
 
-    public void RefreshCurrentUnitPanel(BattleUnit unit)
+    public void RefreshInfoPanels(BattleUnit ally, BattleUnit enemy)
     {
         if (currentUnitInfoPanel != null)
-            currentUnitInfoPanel.Show(unit);
+        {
+            if (ally != null) currentUnitInfoPanel.Show(ally);
+            else currentUnitInfoPanel.Hide();
+        }
+
+        if (enemyInfoPanel != null)
+        {
+            if (enemy != null) enemyInfoPanel.Show(enemy);
+            else enemyInfoPanel.Hide();
+        }
+
+        if (enemyDetailPopupUI != null && enemyDetailPopupUI.IsOpen())
+        {
+            if (enemy != null) enemyDetailPopupUI.Show(enemy);
+            else enemyDetailPopupUI.Hide();
+        }
+    }
+
+    public void RefreshCurrentUnitPanel(BattleUnit unit)
+    {
+        RefreshInfoPanels(unit, null);
     }
 
     public void RefreshEnemyPanels(BattleUnit enemy)
     {
-        if (enemyInfoPanel != null)
-            enemyInfoPanel.Show(enemy);
-
-        if (enemyDetailPopupUI != null && enemyDetailPopupUI.IsOpen())
-            enemyDetailPopupUI.Show(enemy);
+        RefreshInfoPanels(null, enemy);
     }
 
     public void RefreshActionButtons(BattleUnit unit, bool interactable)
@@ -214,78 +220,68 @@ public class BattleUIController : MonoBehaviour
             }
 
             int remaining = hasSkill ? unit.GetRemainingCooldown(skill) : 0;
-
             if (i < actionCooldownOverlays.Length && actionCooldownOverlays[i] != null)
             {
                 actionCooldownOverlays[i].gameObject.SetActive(hasSkill && remaining > 0);
-                if (hasSkill && remaining > 0)
-                {
-                    float divisor = Mathf.Max(1f, skill.cooldownTurns);
-                    actionCooldownOverlays[i].fillAmount = divisor > 0f ? Mathf.Clamp01(remaining / divisor) : 0f;
-                }
-                else
-                {
-                    actionCooldownOverlays[i].fillAmount = 0f;
-                }
+                actionCooldownOverlays[i].fillAmount = hasSkill && remaining > 0
+                    ? Mathf.Clamp01(remaining / Mathf.Max(1f, skill.cooldownTurns))
+                    : 0f;
             }
-
             if (i < actionCooldownTexts.Length && actionCooldownTexts[i] != null)
                 actionCooldownTexts[i].text = hasSkill && remaining > 0 ? remaining.ToString() : string.Empty;
-
-            if (i < actionButtons.Length && actionButtons[i] != null)
+            if (actionButtons[i] != null)
                 actionButtons[i].interactable = interactable && hasSkill && unit != null && unit.CanUseSkill(skill);
         }
 
         bool canAct = interactable && battleManager != null && battleManager.InputMode == BattleInputMode.WaitingForAction;
-
-        if (moveButton != null)
-            moveButton.interactable = canAct;
-
+        if (moveButton != null) moveButton.interactable = canAct;
         bool canCapture = canAct && battleManager != null && battleManager.CanActorUseCaptureCommand(unit);
-
-        if (captureButton != null)
-            captureButton.interactable = canCapture;
-
+        if (captureButton != null) captureButton.interactable = canCapture;
         if (captureButtonImage != null)
-        {
-            if (canCapture && captureEnabledSprite != null)
-                captureButtonImage.sprite = captureEnabledSprite;
-            else if (!canCapture && captureDisabledSprite != null)
-                captureButtonImage.sprite = captureDisabledSprite;
-        }
-
-        if (captureEnabledEffectRoot != null)
-            captureEnabledEffectRoot.SetActive(canCapture);
-
-        if (captureDisabledEffectRoot != null)
-            captureDisabledEffectRoot.SetActive(!canCapture);
-
-        if (fleeButton != null)
-            fleeButton.interactable = canAct && battleManager != null && battleManager.IsMainPlayerCharacter(unit);
-
-        if (endTurnButton != null)
-            endTurnButton.interactable = canAct;
-
-        if (inventoryButton != null)
-            inventoryButton.interactable = true;
-
-        if (mapButton != null)
-            mapButton.interactable = battleManager == null || !battleManager.IsBattleInProgress;
-
+            captureButtonImage.sprite = canCapture && captureEnabledSprite != null ? captureEnabledSprite : captureDisabledSprite;
+        if (captureEnabledEffectRoot != null) captureEnabledEffectRoot.SetActive(canCapture);
+        if (captureDisabledEffectRoot != null) captureDisabledEffectRoot.SetActive(!canCapture);
+        if (fleeButton != null) fleeButton.interactable = canAct && battleManager != null && battleManager.IsMainPlayerCharacter(unit);
+        if (endTurnButton != null) endTurnButton.interactable = canAct;
+        if (inventoryButton != null) inventoryButton.interactable = true;
+        if (mapButton != null) mapButton.interactable = battleManager == null || !battleManager.IsBattleInProgress;
         if (cancelButton != null)
-            cancelButton.interactable = battleManager != null &&
-                                        battleManager.CurrentState == TurnState.PlayerInput &&
-                                        battleManager.InputMode != BattleInputMode.WaitingForAction;
-
+            cancelButton.interactable = battleManager != null && battleManager.CurrentState == TurnState.PlayerInput && battleManager.InputMode != BattleInputMode.WaitingForAction;
         RefreshCancelButtonState();
+    }
+
+    public void RefreshActionWheel(BattleUnit unit, bool interactable)
+    {
+        if (actionWheelUI == null || battleManager == null)
+            return;
+
+        actionWheelUI.Refresh(unit, interactable, battleManager.InputMode, battleManager.GetActiveAllyInventory());
+    }
+
+    public void RefreshTurnOrderStrip(IReadOnlyList<BattleUnit> order, int currentCursor)
+    {
+        if (turnOrderStripUI != null)
+            turnOrderStripUI.Refresh(order, currentCursor);
+    }
+
+    public void HandleBlankFieldLeftClick()
+    {
+        if (currentUnitInfoPanel != null) currentUnitInfoPanel.Hide();
+        if (enemyInfoPanel != null) enemyInfoPanel.Hide();
+        if (enemyDetailPopupUI != null) enemyDetailPopupUI.Hide();
+        if (actionWheelUI != null) actionWheelUI.HandleBlankLeftClick();
+    }
+
+    public void HandleCurrentActorClicked(BattleUnit unit)
+    {
+        if (actionWheelUI != null)
+            actionWheelUI.HandleCurrentActorClicked(unit);
     }
 
     public void RefreshInventory(BattleManager manager, List<InventoryStackData> stacks, int selectedIndex)
     {
-        if (inventoryPanelUI == null)
-            return;
-
-        inventoryPanelUI.Bind(manager, stacks, selectedIndex);
+        if (inventoryPanelUI != null)
+            inventoryPanelUI.Bind(manager, stacks, selectedIndex);
     }
 
     public void SetBottomContext(BottomContextType mode)
@@ -296,13 +292,10 @@ public class BattleUIController : MonoBehaviour
 
         if (enemyInfoContextRoot != null)
             enemyInfoContextRoot.SetActive(showEnemyInfo);
-
         if (inventoryContextRoot != null)
             inventoryContextRoot.SetActive(showInventory);
-
         if (mapContextRoot != null)
             mapContextRoot.SetActive(showMap);
-
         if (inventoryPanelUI != null)
             inventoryPanelUI.Show(showInventory);
 
@@ -314,16 +307,12 @@ public class BattleUIController : MonoBehaviour
     {
         if (enemyInfoContextRoot != null)
             enemyInfoContextRoot.SetActive(true);
-
         if (inventoryContextRoot != null)
             inventoryContextRoot.SetActive(false);
-
         if (mapContextRoot != null)
             mapContextRoot.SetActive(false);
-
         if (inventoryPanelUI != null)
             inventoryPanelUI.Show(false);
-
         if (enemyDetailPopupUI != null)
             enemyDetailPopupUI.Show(enemy);
     }
@@ -333,19 +322,14 @@ public class BattleUIController : MonoBehaviour
         if (enemyDetailPopupUI == null)
             return;
 
-        if (enemyDetailPopupUI.IsOpen())
-            HideEnemyDetailPopup();
-        else
-            ShowEnemyDetailPopup(enemy);
+        if (enemyDetailPopupUI.IsOpen()) HideEnemyDetailPopup();
+        else ShowEnemyDetailPopup(enemy);
     }
 
     public void HideEnemyDetailPopup()
     {
         if (enemyDetailPopupUI != null)
             enemyDetailPopupUI.Hide();
-
-        if (enemyInfoContextRoot != null)
-            enemyInfoContextRoot.SetActive(false);
     }
 
     public bool IsEnemyDetailPopupOpen()
@@ -407,7 +391,7 @@ public class BattleUIController : MonoBehaviour
             yield break;
 
         turnStartText.gameObject.SetActive(true);
-        turnStartText.text = string.Format("Turn {0}", round);
+        turnStartText.text = $"Round {round}";
         yield return new WaitForSeconds(turnStartTextShowTime);
         turnStartText.gameObject.SetActive(false);
     }
@@ -417,15 +401,13 @@ public class BattleUIController : MonoBehaviour
         if (cancelButton == null || battleManager == null)
             return;
 
-        bool canCancel =
-            battleManager.CurrentState == TurnState.PlayerInput &&
-            (battleManager.InputMode == BattleInputMode.WaitingForSkillTarget ||
-             battleManager.InputMode == BattleInputMode.WaitingForMoveTarget ||
-             battleManager.InputMode == BattleInputMode.WaitingForItemTarget ||
-             battleManager.InputMode == BattleInputMode.WaitingForCaptureTarget);
+        bool canCancel = battleManager.CurrentState == TurnState.PlayerInput &&
+                         (battleManager.InputMode == BattleInputMode.WaitingForSkillTarget ||
+                          battleManager.InputMode == BattleInputMode.WaitingForMoveTarget ||
+                          battleManager.InputMode == BattleInputMode.WaitingForItemTarget ||
+                          battleManager.InputMode == BattleInputMode.WaitingForCaptureTarget);
 
         cancelButton.interactable = canCancel;
-
         ColorBlock colors = cancelButton.colors;
         if (canCancel)
         {
@@ -453,5 +435,13 @@ public class BattleUIController : MonoBehaviour
         Navigation nav = button.navigation;
         nav.mode = Navigation.Mode.None;
         button.navigation = nav;
+    }
+
+    private static void Bind(Button button, UnityEngine.Events.UnityAction action)
+    {
+        if (button == null)
+            return;
+        button.onClick.RemoveAllListeners();
+        button.onClick.AddListener(action);
     }
 }

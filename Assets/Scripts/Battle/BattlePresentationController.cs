@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -7,19 +6,20 @@ public class BattlePresentationController : MonoBehaviour
 {
     private BattleManager battleManager;
     private BattleUIController uiController;
+    private BattleViewManager viewManager;
     private GameObject popupLogPanel;
     private BottomContextType bottomContextType = BottomContextType.Inventory;
 
-    public BottomContextType BottomContextType
-    {
-        get { return bottomContextType; }
-    }
+    public BottomContextType BottomContextType => bottomContextType;
 
     public void Initialize(BattleManager manager, BattleUIController ui, GameObject popupPanel)
     {
         battleManager = manager;
         uiController = ui;
         popupLogPanel = popupPanel;
+        viewManager = battleManager != null ? battleManager.ViewManager : null;
+        if (uiController != null)
+            uiController.SetPresentationController(this);
         ResetForBattleStart();
     }
 
@@ -30,6 +30,9 @@ public class BattlePresentationController : MonoBehaviour
         if (popupLogPanel != null)
             popupLogPanel.SetActive(false);
 
+        if (battleManager != null)
+            battleManager.ClearInfoSelections();
+
         if (uiController != null)
         {
             uiController.HideEnemyDetailPopup();
@@ -37,45 +40,44 @@ public class BattlePresentationController : MonoBehaviour
             uiController.HideSkillTooltip();
             uiController.HideEnemySkillTooltip();
             uiController.HideFleeTooltip();
+            uiController.HandleBlankFieldLeftClick();
             uiController.SetBottomContext(bottomContextType);
         }
     }
 
     public void RefreshAllUI()
     {
-        if (battleManager == null)
+        if (battleManager == null || uiController == null)
             return;
 
-        BattleUnit shownAlly = battleManager.IsUnitInBattle(battleManager.LastShownAllyUnit)
-            ? battleManager.LastShownAllyUnit
-            : battleManager.GetDefaultShownAllyUnit();
+        BattleUnit selectedAlly = battleManager.IsUnitInBattle(battleManager.SelectedAllyInfoUnit)
+            ? battleManager.SelectedAllyInfoUnit
+            : null;
 
-        BattleUnit shownEnemy = battleManager.IsUnitInBattle(battleManager.SelectedEnemyInfoUnit)
+        BattleUnit selectedEnemy = battleManager.IsUnitInBattle(battleManager.SelectedEnemyInfoUnit)
             ? battleManager.SelectedEnemyInfoUnit
-            : battleManager.GetDefaultShownEnemyUnit();
+            : null;
 
         BattleUnit actionOwner = battleManager.CurrentActingUnit != null &&
                                  battleManager.CurrentActingUnit.Team == TeamType.Ally &&
                                  battleManager.IsUnitInBattle(battleManager.CurrentActingUnit)
             ? battleManager.CurrentActingUnit
-            : shownAlly;
+            : null;
 
         bool canPlayerAct = battleManager.CurrentState == TurnState.PlayerInput &&
                             battleManager.CurrentActingUnit != null &&
                             battleManager.CurrentActingUnit.Team == TeamType.Ally &&
                             battleManager.IsUnitInBattle(battleManager.CurrentActingUnit);
 
-        battleManager.SetLastShownAllyUnit(shownAlly);
-        battleManager.SelectedEnemyInfoUnit = shownEnemy;
-
-        if (uiController == null)
-            return;
-
-        uiController.RefreshCurrentUnitPanel(shownAlly);
-        uiController.RefreshEnemyPanels(shownEnemy);
+        uiController.RefreshInfoPanels(selectedAlly, selectedEnemy);
         uiController.RefreshActionButtons(actionOwner, canPlayerAct);
+        uiController.RefreshActionWheel(actionOwner, canPlayerAct);
         uiController.RefreshInventory(battleManager, battleManager.GetActiveAllyInventory(), battleManager.SelectedInventoryIndex);
+        uiController.RefreshTurnOrderStrip(battleManager.CurrentRoundTurnOrder, battleManager.CurrentRoundTurnCursor);
         uiController.SetBottomContext(bottomContextType);
+
+        if (viewManager != null)
+            viewManager.RefreshBattleVisualStates(battleManager);
     }
 
     public void NotifyUnitLeftBattle(BattleUnit unit)
@@ -85,22 +87,55 @@ public class BattlePresentationController : MonoBehaviour
 
         battleManager.ClearTargetMarkers();
 
+        if (battleManager.SelectedAllyInfoUnit == unit)
+            battleManager.SelectedAllyInfoUnit = null;
+        if (battleManager.SelectedEnemyInfoUnit == unit)
+            battleManager.SelectedEnemyInfoUnit = null;
+
         if (uiController != null)
         {
             uiController.HideTargetPreview();
             uiController.HideSkillTooltip();
             uiController.HideEnemySkillTooltip();
             uiController.HideFleeTooltip();
+            uiController.HideEnemyDetailPopup();
         }
+    }
+
+    public void SelectUnitForInfo(BattleUnit unit)
+    {
+        if (battleManager == null || unit == null)
+            return;
+
+        if (unit.Team == TeamType.Ally)
+            battleManager.SelectedAllyInfoUnit = unit;
+        else
+        {
+            if (battleManager.SelectedEnemyInfoUnit != unit && uiController != null && uiController.IsEnemyDetailPopupOpen())
+                uiController.HideEnemyDetailPopup();
+            battleManager.SelectedEnemyInfoUnit = unit;
+        }
+    }
+
+    public void OnBlankBattlefieldLeftClicked()
+    {
+        if (battleManager == null)
+            return;
+
+        battleManager.ClearInfoSelections();
+        if (uiController != null)
+        {
+            uiController.HideEnemyDetailPopup();
+            uiController.HandleBlankFieldLeftClick();
+        }
+        ClearUISelection();
     }
 
     public void OnInventoryTogglePressed()
     {
         bottomContextType = BottomContextType.Inventory;
-
         if (uiController != null)
             uiController.HideEnemyDetailPopup();
-
         ClearUISelection();
         RefreshAllUI();
     }
@@ -108,10 +143,8 @@ public class BattlePresentationController : MonoBehaviour
     public void OnMapButtonPressed()
     {
         bottomContextType = BottomContextType.Map;
-
         if (uiController != null)
             uiController.HideEnemyDetailPopup();
-
         ClearUISelection();
         RefreshAllUI();
     }
@@ -120,7 +153,6 @@ public class BattlePresentationController : MonoBehaviour
     {
         if (popupLogPanel != null)
             popupLogPanel.SetActive(!popupLogPanel.activeSelf);
-
         ClearUISelection();
     }
 
@@ -129,17 +161,11 @@ public class BattlePresentationController : MonoBehaviour
         if (uiController == null)
             return;
 
-        bool isClosingCurrentPopup = bottomContextType == BottomContextType.EnemyInfo && uiController.IsEnemyDetailPopupOpen();
+        bool isClosingCurrentPopup = uiController.IsEnemyDetailPopupOpen();
         if (isClosingCurrentPopup)
-        {
             uiController.HideEnemyDetailPopup();
-            bottomContextType = BottomContextType.Inventory;
-        }
         else
-        {
-            bottomContextType = BottomContextType.EnemyInfo;
             uiController.ShowEnemyDetailPopup(battleManager.SelectedEnemyInfoUnit);
-        }
 
         ClearUISelection();
         RefreshAllUI();
@@ -149,7 +175,7 @@ public class BattlePresentationController : MonoBehaviour
     {
         BattleUnit unit = battleManager.CurrentActingUnit != null && battleManager.CurrentActingUnit.Team == TeamType.Ally
             ? battleManager.CurrentActingUnit
-            : battleManager.LastShownAllyUnit;
+            : battleManager.SelectedAllyInfoUnit;
 
         SkillDefinition skill = unit != null ? unit.GetActionSkillAt(slotIndex) : null;
         if (skill != null && uiController != null)
@@ -158,8 +184,7 @@ public class BattlePresentationController : MonoBehaviour
 
     public void OnPlayerSkillButtonHoverExit()
     {
-        if (uiController != null)
-            uiController.HideSkillTooltip();
+        uiController?.HideSkillTooltip();
     }
 
     public void OnFleeButtonHoverEnter(Vector3 screenPosition)
@@ -176,8 +201,7 @@ public class BattlePresentationController : MonoBehaviour
 
     public void OnFleeButtonHoverExit()
     {
-        if (uiController != null)
-            uiController.HideFleeTooltip();
+        uiController?.HideFleeTooltip();
     }
 
     public void OnEnemySkillHoverEnter(int slotIndex, Vector3 screenPosition)
@@ -192,8 +216,7 @@ public class BattlePresentationController : MonoBehaviour
 
     public void OnEnemySkillHoverExit()
     {
-        if (uiController != null)
-            uiController.HideEnemySkillTooltip();
+        uiController?.HideEnemySkillTooltip();
     }
 
     public void ClearUISelection()
