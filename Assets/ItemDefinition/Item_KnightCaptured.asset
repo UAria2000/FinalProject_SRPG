@@ -19,6 +19,9 @@ MonoBehaviour:
   targetTeam: 1
   targetScope: 0
   usableInBattle: 0
+  baseSoulValue: 0
   consumeOnUse: 0
-  consumeTurnOnUse: 0
+  consumeTurnOnUse: 1
+  mainUICategory: 2
+  canAssignToSharedConsumableSlot: 0
   effects: []

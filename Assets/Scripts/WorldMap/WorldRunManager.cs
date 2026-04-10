@@ -39,6 +39,7 @@ public class WorldRunManager : MonoBehaviour
     public bool IsBusy => eventController != null && eventController.IsBusy;
 
     public event Action OnWorldStateChanged;
+    public event Action OnStorageChanged;
     public event Action<WorldTileData> OnTileSelectionChanged;
     public event Action<WorldTileData> OnCurrentTileChanged;
 
@@ -255,6 +256,8 @@ public class WorldRunManager : MonoBehaviour
 
         for (int i = 0; i < units.Count; i++)
             state.AddPrisoner(units[i]);
+
+        RaiseStorageChanged();
     }
 
     public void AddLootToWorldInventory(IReadOnlyList<ItemDefinition> items)
@@ -265,6 +268,8 @@ public class WorldRunManager : MonoBehaviour
 
         for (int i = 0; i < items.Count; i++)
             state.AddItem(items[i], 1);
+
+        RaiseStorageChanged();
     }
 
     public WorldSettlementSummary BuildSettlementSummary(bool wasVictory)
@@ -294,16 +299,16 @@ public class WorldRunManager : MonoBehaviour
                 }
             }
 
-            if (state.capturedPrisoners != null)
+            if (state.prisoners != null)
             {
-                for (int i = 0; i < state.capturedPrisoners.Count; i++)
+                for (int i = 0; i < state.prisoners.Count; i++)
                 {
-                    UnitDefinition prisoner = state.capturedPrisoners[i];
-                    if (prisoner == null)
+                    PrisonerRuntimeData prisoner = state.prisoners[i];
+                    if (prisoner == null || prisoner.sourceUnit == null)
                         continue;
 
-                    summary.prisonerUnits.Add(prisoner);
-                    summary.convertedPrisonerSoul += Mathf.Max(0, prisoner.baseSoulReward);
+                    summary.prisonerUnits.Add(prisoner.sourceUnit);
+                    summary.convertedPrisonerSoul += Mathf.Max(0, prisoner.sourceUnit.baseSoulReward);
                 }
             }
         }
@@ -408,6 +413,350 @@ public class WorldRunManager : MonoBehaviour
             currentWorldRunState.ResetForNewWorld(playerPartyTemplate);
 
         RefreshConquestButtonState();
+        RaiseStorageChanged();
+    }
+
+    public IReadOnlyList<InventoryStackData> GetStorageInventory()
+    {
+        return GetOrCreateWorldRunState()?.inventory;
+    }
+
+    public IReadOnlyList<PrisonerRuntimeData> GetStoragePrisoners()
+    {
+        return GetOrCreateWorldRunState()?.prisoners;
+    }
+
+    public ItemDefinition GetSharedConsumableItem()
+    {
+        return GetOrCreateWorldRunState()?.sharedConsumableItem;
+    }
+
+    public bool IsSharedConsumableAssigned(ItemDefinition item)
+    {
+        if (item == null)
+            return false;
+
+        WorldRunTransientState state = GetOrCreateWorldRunState();
+        return state != null && state.sharedConsumableItem == item;
+    }
+
+    public bool TryAssignSharedConsumable(ItemDefinition item)
+    {
+        WorldRunTransientState state = GetOrCreateWorldRunState();
+        if (state == null)
+            return false;
+
+        if (item == null)
+        {
+            if (state.sharedConsumableItem == null)
+                return false;
+
+            state.sharedConsumableItem = null;
+            RaiseStorageChanged();
+            return true;
+        }
+
+        if (!item.usableInBattle)
+            return false;
+
+        bool canAssign = item.canAssignToSharedConsumableSlot || item.mainUICategory == MainUIItemCategory.Consumable;
+        if (!canAssign)
+            return false;
+
+        List<InventoryStackData> inventory = state.inventory;
+        bool exists = false;
+        if (inventory != null)
+        {
+            for (int i = 0; i < inventory.Count; i++)
+            {
+                InventoryStackData stack = inventory[i];
+                if (stack != null && stack.item == item && stack.amount > 0)
+                {
+                    exists = true;
+                    break;
+                }
+            }
+        }
+
+        if (!exists)
+            return false;
+
+        state.sharedConsumableItem = item;
+        RaiseStorageChanged();
+        return true;
+    }
+
+    public bool TrySpendPersistentSoul(int amount)
+    {
+        int clamped = Mathf.Max(0, amount);
+        if (clamped <= 0)
+            return true;
+
+        if (persistentSoul < clamped)
+            return false;
+
+        persistentSoul -= clamped;
+        RaiseStorageChanged();
+        return true;
+    }
+
+    public bool TryPaySoulForPrisoner(PrisonerRuntimeData prisoner)
+    {
+        if (prisoner == null || !prisoner.RequiresSoulPayment)
+            return false;
+
+        if (!TrySpendPersistentSoul(prisoner.targetValue))
+            return false;
+
+        prisoner.MarkSoulPaid();
+        RaiseStorageChanged();
+        return true;
+    }
+
+    public bool RemovePrisoner(PrisonerRuntimeData prisoner)
+    {
+        WorldRunTransientState state = GetOrCreateWorldRunState();
+        if (state == null || prisoner == null || state.prisoners == null)
+            return false;
+
+        bool removed = state.prisoners.Remove(prisoner);
+        if (removed)
+            RaiseStorageChanged();
+
+        return removed;
+    }
+
+    public IReadOnlyList<PartyMemberData> GetDisplayOrderedPartyMembers()
+    {
+        BattlePartyRuntimeState party = GetOrCreatePlayerPartyRuntimeState();
+        List<PartyMemberData> ordered = new List<PartyMemberData>();
+
+        if (party == null || party.members == null)
+            return ordered;
+
+        for (int i = 0; i < party.members.Count; i++)
+        {
+            PartyMemberData member = party.members[i];
+            if (member != null)
+                ordered.Add(member);
+        }
+
+        ordered.Sort((a, b) => b.startSlotIndex.CompareTo(a.startSlotIndex));
+        return ordered;
+    }
+
+    public bool TrySwapPartyOrder(PartyMemberData a, PartyMemberData b)
+    {
+        if (a == null || b == null || a == b)
+            return false;
+
+        int temp = a.startSlotIndex;
+        a.startSlotIndex = b.startSlotIndex;
+        b.startSlotIndex = temp;
+
+        RaiseStorageChanged();
+        return true;
+    }
+
+    public bool IsAnyLoadoutItemAssigned(ItemDefinition item)
+    {
+        if (item == null)
+            return false;
+
+        return IsSharedConsumableAssigned(item) || IsEquipmentAssigned(item);
+    }
+
+    public bool IsEquipmentAssigned(ItemDefinition item)
+    {
+        if (item == null)
+            return false;
+
+        WorldRunTransientState state = GetOrCreateWorldRunState();
+        if (state == null || state.partyEquipmentAssignments == null)
+            return false;
+
+        for (int i = 0; i < state.partyEquipmentAssignments.Count; i++)
+        {
+            PartyEquipmentAssignmentData data = state.partyEquipmentAssignments[i];
+            if (data == null)
+                continue;
+
+            if (data.slot0Item == item || data.slot1Item == item)
+                return true;
+        }
+
+        return false;
+    }
+
+    public ItemDefinition GetAssignedEquipmentItem(PartyMemberData member, int slotIndex)
+    {
+        PartyEquipmentAssignmentData data = GetEquipmentAssignment(member, false);
+        if (data == null)
+            return null;
+
+        return slotIndex == 0 ? data.slot0Item : data.slot1Item;
+    }
+
+    public bool TryAssignEquipmentItem(PartyMemberData member, int slotIndex, ItemDefinition item)
+    {
+        if (member == null)
+            return false;
+
+        slotIndex = Mathf.Clamp(slotIndex, 0, 1);
+
+        PartyEquipmentAssignmentData data = GetEquipmentAssignment(member, true);
+        if (data == null)
+            return false;
+
+        if (item == null)
+        {
+            if (slotIndex == 0)
+                data.slot0Item = null;
+            else
+                data.slot1Item = null;
+
+            RaiseStorageChanged();
+            return true;
+        }
+
+        if (item.mainUICategory != MainUIItemCategory.Equipment)
+            return false;
+
+        if (!HasInventoryItem(item))
+            return false;
+
+        ClearEquipmentReference(item);
+
+        if (slotIndex == 0)
+            data.slot0Item = item;
+        else
+            data.slot1Item = item;
+
+        RaiseStorageChanged();
+        return true;
+    }
+
+    public bool TryMoveOrSwapEquipment(
+        PartyMemberData sourceMember,
+        int sourceSlotIndex,
+        PartyMemberData targetMember,
+        int targetSlotIndex)
+    {
+        if (sourceMember == null || targetMember == null)
+            return false;
+
+        sourceSlotIndex = Mathf.Clamp(sourceSlotIndex, 0, 1);
+        targetSlotIndex = Mathf.Clamp(targetSlotIndex, 0, 1);
+
+        PartyEquipmentAssignmentData source = GetEquipmentAssignment(sourceMember, true);
+        PartyEquipmentAssignmentData target = GetEquipmentAssignment(targetMember, true);
+        if (source == null || target == null)
+            return false;
+
+        ItemDefinition sourceItem = sourceSlotIndex == 0 ? source.slot0Item : source.slot1Item;
+        ItemDefinition targetItem = targetSlotIndex == 0 ? target.slot0Item : target.slot1Item;
+
+        if (sourceSlotIndex == 0)
+            source.slot0Item = targetItem;
+        else
+            source.slot1Item = targetItem;
+
+        if (targetSlotIndex == 0)
+            target.slot0Item = sourceItem;
+        else
+            target.slot1Item = sourceItem;
+
+        RaiseStorageChanged();
+        return true;
+    }
+
+    private bool HasInventoryItem(ItemDefinition item)
+    {
+        if (item == null)
+            return false;
+
+        WorldRunTransientState state = GetOrCreateWorldRunState();
+        if (state == null || state.inventory == null)
+            return false;
+
+        for (int i = 0; i < state.inventory.Count; i++)
+        {
+            InventoryStackData stack = state.inventory[i];
+            if (stack != null && stack.item == item && stack.amount > 0)
+                return true;
+        }
+
+        return false;
+    }
+
+    private void ClearEquipmentReference(ItemDefinition item)
+    {
+        if (item == null)
+            return;
+
+        WorldRunTransientState state = GetOrCreateWorldRunState();
+        if (state == null || state.partyEquipmentAssignments == null)
+            return;
+
+        for (int i = 0; i < state.partyEquipmentAssignments.Count; i++)
+        {
+            PartyEquipmentAssignmentData data = state.partyEquipmentAssignments[i];
+            if (data == null)
+                continue;
+
+            if (data.slot0Item == item)
+                data.slot0Item = null;
+
+            if (data.slot1Item == item)
+                data.slot1Item = null;
+        }
+    }
+
+    private PartyEquipmentAssignmentData GetEquipmentAssignment(PartyMemberData member, bool createIfMissing)
+    {
+        if (member == null)
+            return null;
+
+        WorldRunTransientState state = GetOrCreateWorldRunState();
+        if (state == null)
+            return null;
+
+        if (state.partyEquipmentAssignments == null)
+            state.partyEquipmentAssignments = new List<PartyEquipmentAssignmentData>();
+
+        string key = EnsureMemberInstanceId(member);
+
+        for (int i = 0; i < state.partyEquipmentAssignments.Count; i++)
+        {
+            PartyEquipmentAssignmentData data = state.partyEquipmentAssignments[i];
+            if (data != null && data.memberInstanceId == key)
+                return data;
+        }
+
+        if (!createIfMissing)
+            return null;
+
+        PartyEquipmentAssignmentData created = new PartyEquipmentAssignmentData
+        {
+            memberInstanceId = key
+        };
+        state.partyEquipmentAssignments.Add(created);
+        return created;
+    }
+
+    private string EnsureMemberInstanceId(PartyMemberData member)
+    {
+        if (member == null)
+            return string.Empty;
+
+        if (string.IsNullOrWhiteSpace(member.instanceId))
+            member.instanceId = Guid.NewGuid().ToString("N");
+
+        return member.instanceId;
+    }
+    private void RaiseStorageChanged()
+    {
+        OnStorageChanged?.Invoke();
     }
 
     private void MoveToTileInternal(WorldTileData tile, bool triggerArrivalEvent)

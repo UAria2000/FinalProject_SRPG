@@ -5,9 +5,11 @@ using System.Collections.Generic;
 public class WorldRunTransientState
 {
     public List<InventoryStackData> inventory = new List<InventoryStackData>();
-    public List<UnitDefinition> capturedPrisoners = new List<UnitDefinition>();
+    public List<PrisonerRuntimeData> prisoners = new List<PrisonerRuntimeData>();
+    public ItemDefinition sharedConsumableItem;
     public int worldEarnedSoulAlreadyGranted;
-
+    public long nextPrisonerSequence = 1;
+    public List<PartyEquipmentAssignmentData> partyEquipmentAssignments = new List<PartyEquipmentAssignmentData>();
     public static WorldRunTransientState CreateForNewWorld(PartyDefinition playerPartyTemplate)
     {
         WorldRunTransientState state = new WorldRunTransientState();
@@ -19,8 +21,11 @@ public class WorldRunTransientState
     public void ResetForNewWorld(PartyDefinition playerPartyTemplate)
     {
         inventory = playerPartyTemplate != null ? playerPartyTemplate.CreateInventoryRuntime() : new List<InventoryStackData>();
-        capturedPrisoners.Clear();
+        prisoners.Clear();
+        sharedConsumableItem = null;
         worldEarnedSoulAlreadyGranted = 0;
+        nextPrisonerSequence = 1;
+        partyEquipmentAssignments.Clear();
     }
 
     public void AddItem(ItemDefinition item, int amount = 1)
@@ -29,13 +34,18 @@ public class WorldRunTransientState
             return;
 
         InventoryStackData existing = inventory.Find(x => x != null && x.item == item);
-        if (existing != null) existing.amount += amount;
-        else inventory.Add(new InventoryStackData { item = item, amount = amount });
+        if (existing != null)
+            existing.amount += amount;
+        else
+            inventory.Add(new InventoryStackData { item = item, amount = amount });
     }
 
-    public void AddPrisoner(UnitDefinition unit)
+    public void AddPrisoner(UnitDefinition unit, int capturedLevel = 1)
     {
-        if (unit != null) capturedPrisoners.Add(unit);
+        if (unit == null)
+            return;
+
+        prisoners.Add(PrisonerRuntimeData.CreateFromCapturedUnit(unit, capturedLevel, nextPrisonerSequence++));
     }
 
     public void AddSoulEarnedInWorld(int amount)

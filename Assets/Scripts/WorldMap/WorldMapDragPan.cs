@@ -36,6 +36,7 @@ public class WorldMapDragPan : MonoBehaviour
 
     private bool pressed;
     private bool dragging;
+    private bool inputLocked;
     private Vector2 pressScreenPosition;
     private Vector2 contentStartPosition;
     private int suppressClickFrames;
@@ -45,6 +46,17 @@ public class WorldMapDragPan : MonoBehaviour
 
     public float CurrentZoom => contentRoot != null ? contentRoot.localScale.x : 1f;
     public bool IsDragging => dragging;
+
+    public void SetInputLocked(bool locked)
+    {
+        inputLocked = locked;
+
+        if (inputLocked)
+        {
+            pressed = false;
+            dragging = false;
+        }
+    }
 
     public void Configure(RectTransform inContentRoot)
     {
@@ -73,7 +85,7 @@ public class WorldMapDragPan : MonoBehaviour
 
     public bool ShouldSuppressClick()
     {
-        return dragging || suppressClickFrames > 0;
+        return inputLocked || dragging || suppressClickFrames > 0;
     }
 
     public void CenterOnAnchoredPosition(Vector2 targetAnchoredPosition)
@@ -95,6 +107,9 @@ public class WorldMapDragPan : MonoBehaviour
 
         if (suppressClickFrames > 0)
             suppressClickFrames--;
+
+        if (inputLocked)
+            return;
 
         HandleZoom();
         HandlePan();
@@ -275,15 +290,14 @@ public class WorldMapDragPan : MonoBehaviour
         if (!useDynamicPanPadding || viewportRect == null)
             return panPadding;
 
-        float viewportWidth = viewportRect.rect.width;
-        float viewportHeight = viewportRect.rect.height;
+        Vector2 viewportSize = viewportRect.rect.size;
+        Vector2 dynamic = new Vector2(
+            viewportSize.x * panPaddingPercent.x,
+            viewportSize.y * panPaddingPercent.y
+        );
 
-        float dynamicX = viewportWidth * panPaddingPercent.x;
-        float dynamicY = viewportHeight * panPaddingPercent.y;
-
-        dynamicX = Mathf.Clamp(dynamicX, minPanPadding.x, maxPanPadding.x);
-        dynamicY = Mathf.Clamp(dynamicY, minPanPadding.y, maxPanPadding.y);
-
-        return new Vector2(dynamicX, dynamicY);
+        dynamic.x = Mathf.Clamp(dynamic.x, minPanPadding.x, maxPanPadding.x);
+        dynamic.y = Mathf.Clamp(dynamic.y, minPanPadding.y, maxPanPadding.y);
+        return dynamic;
     }
 }

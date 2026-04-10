@@ -38,5 +38,6 @@ MonoBehaviour:
     bleedResistRange: {x: 0, y: 0}
     stunResistRange: {x: 0, y: 0}
   isMainPlayerCharacter: 1
+  baseSoulReward: 0
   canBeCaptured: 0
   captureRewardItem: {fileID: 0}
