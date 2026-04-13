@@ -6506,7 +6506,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: -8.544495}
+  m_AnchoredPosition: {x: 0, y: -8.544434}
   m_SizeDelta: {x: 20, y: 36.2059}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &353507504
@@ -21113,7 +21113,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1408283966}
   m_Layer: 0
-  m_Name: TopCenter
+  m_Name: TopLeft
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -26256,7 +26256,7 @@ MonoBehaviour:
   - 1.75
   - 2
   defaultScaleIndex: 0
-  rightDragThreshold: 30
+  rightDragThreshold: 35
   sharedConsumableInventoryIndex: 0
   closeOnBlankLeftClick: 1
 --- !u!1 &1716234817
