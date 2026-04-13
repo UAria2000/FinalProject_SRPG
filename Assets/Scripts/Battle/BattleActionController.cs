@@ -48,9 +48,15 @@ public class BattleActionController : MonoBehaviour
 
         battleManager.SetTurnState(TurnState.ExecutingAction);
 
+        // --- [이펙트 추가] 시전자 위치에서 시전 이펙트 재생 ---
+        BattleUnitView actorView = viewManager.GetView(actor);
+        if (actorView != null && skill.castEffectPrefab != null)
+        {
+            viewManager.PlayEffect(skill.castEffectPrefab, actorView.transform.position);
+        }
+
         if (skill.IsEnemyTargetAttackSkill() && clickedTarget != null)
         {
-            BattleUnitView actorView = viewManager.GetView(actor);
             BattleUnitView targetView = viewManager.GetView(clickedTarget);
             if (actorView != null && targetView != null)
                 yield return StartCoroutine(actorView.PlayAttackMove(
@@ -68,6 +74,13 @@ public class BattleActionController : MonoBehaviour
 
             for (int i = 0; i < targets.Count; i++)
             {
+                // --- [이펙트 추가] 대상 위치에서 타격 이펙트 재생 ---
+                BattleUnitView targetView = viewManager.GetView(targets[i]);
+                if (targetView != null && skill.hitEffectPrefab != null)
+                {
+                    viewManager.PlayEffect(skill.hitEffectPrefab, targetView.transform.position);
+                }
+
                 yield return StartCoroutine(ResolveAndApplyAttack(
                     actor,
                     skill,
@@ -127,6 +140,13 @@ public class BattleActionController : MonoBehaviour
             for (int i = 0; i < targets.Count; i++)
             {
                 BattleUnit primaryTarget = targets[i];
+
+                // --- [이펙트 추가] 대상 위치에서 타격 이펙트 재생 (성공판정형) ---
+                BattleUnitView targetView = viewManager.GetView(primaryTarget);
+                if (targetView != null && skill.hitEffectPrefab != null)
+                {
+                    viewManager.PlayEffect(skill.hitEffectPrefab, targetView.transform.position);
+                }
 
                 ApplySuccessOnlyEffects(actor, primaryTarget, skill.skillName, skill.effects);
 

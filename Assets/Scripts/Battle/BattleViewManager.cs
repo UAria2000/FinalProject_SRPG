@@ -168,6 +168,16 @@ public class BattleViewManager : MonoBehaviour
                 pair.Value.SetTargetMark(false);
     }
 
+    public void PlayEffect(GameObject prefab, Vector3 worldPosition, float duration = 2f)
+    {
+        if (prefab == null || viewRoot == null) return;
+
+        GameObject effect = Instantiate(prefab, viewRoot);
+        effect.transform.position = worldPosition;
+
+        // 자동 파괴 (혹은 ParticleSystem의 Stop Action 설정에 따라 처리 가능)
+        Destroy(effect, duration);
+    }
 
     public void RefreshBattleVisualStates(BattleManager manager)
     {
