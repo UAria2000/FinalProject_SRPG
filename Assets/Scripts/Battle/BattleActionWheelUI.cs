@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
@@ -62,18 +61,25 @@ public class BattleActionWheelUI : MonoBehaviour
 
     private BattleManager battleManager;
     private WheelState currentState = WheelState.Closed;
+    private WheelState targetingBaseState = WheelState.Root;
+
     private Vector2 lastAnchoredPosition;
     private int currentScaleIndex;
 
     private bool rightPressed;
     private bool rightDragged;
     private Vector2 rightPressScreenPosition;
-    private int dragScaleDelta;
+    private float rightDragReferenceDistance;
 
     private bool canPlayerAct;
     private bool canAcceptRootInteractions;
     private BattleUnit currentActor;
-    private RectTransform canvasRect;
+
+    private RectTransform wheelParentRect;
+    private Canvas parentCanvas;
+
+    private bool wasWaitingForActionLastRefresh;
+    private BattleUnit lastRefreshActor;
 
     public void Initialize(BattleManager manager)
     {
@@ -82,10 +88,17 @@ public class BattleActionWheelUI : MonoBehaviour
         if (wheelRoot == null)
             wheelRoot = transform as RectTransform;
 
-        Canvas canvas = GetComponentInParent<Canvas>();
-        canvasRect = canvas != null ? canvas.transform as RectTransform : null;
-        if (uiCamera == null && canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
-            uiCamera = canvas.worldCamera;
+        parentCanvas = GetComponentInParent<Canvas>();
+        wheelParentRect = wheelRoot != null ? wheelRoot.parent as RectTransform : null;
+
+        if (parentCanvas != null && parentCanvas.renderMode == RenderMode.ScreenSpaceOverlay)
+        {
+            uiCamera = null;
+        }
+        else if (uiCamera == null && parentCanvas != null)
+        {
+            uiCamera = parentCanvas.worldCamera;
+        }
 
         currentScaleIndex = Mathf.Clamp(defaultScaleIndex, 0, Mathf.Max(0, scaleSteps.Length - 1));
         lastAnchoredPosition = initialAnchoredPosition;
@@ -93,6 +106,9 @@ public class BattleActionWheelUI : MonoBehaviour
         BindButtons();
         ApplyScale();
         CloseImmediate();
+
+        wasWaitingForActionLastRefresh = false;
+        lastRefreshActor = null;
     }
 
     private void Update()
@@ -113,21 +129,38 @@ public class BattleActionWheelUI : MonoBehaviour
         if (!playerCanAct)
         {
             CloseImmediate();
+            wasWaitingForActionLastRefresh = false;
+            lastRefreshActor = actor;
             return;
         }
 
-        if (inputMode == BattleInputMode.WaitingForAction)
+        bool isWaitingForAction = inputMode == BattleInputMode.WaitingForAction;
+
+        if (isWaitingForAction)
         {
-            if (currentState == WheelState.Closed || currentState == WheelState.Targeting)
+            bool shouldAutoOpen =
+                !wasWaitingForActionLastRefresh ||
+                actor != lastRefreshActor;
+
+            if (shouldAutoOpen && currentState == WheelState.Closed)
                 OpenRoot();
-            else
-                ShowState(currentState == WheelState.Attack || currentState == WheelState.Mana ? currentState : WheelState.Root);
+
+            if (currentState != WheelState.Closed && currentState != WheelState.Targeting)
+            {
+                if (currentState == WheelState.Attack || currentState == WheelState.Mana)
+                    ShowState(currentState);
+                else
+                    ShowState(WheelState.Root);
+            }
         }
         else
         {
             if (currentState != WheelState.Closed)
                 ShowTargetingLock();
         }
+
+        wasWaitingForActionLastRefresh = isWaitingForAction;
+        lastRefreshActor = actor;
     }
 
     public void HandleBlankLeftClick()
@@ -140,7 +173,16 @@ public class BattleActionWheelUI : MonoBehaviour
 
     public void HandleCurrentActorClicked(BattleUnit clickedUnit)
     {
-        if (!canPlayerAct || currentActor == null || clickedUnit != currentActor)
+        if (battleManager == null)
+            return;
+
+        bool canOpenForCurrentActor =
+            battleManager.CurrentState == TurnState.PlayerInput &&
+            battleManager.CurrentActingUnit != null &&
+            battleManager.CurrentActingUnit.Team == TeamType.Ally &&
+            clickedUnit == battleManager.CurrentActingUnit;
+
+        if (!canOpenForCurrentActor)
             return;
 
         if (currentState == WheelState.Closed)
@@ -159,7 +201,7 @@ public class BattleActionWheelUI : MonoBehaviour
         Bind(rootMoveButton, () => battleManager?.OnMoveButtonPressed());
         Bind(rootItemButton, OnRootItemPressed);
         Bind(rootEndTurnButton, () => battleManager?.OnEndTurnButtonPressed());
-        Bind(rootCenterButton, CloseWheel);
+        Bind(rootCenterButton, OnRootCenterPressed);
 
         Bind(attackBasicButton, () => battleManager?.OnActionSlotPressed(0));
         for (int i = 0; i < attackSkillButtons.Length; i++)
@@ -167,13 +209,13 @@ public class BattleActionWheelUI : MonoBehaviour
             int slotIndex = i + 1;
             Bind(attackSkillButtons[i], () => battleManager?.OnActionSlotPressed(slotIndex));
         }
-        Bind(attackBackButton, OpenRoot);
+        Bind(attackBackButton, OnAttackBackPressed);
 
         Bind(manaCaptureButton, () => battleManager?.OnCaptureButtonPressed());
         Bind(manaFleeButton, () => battleManager?.OnFleeButtonPressed());
         Bind(manaPreventDeathButton, () => Debug.Log("[BattleActionWheelUI] 즉시방지버프 액션은 차후 전투 로직과 연결 예정입니다."));
         Bind(manaTeamBuffButton, () => Debug.Log("[BattleActionWheelUI] 아군전체버프 액션은 차후 전투 로직과 연결 예정입니다."));
-        Bind(manaBackButton, OpenRoot);
+        Bind(manaBackButton, OnManaBackPressed);
     }
 
     private void RefreshRootState(List<InventoryStackData> inventory)
@@ -213,11 +255,13 @@ public class BattleActionWheelUI : MonoBehaviour
     {
         BattleUnit unit = currentActor;
         SkillDefinition basic = unit != null ? unit.GetActionSkillAt(0) : null;
+
         if (attackBasicIcon != null)
         {
             attackBasicIcon.gameObject.SetActive(basic != null && basic.icon != null);
             attackBasicIcon.sprite = basic != null ? basic.icon : null;
         }
+
         if (attackBasicButton != null)
             attackBasicButton.interactable = canAcceptRootInteractions && unit != null && basic != null && unit.CanUseSkill(basic);
 
@@ -225,6 +269,7 @@ public class BattleActionWheelUI : MonoBehaviour
         {
             int slot = i + 1;
             SkillDefinition skill = unit != null ? unit.GetActionSkillAt(slot) : null;
+
             if (i < attackSkillIcons.Length && attackSkillIcons[i] != null)
             {
                 attackSkillIcons[i].gameObject.SetActive(skill != null && skill.icon != null);
@@ -234,15 +279,28 @@ public class BattleActionWheelUI : MonoBehaviour
             if (attackSkillButtons[i] != null)
                 attackSkillButtons[i].interactable = canAcceptRootInteractions && unit != null && skill != null && unit.CanUseSkill(skill);
         }
+
+        for (int i = 0; i < attackEmptyFrames.Length; i++)
+        {
+            if (attackEmptyFrames[i] != null)
+                attackEmptyFrames[i].SetActive(true);
+        }
     }
 
     private void RefreshManaState()
     {
         bool canCapture = canAcceptRootInteractions && battleManager != null && battleManager.CanActorUseCaptureCommand(currentActor);
+
         if (manaCaptureButton != null) manaCaptureButton.interactable = canCapture;
         if (manaFleeButton != null) manaFleeButton.interactable = canAcceptRootInteractions;
         if (manaPreventDeathButton != null) manaPreventDeathButton.interactable = canAcceptRootInteractions;
         if (manaTeamBuffButton != null) manaTeamBuffButton.interactable = canAcceptRootInteractions;
+
+        for (int i = 0; i < manaEmptyFrames.Length; i++)
+        {
+            if (manaEmptyFrames[i] != null)
+                manaEmptyFrames[i].SetActive(true);
+        }
     }
 
     private void OnRootItemPressed()
@@ -250,6 +308,7 @@ public class BattleActionWheelUI : MonoBehaviour
         if (battleManager == null)
             return;
 
+        targetingBaseState = WheelState.Root;
         battleManager.OnInventorySlotPressed(sharedConsumableInventoryIndex);
     }
 
@@ -266,7 +325,15 @@ public class BattleActionWheelUI : MonoBehaviour
 
     private void OpenRoot()
     {
-        if (!canPlayerAct)
+        if (battleManager == null)
+            return;
+
+        bool canOpen =
+            battleManager.CurrentState == TurnState.PlayerInput &&
+            battleManager.CurrentActingUnit != null &&
+            battleManager.CurrentActingUnit.Team == TeamType.Ally;
+
+        if (!canOpen)
             return;
 
         if (currentState == WheelState.Closed)
@@ -297,6 +364,57 @@ public class BattleActionWheelUI : MonoBehaviour
         ShowState(WheelState.Mana);
     }
 
+    private void OnRootCenterPressed()
+    {
+        if (currentState == WheelState.Targeting && targetingBaseState == WheelState.Root)
+        {
+            CancelCurrentSelectionAndReturnTo(WheelState.Root);
+            return;
+        }
+
+        CloseWheel();
+    }
+
+    private void OnAttackBackPressed()
+    {
+        if (currentState == WheelState.Targeting && targetingBaseState == WheelState.Attack)
+        {
+            CancelCurrentSelectionAndReturnTo(WheelState.Attack);
+            return;
+        }
+
+        OpenRoot();
+    }
+
+    private void OnManaBackPressed()
+    {
+        if (currentState == WheelState.Targeting && targetingBaseState == WheelState.Mana)
+        {
+            CancelCurrentSelectionAndReturnTo(WheelState.Mana);
+            return;
+        }
+
+        OpenRoot();
+    }
+
+    private void CancelCurrentSelectionAndReturnTo(WheelState returnState)
+    {
+        if (battleManager == null)
+            return;
+
+        targetingBaseState = returnState;
+        currentState = returnState;
+
+        battleManager.OnCancelButtonPressed();
+
+        if (returnState == WheelState.Attack)
+            ShowState(WheelState.Attack);
+        else if (returnState == WheelState.Mana)
+            ShowState(WheelState.Mana);
+        else
+            ShowState(WheelState.Root);
+    }
+
     public void CloseWheel()
     {
         CloseImmediate();
@@ -315,54 +433,93 @@ public class BattleActionWheelUI : MonoBehaviour
         currentState = state;
         SetVisible(state != WheelState.Closed);
 
-        if (rootStateRoot != null)
-            rootStateRoot.SetActive(state == WheelState.Root || state == WheelState.Targeting);
-        if (attackStateRoot != null)
-            attackStateRoot.SetActive(state == WheelState.Attack);
-        if (manaStateRoot != null)
-            manaStateRoot.SetActive(state == WheelState.Mana);
+        if (state == WheelState.Root)
+        {
+            if (rootStateRoot != null) rootStateRoot.SetActive(true);
+            if (attackStateRoot != null) attackStateRoot.SetActive(false);
+            if (manaStateRoot != null) manaStateRoot.SetActive(false);
+            UnlockInteractiveStates();
+            return;
+        }
+
+        if (state == WheelState.Attack)
+        {
+            if (rootStateRoot != null) rootStateRoot.SetActive(false);
+            if (attackStateRoot != null) attackStateRoot.SetActive(true);
+            if (manaStateRoot != null) manaStateRoot.SetActive(false);
+            UnlockInteractiveStates();
+            return;
+        }
+
+        if (state == WheelState.Mana)
+        {
+            if (rootStateRoot != null) rootStateRoot.SetActive(false);
+            if (attackStateRoot != null) attackStateRoot.SetActive(false);
+            if (manaStateRoot != null) manaStateRoot.SetActive(true);
+            UnlockInteractiveStates();
+            return;
+        }
 
         if (state == WheelState.Targeting)
-            LockForTargeting();
-        else
-            UnlockInteractiveStates();
+            ShowTargetingLock();
     }
 
     private void ShowTargetingLock()
     {
-        if (currentState == WheelState.Closed)
-            return;
+        if (currentState != WheelState.Targeting)
+        {
+            if (currentState == WheelState.Root || currentState == WheelState.Attack || currentState == WheelState.Mana)
+                targetingBaseState = currentState;
+        }
 
         currentState = WheelState.Targeting;
-        if (rootStateRoot != null)
-            rootStateRoot.SetActive(true);
-        if (attackStateRoot != null)
-            attackStateRoot.SetActive(false);
-        if (manaStateRoot != null)
-            manaStateRoot.SetActive(false);
+
+        if (rootStateRoot != null) rootStateRoot.SetActive(targetingBaseState == WheelState.Root);
+        if (attackStateRoot != null) attackStateRoot.SetActive(targetingBaseState == WheelState.Attack);
+        if (manaStateRoot != null) manaStateRoot.SetActive(targetingBaseState == WheelState.Mana);
 
         LockForTargeting();
     }
 
     private void LockForTargeting()
     {
-        SetButtonInteractable(rootManaButton, false);
-        SetButtonInteractable(rootAttackButton, false);
-        SetButtonInteractable(rootMoveButton, false);
-        SetButtonInteractable(rootItemButton, false);
-        SetButtonInteractable(rootEndTurnButton, false);
-        SetButtonInteractable(rootCenterButton, true);
+        if (targetingBaseState == WheelState.Root)
+        {
+            SetButtonInteractable(rootManaButton, false);
+            SetButtonInteractable(rootAttackButton, false);
+            SetButtonInteractable(rootMoveButton, false);
+            SetButtonInteractable(rootItemButton, false);
+            SetButtonInteractable(rootEndTurnButton, false);
+            SetButtonInteractable(rootCenterButton, true);
+        }
+        else if (targetingBaseState == WheelState.Attack)
+        {
+            SetButtonInteractable(attackBasicButton, false);
+            for (int i = 0; i < attackSkillButtons.Length; i++)
+                SetButtonInteractable(attackSkillButtons[i], false);
+
+            SetButtonInteractable(attackBackButton, true);
+        }
+        else if (targetingBaseState == WheelState.Mana)
+        {
+            SetButtonInteractable(manaCaptureButton, false);
+            SetButtonInteractable(manaFleeButton, false);
+            SetButtonInteractable(manaPreventDeathButton, false);
+            SetButtonInteractable(manaTeamBuffButton, false);
+            SetButtonInteractable(manaBackButton, true);
+        }
     }
 
     private void UnlockInteractiveStates()
     {
-        // Refresh(...)가 각 상태별 인터랙션을 다시 잡아줌.
+        // Refresh(...)가 각 상태별 interactable을 다시 잡아줌.
     }
 
     private void SetVisible(bool active)
     {
         if (wheelRoot != null)
             wheelRoot.gameObject.SetActive(active);
+
         if (wheelCanvasGroup != null)
         {
             wheelCanvasGroup.alpha = active ? 1f : 0f;
@@ -374,7 +531,10 @@ public class BattleActionWheelUI : MonoBehaviour
     private void CloseImmediate()
     {
         currentState = WheelState.Closed;
+        targetingBaseState = WheelState.Root;
+
         SetVisible(false);
+
         if (rootStateRoot != null) rootStateRoot.SetActive(false);
         if (attackStateRoot != null) attackStateRoot.SetActive(false);
         if (manaStateRoot != null) manaStateRoot.SetActive(false);
@@ -385,60 +545,106 @@ public class BattleActionWheelUI : MonoBehaviour
         if (Mouse.current == null || battleManager == null || battleManager.CurrentState != TurnState.PlayerInput)
             return;
 
+        bool canOpenForActor =
+            battleManager.CurrentActingUnit != null &&
+            battleManager.CurrentActingUnit.Team == TeamType.Ally;
+
         if (Mouse.current.rightButton.wasPressedThisFrame)
         {
             rightPressed = true;
             rightDragged = false;
             rightPressScreenPosition = Mouse.current.position.ReadValue();
-            dragScaleDelta = 0;
+            rightDragReferenceDistance = GetDistanceFromWheelCenter(rightPressScreenPosition);
         }
 
         if (rightPressed && Mouse.current.rightButton.isPressed)
         {
             Vector2 now = Mouse.current.position.ReadValue();
             Vector2 delta = now - rightPressScreenPosition;
+
             if (!rightDragged && delta.magnitude >= rightDragThreshold)
                 rightDragged = true;
 
             if (rightDragged)
-            {
-                if (Mathf.Abs(delta.y) >= rightDragThreshold)
-                {
-                    dragScaleDelta = delta.y > 0f ? 1 : -1;
-                }
-            }
+                HandleRightScaleDrag(now);
         }
 
         if (rightPressed && Mouse.current.rightButton.wasReleasedThisFrame)
         {
             Vector2 releasePos = Mouse.current.position.ReadValue();
+
             if (!rightDragged)
             {
                 TeleportToScreenPosition(releasePos);
-                if (currentState == WheelState.Closed && canPlayerAct)
+
+                if (currentState == WheelState.Closed && canOpenForActor)
                     OpenRoot();
-            }
-            else
-            {
-                if (dragScaleDelta != 0)
-                {
-                    currentScaleIndex = Mathf.Clamp(currentScaleIndex + dragScaleDelta, 0, Mathf.Max(0, scaleSteps.Length - 1));
-                    ApplyScale();
-                }
             }
 
             rightPressed = false;
             rightDragged = false;
-            dragScaleDelta = 0;
         }
+    }
+
+    private void HandleRightScaleDrag(Vector2 mouseScreenPosition)
+    {
+        float currentDistance = GetDistanceFromWheelCenter(mouseScreenPosition);
+        float delta = currentDistance - rightDragReferenceDistance;
+
+        if (delta >= rightDragThreshold)
+        {
+            StepScaleUp();
+            rightDragReferenceDistance = currentDistance;
+        }
+        else if (delta <= -rightDragThreshold)
+        {
+            StepScaleDown();
+            rightDragReferenceDistance = currentDistance;
+        }
+    }
+
+    private float GetDistanceFromWheelCenter(Vector2 mouseScreenPosition)
+    {
+        if (wheelRoot == null)
+            return 0f;
+
+        Vector2 centerScreenPosition = RectTransformUtility.WorldToScreenPoint(uiCamera, wheelRoot.position);
+        return Vector2.Distance(centerScreenPosition, mouseScreenPosition);
+    }
+
+    private void StepScaleUp()
+    {
+        SetScaleIndex(currentScaleIndex + 1);
+    }
+
+    private void StepScaleDown()
+    {
+        SetScaleIndex(currentScaleIndex - 1);
+    }
+
+    private void SetScaleIndex(int index)
+    {
+        if (scaleSteps == null || scaleSteps.Length == 0)
+            return;
+
+        currentScaleIndex = Mathf.Clamp(index, 0, scaleSteps.Length - 1);
+        ApplyScale();
     }
 
     private void TeleportToScreenPosition(Vector2 screenPosition)
     {
-        if (wheelRoot == null || canvasRect == null)
+        if (wheelRoot == null)
             return;
 
-        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screenPosition, uiCamera, out Vector2 localPoint))
+        RectTransform targetRect = wheelParentRect != null ? wheelParentRect : wheelRoot.parent as RectTransform;
+        if (targetRect == null)
+            return;
+
+        Camera eventCamera = null;
+        if (parentCanvas != null && parentCanvas.renderMode != RenderMode.ScreenSpaceOverlay)
+            eventCamera = uiCamera != null ? uiCamera : parentCanvas.worldCamera;
+
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(targetRect, screenPosition, eventCamera, out Vector2 localPoint))
             return;
 
         wheelRoot.anchoredPosition = localPoint;
