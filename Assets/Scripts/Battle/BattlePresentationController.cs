@@ -122,13 +122,24 @@ public class BattlePresentationController : MonoBehaviour
         if (battleManager == null)
             return;
 
+        // 대상 선택 중이었다면 먼저 취소
+        if (battleManager.InputMode != BattleInputMode.WaitingForAction &&
+            battleManager.CurrentState == TurnState.PlayerInput &&
+            battleManager.InputController != null)
+        {
+            battleManager.InputController.CancelCurrentInput();
+        }
+
         battleManager.ClearInfoSelections();
+
         if (uiController != null)
         {
             uiController.HideEnemyDetailPopup();
             uiController.HandleBlankFieldLeftClick();
         }
+
         ClearUISelection();
+        RefreshAllUI();
     }
 
     public void OnInventoryTogglePressed()
