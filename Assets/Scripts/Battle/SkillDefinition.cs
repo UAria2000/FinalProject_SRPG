@@ -126,6 +126,10 @@ public class SkillDefinition : ScriptableObject
     [Tooltip("체크 시 이 스킬은 해당 전투에서 1회 사용 후 다시 사용할 수 없습니다.")]
     public bool disableAfterUseInBattle = false;
 
+    [Header("Visual Effects")]
+    public GameObject castEffectPrefab; // 시전 시 사용자 위치에서 발생
+    public GameObject hitEffectPrefab;  // 타격 시 대상 위치에서 발생
+
     public bool HasDamageEffect()
     {
         if (effects == null) return false;
