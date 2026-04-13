@@ -3668,7 +3668,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: -144, y: 0}
   m_SizeDelta: {x: 96, y: 96}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &208255418
@@ -5583,8 +5583,8 @@ MonoBehaviour:
   panPadding: {x: 600, y: 600}
   enableZoom: 1
   zoomStep: 0.1
-  minZoom: 0.5
-  maxZoom: 2
+  minZoom: 0.3
+  maxZoom: 1.5
   clampToMinAfterConfigure: 1
   autoFitInitialZoom: 1
   initialFitPadding: {x: 180, y: 180}
@@ -23037,7 +23037,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 1}
   m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: 0, y: -20}
+  m_AnchoredPosition: {x: -810, y: -20}
   m_SizeDelta: {x: 900, y: 120}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &1510579513
@@ -26248,7 +26248,7 @@ MonoBehaviour:
   - {fileID: 0}
   manaBackButton: {fileID: 390162041}
   openAtLastPosition: 1
-  initialAnchoredPosition: {x: 0, y: -220}
+  initialAnchoredPosition: {x: 0, y: -500}
   scaleSteps:
   - 1
   - 1.25
