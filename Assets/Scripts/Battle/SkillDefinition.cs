@@ -39,6 +39,7 @@ public class SkillDefinition : ScriptableObject
     public PassiveSkillGimmick passiveGimmick = PassiveSkillGimmick.None;
     public ActiveSkillGimmick activeGimmick = ActiveSkillGimmick.None;
 
+
     [Header("Targeting")]
     [Range(0, 3)] public int usableMinSlotIndex = 0;
     [Range(0, 3)] public int usableMaxSlotIndex = 3;

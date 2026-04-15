@@ -12,12 +12,14 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private WorldRunManager worldRunManager;
+    [SerializeField] private PersistentProfileController persistentProfileController;
     [SerializeField] private StorageSharedConsumableSlotUI sharedConsumableSlotUI;
 
-    [Tooltip("øﬁ¬  -> ø¿∏•¬  º¯º≠∑Œ ≥÷æÓ. ¡Ô 3,2,1,0 ¿⁄∏Æ º¯º≠.")]
+    [Tooltip("ÏôºÏ™Ω -> Ïò§Î•∏Ï™Ω ÏàúÏÑúÎ°ú ÎÑ£Ïñ¥. Ï¶â 3,2,1,0 ÏûêÎ¶¨ ÏàúÏÑú.")]
     [SerializeField] private List<PartyLoadoutUnitEntryUI> unitEntries = new List<PartyLoadoutUnitEntryUI>();
 
     private bool storageMode;
+    private bool barracksMode;
 
     private ItemDefinition pendingInventoryItem;
     private PendingLoadoutItemKind pendingItemKind = PendingLoadoutItemKind.None;
@@ -26,15 +28,22 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
     private PartyEquipmentSlotUI draggedEquipmentSlot;
     private PartyLoadoutUnitEntryUI draggedUnitEntry;
 
+    private PersistentRosterUnitData pendingBarracksUnit;
+    private PersistentRosterUnitData draggedBarracksUnit;
+
     private void Awake()
     {
         if (worldRunManager == null)
             worldRunManager = Object.FindFirstObjectByType<WorldRunManager>();
+
+        if (persistentProfileController == null)
+            persistentProfileController = Object.FindFirstObjectByType<PersistentProfileController>();
     }
 
     private void Start()
     {
         SetStorageMode(false);
+        SetBarracksMode(false);
         RefreshAll();
     }
 
@@ -43,6 +52,9 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
         if (worldRunManager != null)
             worldRunManager.OnStorageChanged += RefreshAll;
 
+        if (persistentProfileController != null)
+            persistentProfileController.OnProfileChanged += RefreshAll;
+
         RefreshAll();
     }
 
@@ -50,12 +62,13 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
     {
         if (worldRunManager != null)
             worldRunManager.OnStorageChanged -= RefreshAll;
+
+        if (persistentProfileController != null)
+            persistentProfileController.OnProfileChanged -= RefreshAll;
     }
 
-    public bool IsStorageMode()
-    {
-        return storageMode;
-    }
+    public bool IsStorageMode() => storageMode;
+    public bool IsBarracksMode() => barracksMode;
 
     public void SetStorageMode(bool isOpen)
     {
@@ -66,7 +79,19 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
             ClearPendingSelection();
             draggedInventoryItem = null;
             draggedEquipmentSlot = null;
-            draggedUnitEntry = null;
+        }
+
+        RefreshAll();
+    }
+
+    public void SetBarracksMode(bool isOpen)
+    {
+        barracksMode = isOpen;
+
+        if (!barracksMode)
+        {
+            pendingBarracksUnit = null;
+            draggedBarracksUnit = null;
         }
 
         RefreshAll();
@@ -77,9 +102,7 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
         if (worldRunManager == null)
             return;
 
-        // ∏’¿˙ ∆ƒ∆º∏¶ 0,1,2...∑Œ æ–√‡
         IReadOnlyList<PartyMemberData> orderedMembers = worldRunManager.GetDisplayOrderedPartyMembers();
-
         Dictionary<int, PartyMemberData> memberByBattleSlot = new Dictionary<int, PartyMemberData>();
         for (int i = 0; i < orderedMembers.Count; i++)
         {
@@ -95,11 +118,8 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
             if (unitEntries[i] == null)
                 continue;
 
-            // øﬁ¬ ->ø¿∏•¬  ø£∆Æ∏Æ∂Û∏È, «•Ω√ ΩΩ∑‘¿∫ 3,2,1,0
             int representedBattleSlotIndex = (unitEntries.Count - 1) - i;
-
             memberByBattleSlot.TryGetValue(representedBattleSlotIndex, out PartyMemberData member);
-
             unitEntries[i].Bind(this, member, representedBattleSlotIndex, storageMode);
         }
 
@@ -142,6 +162,30 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
         }
 
         return false;
+    }
+
+    public bool TryHandleBarracksUnitClicked(PersistentRosterUnitData unit)
+    {
+        if (!barracksMode || persistentProfileController == null || unit == null)
+            return false;
+
+        if (persistentProfileController.IsRosterUnitInParty(unit))
+        {
+            pendingBarracksUnit = unit;
+            RefreshAll();
+            return true;
+        }
+
+        if (persistentProfileController.TryAssignRosterUnitToPartyAuto(unit))
+        {
+            pendingBarracksUnit = null;
+            RefreshAll();
+            return true;
+        }
+
+        pendingBarracksUnit = unit;
+        RefreshAll();
+        return true;
     }
 
     public void HandleSharedConsumableClicked()
@@ -210,13 +254,10 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
         if (!storageMode || worldRunManager == null || targetSlotUI == null || targetSlotUI.Member == null)
             return;
 
-        // 1) √¢∞Ìø°º≠ ¿‚¿∫ ¿Â∫Ò∏¶ ¿Â∫Ò ΩΩ∑‘ø° ≥ı±‚
         if (draggedInventoryItem != null)
         {
             if (draggedInventoryItem.mainUICategory == MainUIItemCategory.Equipment)
-            {
                 worldRunManager.TryAssignEquipmentItem(targetSlotUI.Member, targetSlotUI.SlotIndex, draggedInventoryItem);
-            }
 
             draggedInventoryItem = null;
             ClearPendingSelection();
@@ -224,10 +265,7 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
             return;
         }
 
-        // 2) ¥Ÿ∏• ¿Â∫Ò ΩΩ∑‘ø°º≠ ¿‚¿∫ ¿Â∫Ò∏¶ ¿Ã ΩΩ∑‘¿∏∑Œ ø≈±‚±‚/±≥√º«œ±‚
-        if (draggedEquipmentSlot != null &&
-            draggedEquipmentSlot != targetSlotUI &&
-            draggedEquipmentSlot.Member != null)
+        if (draggedEquipmentSlot != null && draggedEquipmentSlot != targetSlotUI && draggedEquipmentSlot.Member != null)
         {
             worldRunManager.TryMoveOrSwapEquipment(
                 draggedEquipmentSlot.Member,
@@ -240,7 +278,6 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
         }
     }
 
-    // ªı ±‚¥…: √¢∞Ì UI ∫Û øµø™ø° µÂ∑”«œ∏È ¿Â¬¯ «ÿ¡¶
     public void HandleEquipmentDroppedToStorage()
     {
         if (!storageMode || worldRunManager == null)
@@ -249,12 +286,41 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
         if (draggedEquipmentSlot == null || draggedEquipmentSlot.Member == null)
             return;
 
-        worldRunManager.TryAssignEquipmentItem(
-            draggedEquipmentSlot.Member,
-            draggedEquipmentSlot.SlotIndex,
-            null);
-
+        worldRunManager.TryAssignEquipmentItem(draggedEquipmentSlot.Member, draggedEquipmentSlot.SlotIndex, null);
         draggedEquipmentSlot = null;
+        RefreshAll();
+    }
+
+    public void HandleUnitEntryClicked(PartyLoadoutUnitEntryUI targetEntry)
+    {
+        if (targetEntry == null)
+            return;
+
+        if (!barracksMode || persistentProfileController == null || pendingBarracksUnit == null)
+            return;
+
+        bool success;
+        if (targetEntry.Member == null)
+            success = persistentProfileController.TryAssignRosterUnitToPartySlot(pendingBarracksUnit, targetEntry.RepresentedBattleSlotIndex);
+        else
+            success = persistentProfileController.TryReplacePartyMemberWithRosterUnit(pendingBarracksUnit, targetEntry.Member);
+
+        if (success)
+            pendingBarracksUnit = null;
+
+        RefreshAll();
+    }
+
+    public void HandleDraggedPartyEntryDroppedToBarracks()
+    {
+        if (!barracksMode || persistentProfileController == null)
+            return;
+
+        if (draggedUnitEntry == null || draggedUnitEntry.Member == null)
+            return;
+
+        persistentProfileController.TryRemovePartyMemberToRoster(draggedUnitEntry.Member);
+        draggedUnitEntry = null;
         RefreshAll();
     }
 
@@ -297,12 +363,46 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
             draggedUnitEntry = null;
     }
 
+    public void BeginBarracksUnitDrag(PersistentRosterUnitData unit)
+    {
+        if (!barracksMode || unit == null)
+            return;
+
+        draggedBarracksUnit = unit;
+        pendingBarracksUnit = unit;
+    }
+
+    public void EndBarracksUnitDrag(PersistentRosterUnitData unit)
+    {
+        if (draggedBarracksUnit == unit)
+            draggedBarracksUnit = null;
+    }
+
     public void HandleUnitEntryDroppedOn(PartyLoadoutUnitEntryUI targetEntry)
     {
+        if (targetEntry == null)
+            return;
+
+        if (barracksMode && persistentProfileController != null && draggedBarracksUnit != null)
+        {
+            bool success;
+            if (targetEntry.Member == null)
+                success = persistentProfileController.TryAssignRosterUnitToPartySlot(draggedBarracksUnit, targetEntry.RepresentedBattleSlotIndex);
+            else
+                success = persistentProfileController.TryReplacePartyMemberWithRosterUnit(draggedBarracksUnit, targetEntry.Member);
+
+            if (success)
+                pendingBarracksUnit = null;
+
+            draggedBarracksUnit = null;
+            RefreshAll();
+            return;
+        }
+
         if (worldRunManager == null)
             return;
 
-        if (draggedUnitEntry == null || targetEntry == null || targetEntry.Member == null)
+        if (draggedUnitEntry == null || targetEntry.Member == null)
             return;
 
         if (draggedUnitEntry == targetEntry || draggedUnitEntry.Member == null)

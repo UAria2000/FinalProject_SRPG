@@ -39,8 +39,17 @@ public class BattleUnit
     public string Name { get { return memberData != null ? memberData.GetDisplayName() : "Unit"; } }
     public string Epitaph { get { return memberData != null ? memberData.fixedEpitaph : string.Empty; } }
 
-    public Sprite PortraitSprite { get { return ViewDefinition != null ? ViewDefinition.portrait : null; } }
-    public Sprite BodySprite { get { return ViewDefinition != null ? ViewDefinition.bodySprite : null; } }
+    public Sprite SlotFaceSprite { get { return ViewDefinition != null ? ViewDefinition.GetSlotFaceSprite() : null; } }
+    public Sprite BustPortraitSprite { get { return ViewDefinition != null ? ViewDefinition.GetBustPortraitSprite() : SlotFaceSprite; } }
+    public Sprite BattleSprite { get { return ViewDefinition != null ? ViewDefinition.GetBattleSprite() : SlotFaceSprite; } }
+
+    // Backward-compatible aliases for older UI code.
+    public Sprite PortraitSprite { get { return SlotFaceSprite; } }
+    public Sprite BodySprite { get { return BattleSprite; } }
+
+    public int PromotionRank { get { return memberData != null ? Mathf.Max(0, memberData.promotionRank) : 0; } }
+    public float PromotionBonusPercentPerRank { get { return memberData != null ? Mathf.Max(0f, memberData.promotionBonusPercentPerRank) : 0f; } }
+    public float PromotionMultiplier { get { return 1f + (PromotionRank * PromotionBonusPercentPerRank * 0.01f); } }
 
     public int CurrentLevel { get { return memberData != null ? memberData.currentLevel : 1; } }
     public int OriginalLevel { get { return memberData != null ? memberData.originalLevel : 1; } }
@@ -96,13 +105,13 @@ public class BattleUnit
     public int BaseBleedResist { get { return Definition != null ? Definition.bleedResist : 0; } }
     public int BaseStunResist { get { return Definition != null ? Definition.stunResist : 0; } }
 
-    public int MaxHP { get { return Mathf.Max(1, BaseMaxHP + GetVariance().maxHpDelta); } }
+    public int MaxHP { get { return ApplyPromotionToInt(Mathf.Max(1, BaseMaxHP + GetVariance().maxHpDelta)); } }
 
     public int DMG
     {
         get
         {
-            int baseValue = Mathf.Max(0, BaseDMG + GetVariance().dmgDelta);
+            int baseValue = ApplyPromotionToInt(Mathf.Max(0, BaseDMG + GetVariance().dmgDelta));
             int totalModifierPercent = GetTimedModifierMagnitude(StatModifierType.DMG) + persistentBattleDmgModifierPercent;
             if (totalModifierPercent == 0)
                 return baseValue;
@@ -115,7 +124,7 @@ public class BattleUnit
     {
         get
         {
-            int baseValue = Mathf.Max(0, BaseSPD + GetVariance().spdDelta);
+            int baseValue = ApplyPromotionToInt(Mathf.Max(0, BaseSPD + GetVariance().spdDelta));
             return ApplyPercentTimedModifierToInt(baseValue, StatModifierType.SPD);
         }
     }
@@ -124,7 +133,7 @@ public class BattleUnit
     {
         get
         {
-            float baseValue = Mathf.Max(0f, BaseHIT + GetVariance().hitDeltaX10);
+            float baseValue = ApplyPromotionToFloat(Mathf.Max(0f, BaseHIT + GetVariance().hitDeltaX10));
             return ApplyPercentTimedModifierToFloat(baseValue, StatModifierType.HIT);
         }
     }
@@ -133,7 +142,7 @@ public class BattleUnit
     {
         get
         {
-            float baseValue = Mathf.Max(0f, BaseAC + GetVariance().acDeltaX10);
+            float baseValue = ApplyPromotionToFloat(Mathf.Max(0f, BaseAC + GetVariance().acDeltaX10));
             return ApplyPercentTimedModifierToFloat(baseValue, StatModifierType.AC);
         }
     }
@@ -142,7 +151,7 @@ public class BattleUnit
     {
         get
         {
-            int baseValue = Mathf.Max(0, BaseCRI + GetVariance().criDelta);
+            int baseValue = ApplyPromotionToInt(Mathf.Max(0, BaseCRI + GetVariance().criDelta));
             return ApplyPercentTimedModifierToInt(baseValue, StatModifierType.CRI);
         }
     }
@@ -151,18 +160,28 @@ public class BattleUnit
     {
         get
         {
-            int baseValue = Mathf.Max(0, BaseCRD + GetVariance().crdDelta);
+            int baseValue = ApplyPromotionToInt(Mathf.Max(0, BaseCRD + GetVariance().crdDelta));
             return ApplyPercentTimedModifierToInt(baseValue, StatModifierType.CRD);
         }
     }
 
-    public int PoisonResist { get { return BasePoisonResist + GetVariance().poisonResistDelta; } }
-    public int BleedResist { get { return BaseBleedResist + GetVariance().bleedResistDelta; } }
-    public int StunResist { get { return BaseStunResist + GetVariance().stunResistDelta; } }
+    public int PoisonResist { get { return ApplyPromotionToInt(Mathf.Max(0, BasePoisonResist + GetVariance().poisonResistDelta)); } }
+    public int BleedResist { get { return ApplyPromotionToInt(Mathf.Max(0, BaseBleedResist + GetVariance().bleedResistDelta)); } }
+    public int StunResist { get { return ApplyPromotionToInt(Mathf.Max(0, BaseStunResist + GetVariance().stunResistDelta)); } }
 
     private int endTurnGuardPercent;
     public int EndTurnGuardPercent { get { return endTurnGuardPercent > 0 ? endTurnGuardPercent : 0; } }
     public bool HasEndTurnGuard { get { return endTurnGuardPercent > 0; } }
+
+    private int ApplyPromotionToInt(int value)
+    {
+        return Mathf.Max(0, Mathf.RoundToInt(value * PromotionMultiplier));
+    }
+
+    private float ApplyPromotionToFloat(float value)
+    {
+        return Mathf.Max(0f, value * PromotionMultiplier);
+    }
 
     public UnitInstanceStatVariance GetVariance()
     {

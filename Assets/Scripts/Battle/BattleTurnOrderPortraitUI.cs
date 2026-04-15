@@ -24,7 +24,7 @@ public class BattleTurnOrderPortraitUI : MonoBehaviour, IPointerClickHandler
 
         if (portraitImage != null)
         {
-            portraitImage.sprite = targetUnit.PortraitSprite;
+            portraitImage.sprite = targetUnit.SlotFaceSprite;
             portraitImage.color = Color.white;
         }
 

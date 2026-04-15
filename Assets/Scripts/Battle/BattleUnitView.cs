@@ -35,7 +35,7 @@ public class BattleUnitView : MonoBehaviour
 
         if (unitBodyImage != null)
         {
-            unitBodyImage.sprite = unit != null ? unit.BodySprite : null;
+            unitBodyImage.sprite = unit != null ? unit.BattleSprite : null;
             unitBodyImage.color = unitBodyImage.sprite != null ? Color.white : new Color(1f, 1f, 1f, 0f);
             unitBodyImage.preserveAspect = true;
         }

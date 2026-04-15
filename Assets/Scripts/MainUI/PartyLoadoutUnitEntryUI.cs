@@ -3,7 +3,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 [RequireComponent(typeof(CanvasGroup))]
-public class PartyLoadoutUnitEntryUI : MonoBehaviour, IDropHandler
+public class PartyLoadoutUnitEntryUI : MonoBehaviour, IDropHandler, IPointerClickHandler
 {
     [Header("References")]
     [SerializeField] private Image portraitImage;
@@ -40,7 +40,7 @@ public class PartyLoadoutUnitEntryUI : MonoBehaviour, IDropHandler
         {
             portraitImage.gameObject.SetActive(hasMember);
             portraitImage.sprite = hasMember && member.unitViewDefinition != null
-                ? member.unitViewDefinition.portrait
+                ? member.unitViewDefinition.GetSlotFaceSprite()
                 : null;
         }
 
@@ -58,6 +58,14 @@ public class PartyLoadoutUnitEntryUI : MonoBehaviour, IDropHandler
             ItemDefinition rightItem = hasMember && owner != null ? owner.GetAssignedEquipment(member, 1) : null;
             rightEquipmentSlot.Bind(owner, member, 1, rightItem, showEquipmentSlots && hasMember);
         }
+    }
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (eventData.button != PointerEventData.InputButton.Left)
+            return;
+
+        owner?.HandleUnitEntryClicked(this);
     }
 
     public void OnDrop(PointerEventData eventData)

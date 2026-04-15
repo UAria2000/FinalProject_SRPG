@@ -34,8 +34,8 @@ public class CurrentUnitInfoPanel : MonoBehaviour
 
         if (portraitImage != null)
         {
-            portraitImage.sprite = unit.PortraitSprite;
-            portraitImage.color = unit.PortraitSprite != null ? Color.white : new Color(1f, 1f, 1f, 0f);
+            portraitImage.sprite = unit.BustPortraitSprite;
+            portraitImage.color = unit.BustPortraitSprite != null ? Color.white : new Color(1f, 1f, 1f, 0f);
         }
 
         UnitInstanceStatVariance variance = unit.GetVariance();

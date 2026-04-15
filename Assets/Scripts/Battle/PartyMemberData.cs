@@ -21,13 +21,15 @@ public class PartyMemberData
     public int currentLevel = 1;
     public int originalLevel = 1;
 
+    [Header("Promotion")]
+    [Min(0)] public int promotionRank = 0;
+    [Range(0f, 100f)] public float promotionBonusPercentPerRank = 1f;
+
     [Header("Fixed Runtime Data")]
     public UnitInstanceStatVariance statVariance = new UnitInstanceStatVariance();
 
     [Tooltip("평타 제외, 최대 3개. 전투 외부에서 이미 결정된 상태를 넣는다.")]
     public List<SkillDefinition> learnedSkills = new List<SkillDefinition>();
-
-
 
     [Header("Battle Loot Drops")]
     public List<ItemDropDefinition> battleLootDrops = new List<ItemDropDefinition>();
@@ -47,6 +49,8 @@ public class PartyMemberData
         clone.fixedEpitaph = fixedEpitaph;
         clone.currentLevel = currentLevel;
         clone.originalLevel = originalLevel;
+        clone.promotionRank = promotionRank;
+        clone.promotionBonusPercentPerRank = promotionBonusPercentPerRank;
         clone.statVariance = statVariance != null ? statVariance.CloneRuntime() : new UnitInstanceStatVariance();
         clone.learnedSkills = learnedSkills != null ? new List<SkillDefinition>(learnedSkills) : new List<SkillDefinition>();
         clone.battleLootDrops = battleLootDrops != null ? new List<ItemDropDefinition>(battleLootDrops) : new List<ItemDropDefinition>();
@@ -75,7 +79,6 @@ public class PartyMemberData
         persistentCurrentHP = maxHp;
     }
 }
-
 
 [Serializable]
 public class ItemDropDefinition
