@@ -47,8 +47,8 @@ public class EnemyInfoPanel : MonoBehaviour
 
         if (portraitImage != null)
         {
-            portraitImage.sprite = enemy.PortraitSprite;
-            portraitImage.color = enemy.PortraitSprite != null ? Color.white : new Color(1f, 1f, 1f, 0f);
+            portraitImage.sprite = enemy.BustPortraitSprite;
+            portraitImage.color = enemy.BustPortraitSprite != null ? Color.white : new Color(1f, 1f, 1f, 0f);
         }
 
         if (nameValueText != null) nameValueText.text = enemy.Name;

@@ -81,6 +81,7 @@ public class MainUIOverlayController : MonoBehaviour
             return;
 
         bool isStorage = panelType == MainUIPanelType.Storage;
+        bool isBarracks = panelType == MainUIPanelType.Barracks;
 
         if (currentMainPanel != null && currentMainPanel.IsOpen)
             currentMainPanel.ClosePanel();
@@ -92,7 +93,10 @@ public class MainUIOverlayController : MonoBehaviour
             mainPanelDismissRoot.SetActive(true);
 
         if (bottomPartySummaryPanelUI != null)
+        {
             bottomPartySummaryPanelUI.SetStorageMode(isStorage);
+            bottomPartySummaryPanelUI.SetBarracksMode(isBarracks);
+        }
 
         if (rightInfoPanel != null)
             rightInfoPanel.SetActive(false);
@@ -111,7 +115,10 @@ public class MainUIOverlayController : MonoBehaviour
             mainPanelDismissRoot.SetActive(false);
 
         if (bottomPartySummaryPanelUI != null)
+        {
             bottomPartySummaryPanelUI.SetStorageMode(false);
+            bottomPartySummaryPanelUI.SetBarracksMode(false);
+        }
 
         UpdateWorldMapInputLock();
     }
