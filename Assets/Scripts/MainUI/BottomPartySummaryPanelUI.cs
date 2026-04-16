@@ -14,6 +14,7 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
     [SerializeField] private WorldRunManager worldRunManager;
     [SerializeField] private PersistentProfileController persistentProfileController;
     [SerializeField] private StorageSharedConsumableSlotUI sharedConsumableSlotUI;
+    [SerializeField] private StorageItemTooltipUI sharedConsumableTooltipUI;
 
     [Tooltip("왼쪽 -> 오른쪽 순서로 넣어. 즉 3,2,1,0 자리 순서.")]
     [SerializeField] private List<PartyLoadoutUnitEntryUI> unitEntries = new List<PartyLoadoutUnitEntryUI>();
@@ -69,6 +70,47 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
 
     public bool IsStorageMode() => storageMode;
     public bool IsBarracksMode() => barracksMode;
+
+    public bool IsWorldMapHudMode() => !storageMode && !barracksMode;
+
+    public int GetMemberCurrentHP(PartyMemberData member)
+    {
+        if (member == null)
+            return 0;
+
+        int maxHp = GetMemberMaxHP(member);
+        if (member.persistentCurrentHP < 0)
+            return maxHp;
+
+        return Mathf.Clamp(member.persistentCurrentHP, 0, maxHp);
+    }
+
+    public int GetMemberMaxHP(PartyMemberData member)
+    {
+        if (member == null || member.unitDefinition == null)
+            return 0;
+
+        int variance = member.statVariance != null ? member.statVariance.maxHpDelta : 0;
+        return Mathf.Max(1, member.unitDefinition.maxHP + variance);
+    }
+
+    public void HandleSharedConsumableHoverEnter()
+    {
+        if (!IsWorldMapHudMode() || sharedConsumableTooltipUI == null || worldRunManager == null)
+            return;
+
+        ItemDefinition item = worldRunManager.GetSharedConsumableItem();
+        if (item == null)
+            return;
+
+        sharedConsumableTooltipUI.Show(item, true, 0);
+    }
+
+    public void HandleSharedConsumableHoverExit()
+    {
+        if (sharedConsumableTooltipUI != null)
+            sharedConsumableTooltipUI.Hide();
+    }
 
     public void SetStorageMode(bool isOpen)
     {

@@ -5,7 +5,9 @@ using UnityEngine.UI;
 
 public class StorageSharedConsumableSlotUI : MonoBehaviour,
     IPointerClickHandler,
-    IDropHandler
+    IDropHandler,
+    IPointerEnterHandler,
+    IPointerExitHandler
 {
     [SerializeField] private Image iconImage;
     [SerializeField] private TMP_Text labelText;
@@ -41,5 +43,18 @@ public class StorageSharedConsumableSlotUI : MonoBehaviour,
     public void OnDrop(PointerEventData eventData)
     {
         owner?.HandleSharedConsumableDropped();
+    }
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        if (assignedItem == null)
+            return;
+
+        owner?.HandleSharedConsumableHoverEnter();
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        owner?.HandleSharedConsumableHoverExit();
     }
 }

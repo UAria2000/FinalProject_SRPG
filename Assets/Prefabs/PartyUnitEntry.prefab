@@ -411,7 +411,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -33.6}
+  m_AnchoredPosition: {x: 0, y: -71.5}
   m_SizeDelta: {x: 100, y: 23}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &1344951398790212792
@@ -897,6 +897,12 @@ MonoBehaviour:
   portraitDragHandle: {fileID: 40234862800727999}
   leftEquipmentSlot: {fileID: 3665340074132901447}
   rightEquipmentSlot: {fileID: 3779632036117549}
+  worldDetailsRoot: {fileID: 0}
+  worldLevelText: {fileID: 8437349106030629847}
+  worldHpText: {fileID: 274924825662943191}
+  warningDim25Image: {fileID: 0}
+  warningDim50Image: {fileID: 0}
+  warningDim75Image: {fileID: 0}
 --- !u!1 &8333350787538394662
 GameObject:
   m_ObjectHideFlags: 0
