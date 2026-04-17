@@ -21,6 +21,7 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
 
     private bool storageMode;
     private bool barracksMode;
+    private bool externalMainPanelOpen;
 
     private ItemDefinition pendingInventoryItem;
     private PendingLoadoutItemKind pendingItemKind = PendingLoadoutItemKind.None;
@@ -31,6 +32,8 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
 
     private PersistentRosterUnitData pendingBarracksUnit;
     private PersistentRosterUnitData draggedBarracksUnit;
+
+    private int expandedWorldSlotIndex = -1;
 
     private void Awake()
     {
@@ -45,6 +48,7 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
     {
         SetStorageMode(false);
         SetBarracksMode(false);
+        SetExternalMainPanelOpen(false);
         RefreshAll();
     }
 
@@ -70,47 +74,7 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
 
     public bool IsStorageMode() => storageMode;
     public bool IsBarracksMode() => barracksMode;
-
-    public bool IsWorldMapHudMode() => !storageMode && !barracksMode;
-
-    public int GetMemberCurrentHP(PartyMemberData member)
-    {
-        if (member == null)
-            return 0;
-
-        int maxHp = GetMemberMaxHP(member);
-        if (member.persistentCurrentHP < 0)
-            return maxHp;
-
-        return Mathf.Clamp(member.persistentCurrentHP, 0, maxHp);
-    }
-
-    public int GetMemberMaxHP(PartyMemberData member)
-    {
-        if (member == null || member.unitDefinition == null)
-            return 0;
-
-        int variance = member.statVariance != null ? member.statVariance.maxHpDelta : 0;
-        return Mathf.Max(1, member.unitDefinition.maxHP + variance);
-    }
-
-    public void HandleSharedConsumableHoverEnter()
-    {
-        if (!IsWorldMapHudMode() || sharedConsumableTooltipUI == null || worldRunManager == null)
-            return;
-
-        ItemDefinition item = worldRunManager.GetSharedConsumableItem();
-        if (item == null)
-            return;
-
-        sharedConsumableTooltipUI.Show(item, true, 0);
-    }
-
-    public void HandleSharedConsumableHoverExit()
-    {
-        if (sharedConsumableTooltipUI != null)
-            sharedConsumableTooltipUI.Hide();
-    }
+    public bool IsAnyMainPanelOpen() => storageMode || barracksMode || externalMainPanelOpen;
 
     public void SetStorageMode(bool isOpen)
     {
@@ -139,6 +103,18 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
         RefreshAll();
     }
 
+    public void SetExternalMainPanelOpen(bool isOpen)
+    {
+        externalMainPanelOpen = isOpen;
+        RefreshAll();
+    }
+
+    public void CollapseExpandedWorldEntry()
+    {
+        expandedWorldSlotIndex = -1;
+        RefreshAll();
+    }
+
     public void RefreshAll()
     {
         if (worldRunManager == null)
@@ -146,6 +122,7 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
 
         IReadOnlyList<PartyMemberData> orderedMembers = worldRunManager.GetDisplayOrderedPartyMembers();
         Dictionary<int, PartyMemberData> memberByBattleSlot = new Dictionary<int, PartyMemberData>();
+
         for (int i = 0; i < orderedMembers.Count; i++)
         {
             PartyMemberData member = orderedMembers[i];
@@ -155,6 +132,8 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
             memberByBattleSlot[member.startSlotIndex] = member;
         }
 
+        bool anyMainPanelOpen = IsAnyMainPanelOpen();
+
         for (int i = 0; i < unitEntries.Count; i++)
         {
             if (unitEntries[i] == null)
@@ -162,7 +141,17 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
 
             int representedBattleSlotIndex = (unitEntries.Count - 1) - i;
             memberByBattleSlot.TryGetValue(representedBattleSlotIndex, out PartyMemberData member);
-            unitEntries[i].Bind(this, member, representedBattleSlotIndex, storageMode);
+
+            bool isExpandedWorldEntry = expandedWorldSlotIndex == representedBattleSlotIndex;
+            bool showEquipmentSlots = member != null && (anyMainPanelOpen || isExpandedWorldEntry);
+            bool showWorldInfo = member != null && isExpandedWorldEntry && !anyMainPanelOpen;
+
+            unitEntries[i].Bind(
+                this,
+                member,
+                representedBattleSlotIndex,
+                showEquipmentSlots,
+                showWorldInfo);
         }
 
         if (sharedConsumableSlotUI != null)
@@ -175,6 +164,71 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
             return null;
 
         return worldRunManager.GetAssignedEquipmentItem(member, equipmentSlotIndex);
+    }
+
+    public string GetWorldLevelText(PartyMemberData member)
+    {
+        if (member == null)
+            return string.Empty;
+
+        return $"Lv.{Mathf.Max(1, member.currentLevel)}";
+    }
+
+    public string GetWorldHPText(PartyMemberData member)
+    {
+        if (member == null)
+            return string.Empty;
+
+        int maxHP = GetWorldMaxHP(member);
+        int currentHP = GetWorldCurrentHP(member, maxHP);
+        return $"{currentHP}/{maxHP}";
+    }
+
+    public int GetWorldWarningStage(PartyMemberData member)
+    {
+        if (member == null)
+            return 0;
+
+        int maxHP = GetWorldMaxHP(member);
+        int currentHP = GetWorldCurrentHP(member, maxHP);
+        if (maxHP <= 0)
+            return 0;
+
+        float hpRatio = currentHP / (float)maxHP;
+
+        if (hpRatio <= 0.25f)
+            return 3;
+        if (hpRatio <= 0.50f)
+            return 2;
+        if (hpRatio <= 0.75f)
+            return 1;
+
+        return 0;
+    }
+
+    private int GetWorldMaxHP(PartyMemberData member)
+    {
+        if (member == null || member.unitDefinition == null)
+            return 1;
+
+        int varianceBonus = member.statVariance != null ? member.statVariance.maxHpDelta : 0;
+        int baseMaxHP = Mathf.Max(1, member.unitDefinition.maxHP + varianceBonus);
+
+        float promotionPercentPerRank = Mathf.Max(0f, member.promotionBonusPercentPerRank);
+        float promotionMultiplier = 1f + (member.promotionRank * promotionPercentPerRank * 0.01f);
+
+        return Mathf.Max(1, Mathf.RoundToInt(baseMaxHP * promotionMultiplier));
+    }
+
+    private int GetWorldCurrentHP(PartyMemberData member, int maxHP)
+    {
+        if (member == null)
+            return 0;
+
+        if (member.persistentCurrentHP < 0)
+            return maxHP;
+
+        return Mathf.Clamp(member.persistentCurrentHP, 0, maxHP);
     }
 
     public bool IsItemPendingSelection(ItemDefinition item)
@@ -338,19 +392,35 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
         if (targetEntry == null)
             return;
 
-        if (!barracksMode || persistentProfileController == null || pendingBarracksUnit == null)
+        // Barracks에서 대기 중인 유닛으로 파티 교체/배치
+        if (barracksMode && persistentProfileController != null && pendingBarracksUnit != null)
+        {
+            bool success;
+            if (targetEntry.Member == null)
+                success = persistentProfileController.TryAssignRosterUnitToPartySlot(pendingBarracksUnit, targetEntry.RepresentedBattleSlotIndex);
+            else
+                success = persistentProfileController.TryReplacePartyMemberWithRosterUnit(pendingBarracksUnit, targetEntry.Member);
+
+            if (success)
+                pendingBarracksUnit = null;
+
+            RefreshAll();
             return;
+        }
 
-        bool success;
-        if (targetEntry.Member == null)
-            success = persistentProfileController.TryAssignRosterUnitToPartySlot(pendingBarracksUnit, targetEntry.RepresentedBattleSlotIndex);
-        else
-            success = persistentProfileController.TryReplacePartyMemberWithRosterUnit(pendingBarracksUnit, targetEntry.Member);
+        // 월드 기본 상태에서만 포트레잇 클릭 상세 토글
+        if (!IsAnyMainPanelOpen())
+        {
+            if (targetEntry.Member == null)
+                return;
 
-        if (success)
-            pendingBarracksUnit = null;
+            if (expandedWorldSlotIndex == targetEntry.RepresentedBattleSlotIndex)
+                expandedWorldSlotIndex = -1;
+            else
+                expandedWorldSlotIndex = targetEntry.RepresentedBattleSlotIndex;
 
-        RefreshAll();
+            RefreshAll();
+        }
     }
 
     public void HandleDraggedPartyEntryDroppedToBarracks()
@@ -469,7 +539,25 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
 
         RefreshAll();
     }
+    public void HandleSharedConsumableHoverEnter()
+    {
+        if (sharedConsumableTooltipUI == null || worldRunManager == null)
+            return;
 
+        ItemDefinition item = worldRunManager.GetSharedConsumableItem();
+        if (item == null)
+            return;
+
+        sharedConsumableTooltipUI.Show(item, true, 0);
+    }
+
+    public void HandleSharedConsumableHoverExit()
+    {
+        if (sharedConsumableTooltipUI == null)
+            return;
+
+        sharedConsumableTooltipUI.Hide();
+    }
     private void ClearPendingSelection()
     {
         pendingInventoryItem = null;

@@ -320,7 +320,9 @@ public class HexWorldGenerator
             WorldTileData tile = unassigned[i];
             WorldTileEventType eventType = PickWeightedEventType(weights, tile, blockedNearCenterIds);
             tile.eventType = eventType;
-            tile.previewEnemyPortraits = tile.IsCombatEvent ? BuildEnemyPreviewList(tile.nativeFaction, eventType == WorldTileEventType.Boss) : new List<Sprite>();
+            tile.previewEnemyPortraits = tile.IsCombatEvent
+                ? BuildEnemyPreviewList(tile.nativeFaction, eventType == WorldTileEventType.Boss)
+                : new List<Sprite>();
         }
 
         return true;
@@ -371,9 +373,44 @@ public class HexWorldGenerator
 
     private List<Sprite> BuildEnemyPreviewList(FactionType faction, bool isBoss)
     {
+        List<Sprite> sourcePool = new List<Sprite>();
+
+        // 1순위: 실제 전투 설정에서 slotFaceSprite를 수집
+        FactionBattleConfig config = settings.GetFactionBattleConfig(faction);
+        if (config != null)
+        {
+            if (isBoss)
+            {
+                AddSpritesFromPartyDefinition(sourcePool, config.bossPartyDefinition);
+                AddSpritesFromEncounterTable(sourcePool, config.bossEncounterTable);
+            }
+            else
+            {
+                AddSpritesFromEncounterTable(sourcePool, config.battleTier1Table);
+                AddSpritesFromEncounterTable(sourcePool, config.battleTier2Table);
+                AddSpritesFromEncounterTable(sourcePool, config.battleTier3Table);
+                AddSpritesFromEncounterTable(sourcePool, config.eliteTier1Table);
+                AddSpritesFromEncounterTable(sourcePool, config.eliteTier2Table);
+                AddSpritesFromEncounterTable(sourcePool, config.eliteTier3Table);
+            }
+        }
+
+        // 2순위: 기존 팩션별 portrait pool fallback
+        if (sourcePool.Count == 0)
+        {
+            IReadOnlyList<Sprite> fallbackPool = settings.GetFactionEnemyPortraitPool(faction);
+            if (fallbackPool != null)
+            {
+                for (int i = 0; i < fallbackPool.Count; i++)
+                {
+                    if (fallbackPool[i] != null)
+                        sourcePool.Add(fallbackPool[i]);
+                }
+            }
+        }
+
         List<Sprite> result = new List<Sprite>();
-        IReadOnlyList<Sprite> pool = settings.GetFactionEnemyPortraitPool(faction);
-        if (pool == null || pool.Count == 0)
+        if (sourcePool.Count == 0)
             return result;
 
         int minCount = Mathf.Clamp(settings.enemyPortraitMinCount, 1, 6);
@@ -382,11 +419,50 @@ public class HexWorldGenerator
 
         for (int i = 0; i < count; i++)
         {
-            Sprite sprite = pool[Random.Range(0, pool.Count)];
-            result.Add(sprite);
+            Sprite sprite = sourcePool[Random.Range(0, sourcePool.Count)];
+            if (sprite != null)
+                result.Add(sprite);
         }
 
         return result;
+    }
+
+    private void AddSpritesFromEncounterTable(List<Sprite> target, EnemyEncounterTable table)
+    {
+        if (target == null || table == null || table.entries == null)
+            return;
+
+        for (int i = 0; i < table.entries.Count; i++)
+        {
+            EnemyEncounterEntry entry = table.entries[i];
+            if (entry == null || !entry.enabled || entry.unitViewDefinition == null)
+                continue;
+
+            Sprite sprite = entry.unitViewDefinition.GetSlotFaceSprite();
+            if (sprite == null)
+                continue;
+
+            int repeat = Mathf.Max(1, entry.weight);
+            for (int r = 0; r < repeat; r++)
+                target.Add(sprite);
+        }
+    }
+
+    private void AddSpritesFromPartyDefinition(List<Sprite> target, PartyDefinition party)
+    {
+        if (target == null || party == null || party.members == null)
+            return;
+
+        for (int i = 0; i < party.members.Count; i++)
+        {
+            PartyMemberData member = party.members[i];
+            if (member == null || member.unitViewDefinition == null)
+                continue;
+
+            Sprite sprite = member.unitViewDefinition.GetSlotFaceSprite();
+            if (sprite != null)
+                target.Add(sprite);
+        }
     }
 
     private List<FactionType> GetValidEnemyFactions()

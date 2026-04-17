@@ -5,29 +5,31 @@ using UnityEngine.UI;
 
 public class SelectedTileInfoPanel : MonoBehaviour
 {
-    [Header("Texts")]
+    [Header("Frame Roots")]
+    [SerializeField] private GameObject battleFrameRoot;
+    [SerializeField] private GameObject nonBattleFrameRoot;
+
+    [Header("Header")]
+    [SerializeField] private List<Image> tileIconImages = new List<Image>(2);
     [SerializeField] private TMP_Text factionNameText;
     [SerializeField] private TMP_Text eventNameText;
     [SerializeField] private TMP_Text eventDescriptionText;
-    [SerializeField] private TMP_Text moveButtonLabelText;
-
-    [Header("Images")]
-    [SerializeField] private Image tileIconImage;
 
     [Header("Buttons")]
     [SerializeField] private Button moveButton;
+    [SerializeField] private TMP_Text moveButtonLabelText;
     [SerializeField] private Button closeButton;
+
+    [Header("Unknown Tile")]
+    [SerializeField] private Sprite unknownTileIconSprite;
+    [SerializeField] private string unknownTitleText = "?";
+    [SerializeField] private string unknownDescriptionText = "아직 공개되지 않은 지역입니다.";
 
     [Header("Enemy Preview")]
     [SerializeField] private GameObject enemyPreviewRoot;
-    [SerializeField] private List<Image> enemyPreviewImages = new List<Image>(4);
-    [SerializeField] private List<GameObject> enemyPreviewUnknownOverlays = new List<GameObject>(4);
-
-    [Header("Unknown State")]
-    [SerializeField] private string unknownTileName = "?";
-    [SerializeField] private string unknownTileDescription = "아직 정보가 드러나지 않았다.";
-    [SerializeField] private string occupyButtonText = "점령";
-    [SerializeField] private string moveButtonText = "이동";
+    [SerializeField] private List<Image> enemyPortraitSlots = new List<Image>(4);
+    [SerializeField] private List<TMP_Text> enemyUnknownTexts = new List<TMP_Text>(4);
+    [SerializeField] private int revealedEnemyPreviewCount = 0;
 
     private WorldRunManager runManager;
     private WorldGenerationSettings settings;
@@ -54,6 +56,7 @@ public class SelectedTileInfoPanel : MonoBehaviour
     public void ShowTile(WorldTileData tile)
     {
         currentTile = tile;
+
         if (tile == null)
         {
             HidePanel();
@@ -62,52 +65,28 @@ public class SelectedTileInfoPanel : MonoBehaviour
 
         gameObject.SetActive(true);
 
-        bool isUnknown = !tile.revealed && tile.currentOwner != FactionType.Player;
+        bool isCombatTile = tile.IsCombatEvent;
+        bool isUnknownTile = !tile.revealed && tile.currentOwner != FactionType.Player;
 
-        string factionText = "?";
-        if (!isUnknown)
+        if (battleFrameRoot != null)
+            battleFrameRoot.SetActive(isCombatTile);
+
+        if (nonBattleFrameRoot != null)
+            nonBattleFrameRoot.SetActive(!isCombatTile);
+
+        if (isUnknownTile)
         {
-            if (tile.currentOwner == FactionType.Player && runManager != null)
-                factionText = runManager.PlayerDisplayName;
-            else
-            {
-                FactionType displayFaction = tile.nativeFaction != FactionType.None ? tile.nativeFaction : tile.currentOwner;
-                factionText = settings != null ? settings.GetFactionDisplayName(displayFaction) : displayFaction.ToString();
-            }
+            ApplyUnknownTileView();
+        }
+        else
+        {
+            ApplyKnownTileView(tile);
         }
 
-        if (factionNameText != null)
-            factionNameText.text = factionText;
+        RefreshEnemyPreview(tile, isCombatTile, isUnknownTile);
 
-        if (eventNameText != null)
-            eventNameText.text = isUnknown
-                ? unknownTileName
-                : (settings != null ? settings.GetEventDisplayName(tile.eventType) : tile.eventType.ToString());
-
-        if (eventDescriptionText != null)
-            eventDescriptionText.text = isUnknown
-                ? unknownTileDescription
-                : (settings != null ? settings.GetEventDescription(tile.eventType) : string.Empty);
-
-        if (tileIconImage != null)
-        {
-            Sprite icon = isUnknown
-                ? (settings != null ? settings.GetQuestionMarkSprite(tile) : null)
-                : (settings != null ? settings.GetTileDisplayIcon(tile) : null);
-
-            tileIconImage.gameObject.SetActive(icon != null);
-            tileIconImage.sprite = icon;
-            tileIconImage.color = icon != null ? Color.white : new Color(1f, 1f, 1f, 0f);
-            tileIconImage.preserveAspect = true;
-        }
-
-        RefreshEnemyPreview(tile, isUnknown);
-
-        bool canMove = moveButton != null && runManager != null && runManager.CanMoveTo(tile);
-        if (moveButton != null)
-            moveButton.interactable = canMove;
-        if (moveButtonLabelText != null)
-            moveButtonLabelText.text = tile.currentOwner == FactionType.Player ? moveButtonText : occupyButtonText;
+        if (moveButton != null && runManager != null)
+            moveButton.interactable = runManager.CanMoveTo(tile);
     }
 
     public void HidePanel()
@@ -116,30 +95,103 @@ public class SelectedTileInfoPanel : MonoBehaviour
         gameObject.SetActive(false);
     }
 
-    private void RefreshEnemyPreview(WorldTileData tile, bool isUnknownTile)
+    private void ApplyUnknownTileView()
     {
-        bool showPreview = tile != null && tile.IsCombatEvent;
+        SetAllTileIcons(unknownTileIconSprite);
+
+        if (factionNameText != null)
+            factionNameText.text = unknownTitleText;
+
+        if (eventNameText != null)
+            eventNameText.text = unknownTitleText;
+
+        if (eventDescriptionText != null)
+            eventDescriptionText.text = unknownDescriptionText;
+
+        if (moveButtonLabelText != null)
+            moveButtonLabelText.text = "이동";
+    }
+
+    private void ApplyKnownTileView(WorldTileData tile)
+    {
+        Sprite icon = settings != null ? settings.GetTileDisplayIcon(tile) : null;
+        SetAllTileIcons(icon);
+
+        if (factionNameText != null)
+            factionNameText.text = settings != null
+                ? settings.GetFactionDisplayName(tile.nativeFaction)
+                : tile.nativeFaction.ToString();
+
+        if (eventNameText != null)
+            eventNameText.text = settings != null
+                ? settings.GetEventDisplayName(tile.eventType)
+                : tile.eventType.ToString();
+
+        if (eventDescriptionText != null)
+            eventDescriptionText.text = settings != null
+                ? settings.GetEventDescription(tile.eventType)
+                : string.Empty;
+
+        if (moveButtonLabelText != null)
+            moveButtonLabelText.text = "점령";
+    }
+
+    private void SetAllTileIcons(Sprite sprite)
+    {
+        for (int i = 0; i < tileIconImages.Count; i++)
+        {
+            Image img = tileIconImages[i];
+            if (img == null)
+                continue;
+
+            bool hasSprite = sprite != null;
+            img.gameObject.SetActive(hasSprite);
+            img.sprite = sprite;
+            img.color = hasSprite ? Color.white : new Color(1f, 1f, 1f, 0f);
+            img.preserveAspect = true;
+        }
+    }
+
+    private void RefreshEnemyPreview(WorldTileData tile, bool isCombatTile, bool isUnknownTile)
+    {
+        bool showPreview = tile != null && isCombatTile;
         if (enemyPreviewRoot != null)
             enemyPreviewRoot.SetActive(showPreview);
 
-        int revealCount = runManager != null ? runManager.RevealedEnemyPreviewCount : 0;
-
-        for (int i = 0; i < enemyPreviewImages.Count; i++)
+        for (int i = 0; i < enemyPortraitSlots.Count; i++)
         {
-            Image slot = enemyPreviewImages[i];
-            if (slot == null)
+            Image portrait = enemyPortraitSlots[i];
+            TMP_Text unknownText = i < enemyUnknownTexts.Count ? enemyUnknownTexts[i] : null;
+
+            if (portrait == null && unknownText == null)
                 continue;
 
-            bool hasPortrait = showPreview && tile.previewEnemyPortraits != null && i < tile.previewEnemyPortraits.Count && tile.previewEnemyPortraits[i] != null;
-            bool isRevealedSlot = showPreview && !isUnknownTile && i < revealCount && hasPortrait;
+            bool canRevealSlot = !isUnknownTile && i < revealedEnemyPreviewCount;
+            bool hasSprite =
+                showPreview &&
+                canRevealSlot &&
+                tile.previewEnemyPortraits != null &&
+                i < tile.previewEnemyPortraits.Count &&
+                tile.previewEnemyPortraits[i] != null;
 
-            slot.gameObject.SetActive(showPreview);
-            slot.sprite = isRevealedSlot ? tile.previewEnemyPortraits[i] : null;
-            slot.color = isRevealedSlot ? Color.white : new Color(1f, 1f, 1f, 0f);
-            slot.preserveAspect = true;
+            if (portrait != null)
+            {
+                portrait.gameObject.SetActive(showPreview && hasSprite);
+                if (hasSprite)
+                {
+                    portrait.sprite = tile.previewEnemyPortraits[i];
+                    portrait.color = Color.white;
+                    portrait.preserveAspect = true;
+                }
+            }
 
-            if (i < enemyPreviewUnknownOverlays.Count && enemyPreviewUnknownOverlays[i] != null)
-                enemyPreviewUnknownOverlays[i].SetActive(showPreview && !isRevealedSlot);
+            if (unknownText != null)
+            {
+                bool showQuestion = showPreview && !hasSprite;
+                unknownText.gameObject.SetActive(showQuestion);
+                if (showQuestion)
+                    unknownText.text = "?";
+            }
         }
     }
 

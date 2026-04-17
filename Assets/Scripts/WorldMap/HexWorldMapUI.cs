@@ -30,7 +30,7 @@ public class HexWorldMapUI : MonoBehaviour
 
     private WorldRunManager runManager;
     private WorldGenerationSettings settings;
-    private Dictionary<int, HexTileView> tileViews = new Dictionary<int, HexTileView>();
+    private readonly Dictionary<int, HexTileView> tileViews = new Dictionary<int, HexTileView>();
     private Bounds generatedLocalBounds;
 
     public void Initialize(WorldRunManager manager, WorldMapData mapData, WorldGenerationSettings generationSettings)
@@ -96,11 +96,29 @@ public class HexWorldMapUI : MonoBehaviour
                 showAura = auraSprite != null;
             }
 
-            FactionType visualFaction = tile.nativeFaction != FactionType.None ? tile.nativeFaction : tile.currentOwner;
+            // 핵심 수정:
+            // 미공개 ? 는 nativeFaction 기준으로 보여주되,
+            // 공개된 타일의 베이스 컬러는 플레이어 점령 시 Player 팩션 컬러를 사용한다.
+            FactionType visualFaction;
+            if (tile.currentOwner == FactionType.Player)
+            {
+                visualFaction = FactionType.Player;
+            }
+            else if (tile.nativeFaction != FactionType.None)
+            {
+                visualFaction = tile.nativeFaction;
+            }
+            else
+            {
+                visualFaction = tile.currentOwner;
+            }
+
             Sprite tileSprite = settings.GetFactionTileSprite(visualFaction);
             Color tileColor = settings.GetFactionFallbackColor(visualFaction);
+
             Sprite iconSprite = settings.GetTileDisplayIcon(tile);
             Sprite questionSprite = settings.GetQuestionMarkSprite(tile);
+
             bool showQuestionMark = !tile.revealed && tile.currentOwner != FactionType.Player;
             bool iconAlwaysVisible = tile.isPlayerStart && settings.StartTileIcon != null;
             bool iconVisible = iconAlwaysVisible || tile.revealed || tile.currentOwner == FactionType.Player;

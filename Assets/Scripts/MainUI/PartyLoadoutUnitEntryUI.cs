@@ -1,7 +1,7 @@
-using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using TMPro;
 
 [RequireComponent(typeof(CanvasGroup))]
 public class PartyLoadoutUnitEntryUI : MonoBehaviour, IDropHandler, IPointerClickHandler
@@ -9,10 +9,11 @@ public class PartyLoadoutUnitEntryUI : MonoBehaviour, IDropHandler, IPointerClic
     [Header("References")]
     [SerializeField] private Image portraitImage;
     [SerializeField] private PartyUnitPortraitDragHandleUI portraitDragHandle;
+    [SerializeField] private GameObject equipmentSlotsRoot;
     [SerializeField] private PartyEquipmentSlotUI leftEquipmentSlot;
     [SerializeField] private PartyEquipmentSlotUI rightEquipmentSlot;
 
-    [Header("World HUD")]
+    [Header("World View")]
     [SerializeField] private GameObject worldDetailsRoot;
     [SerializeField] private TMP_Text worldLevelText;
     [SerializeField] private TMP_Text worldHpText;
@@ -22,7 +23,7 @@ public class PartyLoadoutUnitEntryUI : MonoBehaviour, IDropHandler, IPointerClic
 
     private BottomPartySummaryPanelUI owner;
     private CanvasGroup canvasGroup;
-    private bool worldDetailsExpanded;
+    private Button portraitRootButton;
 
     public PartyMemberData Member { get; private set; }
     public int RepresentedBattleSlotIndex { get; private set; }
@@ -32,23 +33,29 @@ public class PartyLoadoutUnitEntryUI : MonoBehaviour, IDropHandler, IPointerClic
     private void Awake()
     {
         canvasGroup = GetComponent<CanvasGroup>();
+
+        if (portraitImage != null)
+            portraitRootButton = portraitImage.GetComponentInParent<Button>();
+
+        if (portraitRootButton != null)
+        {
+            portraitRootButton.onClick.RemoveListener(HandlePortraitButtonClicked);
+            portraitRootButton.onClick.AddListener(HandlePortraitButtonClicked);
+        }
     }
 
     public void Bind(
         BottomPartySummaryPanelUI panelOwner,
         PartyMemberData member,
         int representedBattleSlotIndex,
-        bool showEquipmentSlots)
+        bool showEquipmentSlots,
+        bool showWorldInfo)
     {
         owner = panelOwner;
         Member = member;
         RepresentedBattleSlotIndex = Mathf.Clamp(representedBattleSlotIndex, 0, 3);
 
         bool hasMember = member != null;
-        bool worldMapMode = owner != null && owner.IsWorldMapHudMode();
-
-        if (!hasMember)
-            worldDetailsExpanded = false;
 
         if (portraitImage != null)
         {
@@ -56,45 +63,51 @@ public class PartyLoadoutUnitEntryUI : MonoBehaviour, IDropHandler, IPointerClic
             portraitImage.sprite = hasMember && member.unitViewDefinition != null
                 ? member.unitViewDefinition.GetSlotFaceSprite()
                 : null;
+            portraitImage.color = hasMember ? Color.white : new Color(1f, 1f, 1f, 0f);
         }
 
         if (portraitDragHandle != null)
             portraitDragHandle.Bind(this, hasMember && owner != null);
 
-        bool showWorldDetails = worldMapMode && hasMember && (worldDetailsRoot == null || worldDetailsExpanded);
-
-        if (worldLevelText != null)
-        {
-            worldLevelText.gameObject.SetActive(showWorldDetails);
-            worldLevelText.text = hasMember ? $"Lv.{member.currentLevel}" : string.Empty;
-        }
-
-        if (worldHpText != null)
-        {
-            worldHpText.gameObject.SetActive(showWorldDetails);
-            worldHpText.text = hasMember && owner != null
-                ? $"{owner.GetMemberCurrentHP(member)}/{owner.GetMemberMaxHP(member)}"
-                : string.Empty;
-        }
-
-        if (worldDetailsRoot != null)
-            worldDetailsRoot.SetActive(worldMapMode && hasMember && worldDetailsExpanded);
-
-        ApplyWarningDims(worldMapMode, hasMember ? member : null);
-
-        bool visibleEquipmentSlots = (showEquipmentSlots || (worldMapMode && hasMember && worldDetailsExpanded));
+        if (equipmentSlotsRoot != null)
+            equipmentSlotsRoot.SetActive(hasMember && showEquipmentSlots);
 
         if (leftEquipmentSlot != null)
         {
             ItemDefinition leftItem = hasMember && owner != null ? owner.GetAssignedEquipment(member, 0) : null;
-            leftEquipmentSlot.Bind(owner, member, 0, leftItem, visibleEquipmentSlots && hasMember);
+            leftEquipmentSlot.Bind(owner, member, 0, leftItem, hasMember && showEquipmentSlots);
         }
 
         if (rightEquipmentSlot != null)
         {
             ItemDefinition rightItem = hasMember && owner != null ? owner.GetAssignedEquipment(member, 1) : null;
-            rightEquipmentSlot.Bind(owner, member, 1, rightItem, visibleEquipmentSlots && hasMember);
+            rightEquipmentSlot.Bind(owner, member, 1, rightItem, hasMember && showEquipmentSlots);
         }
+
+        if (worldDetailsRoot != null)
+            worldDetailsRoot.SetActive(hasMember && showWorldInfo);
+
+        if (worldLevelText != null)
+            worldLevelText.text = hasMember && owner != null ? owner.GetWorldLevelText(member) : string.Empty;
+
+        if (worldHpText != null)
+            worldHpText.text = hasMember && owner != null ? owner.GetWorldHPText(member) : string.Empty;
+
+        int warningStage = hasMember && owner != null ? owner.GetWorldWarningStage(member) : 0;
+
+        if (warningDim25Image != null)
+            warningDim25Image.gameObject.SetActive(hasMember && warningStage == 1);
+
+        if (warningDim50Image != null)
+            warningDim50Image.gameObject.SetActive(hasMember && warningStage == 2);
+
+        if (warningDim75Image != null)
+            warningDim75Image.gameObject.SetActive(hasMember && warningStage == 3);
+    }
+
+    private void HandlePortraitButtonClicked()
+    {
+        owner?.HandleUnitEntryClicked(this);
     }
 
     public void OnPointerClick(PointerEventData eventData)
@@ -102,17 +115,7 @@ public class PartyLoadoutUnitEntryUI : MonoBehaviour, IDropHandler, IPointerClic
         if (eventData.button != PointerEventData.InputButton.Left)
             return;
 
-        if (owner != null && owner.IsBarracksMode())
-        {
-            owner.HandleUnitEntryClicked(this);
-            return;
-        }
-
-        if (owner != null && owner.IsWorldMapHudMode() && Member != null)
-        {
-            worldDetailsExpanded = !worldDetailsExpanded;
-            owner.RefreshAll();
-        }
+        owner?.HandleUnitEntryClicked(this);
     }
 
     public void OnDrop(PointerEventData eventData)
@@ -140,20 +143,5 @@ public class PartyLoadoutUnitEntryUI : MonoBehaviour, IDropHandler, IPointerClic
         canvasGroup.blocksRaycasts = true;
         UIDragGhostUI.HideGhost();
         owner?.EndUnitEntryDrag(this);
-    }
-
-    private void ApplyWarningDims(bool worldMapMode, PartyMemberData member)
-    {
-        int currentHP = member != null && owner != null ? owner.GetMemberCurrentHP(member) : 0;
-        int maxHP = member != null && owner != null ? owner.GetMemberMaxHP(member) : 0;
-        float hpRatio = maxHP > 0 ? currentHP / (float)maxHP : 1f;
-
-        bool show25 = worldMapMode && member != null && hpRatio <= 0.75f;
-        bool show50 = worldMapMode && member != null && hpRatio <= 0.50f;
-        bool show75 = worldMapMode && member != null && hpRatio <= 0.25f;
-
-        if (warningDim25Image != null) warningDim25Image.gameObject.SetActive(show25);
-        if (warningDim50Image != null) warningDim50Image.gameObject.SetActive(show50);
-        if (warningDim75Image != null) warningDim75Image.gameObject.SetActive(show75);
     }
 }
