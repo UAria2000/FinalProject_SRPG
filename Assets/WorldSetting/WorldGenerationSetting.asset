@@ -22,16 +22,19 @@ MonoBehaviour:
   - faction: 1
     displayName: Player
     tileSprite: {fileID: 21300000, guid: 0cdbea9abb603a44790e296a0108bf9c, type: 3}
+    unknownSprite: {fileID: 0}
     fallbackColor: {r: 0.24705884, g: 0.19607845, b: 0.25490198, a: 1}
     enemyPortraitPool: []
   - faction: 2
     displayName: Human
     tileSprite: {fileID: 21300000, guid: cf71423dbdef7c54b99bffbda7875fdf, type: 3}
+    unknownSprite: {fileID: 21300000, guid: 192ba255d8780914e9afba134643de18, type: 3}
     fallbackColor: {r: 0.34901962, g: 0.49411768, b: 0.8078432, a: 0}
     enemyPortraitPool: []
   - faction: 3
     displayName: Elf
     tileSprite: {fileID: 21300000, guid: b343e2b9a70d71d45af9f572dfbed86e, type: 3}
+    unknownSprite: {fileID: 21300000, guid: 71d51341ad4fe8e47bbbf143f729c447, type: 3}
     fallbackColor: {r: 0.47058827, g: 0.6784314, b: 0.30980393, a: 0}
     enemyPortraitPool: []
   eventWeightSettings: {fileID: 11400000, guid: 82ff351194af72e41b858f3570803be3, type: 2}
@@ -40,34 +43,42 @@ MonoBehaviour:
     displayName: "\uC804\uD22C"
     description: 
     icon: {fileID: 21300000, guid: 3f3909ae75f240d4693586fa0df1f4bd, type: 3}
+    iconDark: {fileID: 21300000, guid: 7b63945ad92b4304e84910fcd38a4f1b, type: 3}
   - eventType: 2
     displayName: "\uD734\uC2DD"
     description: 
     icon: {fileID: 21300000, guid: 0ffb778fd0201ae4f8073e57f2d5391b, type: 3}
+    iconDark: {fileID: 21300000, guid: 515503e127320b447a7798fb9d8806b2, type: 3}
   - eventType: 3
     displayName: "\uBCF4\uBB3C"
     description: 
     icon: {fileID: 21300000, guid: 02897fcbc5ecf724b826c72ef5bdec35, type: 3}
+    iconDark: {fileID: 21300000, guid: 3f8215e7c5dd88543ae6d7e6c24adcca, type: 3}
   - eventType: 4
     displayName: "\uC0C1\uC778"
     description: 
     icon: {fileID: 21300000, guid: de6aeb849fe3ced4bb3e26d49883cf67, type: 3}
+    iconDark: {fileID: 21300000, guid: 821b568a6ee5d444292b6a10d31fa0e9, type: 3}
   - eventType: 5
     displayName: "\uD018\uC2A4\uD2B8"
     description: 
     icon: {fileID: 21300000, guid: 051db559cff69b2479ffe5d12bf4aca1, type: 3}
+    iconDark: {fileID: 21300000, guid: c886c2428e6f58b43b5ab6bc9efacfc8, type: 3}
   - eventType: 7
     displayName: "\uC5D8\uB9AC\uD2B8"
     description: 
     icon: {fileID: 21300000, guid: 830e01018a1c1cd45a245949b3ce583c, type: 3}
+    iconDark: {fileID: 21300000, guid: 151ba85872ffee544828c1e114747104, type: 3}
   - eventType: 8
     displayName: "\uBCF4\uC2A4"
     description: 
     icon: {fileID: 21300000, guid: 3efe96ea50db72b47899b0ac82809431, type: 3}
+    iconDark: {fileID: 21300000, guid: 5d9354554c1c94b42a912cc6e9dae2cf, type: 3}
   - eventType: 6
     displayName: "\uBB18\uC9C0"
     description: 
     icon: {fileID: 21300000, guid: 3a950aa8b3d02e645b1aa3e672717cd7, type: 3}
+    iconDark: {fileID: 21300000, guid: 2a0486b7f934d7c4e89ea5be05600f93, type: 3}
   startTileIcon: {fileID: 21300000, guid: dcbbeddc435224748a1aff0cef431208, type: 3}
   factionBattleConfigs:
   - faction: 2

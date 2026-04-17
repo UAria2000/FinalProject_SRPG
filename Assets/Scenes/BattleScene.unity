@@ -7541,6 +7541,7 @@ MonoBehaviour:
   worldRunManager: {fileID: 1594786362}
   persistentProfileController: {fileID: 1594786363}
   sharedConsumableSlotUI: {fileID: 1012763996}
+  sharedConsumableTooltipUI: {fileID: 0}
   unitEntries:
   - {fileID: 612882683}
   - {fileID: 910937681}
@@ -14146,8 +14147,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: 111,122
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: ca852be99b271354f89bf35470b56f16, type: 2}
+  m_sharedMaterial: {fileID: 5661338464539886934, guid: ca852be99b271354f89bf35470b56f16, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -14422,8 +14423,8 @@ MonoBehaviour:
 
 '
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: ca852be99b271354f89bf35470b56f16, type: 2}
+  m_sharedMaterial: {fileID: 5661338464539886934, guid: ca852be99b271354f89bf35470b56f16, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -22077,16 +22078,18 @@ MonoBehaviour:
   factionNameText: {fileID: 0}
   eventNameText: {fileID: 0}
   eventDescriptionText: {fileID: 0}
+  moveButtonLabelText: {fileID: 0}
+  tileIconImage: {fileID: 0}
   moveButton: {fileID: 1591161903}
   closeButton: {fileID: 545968270}
   enemyPreviewRoot: {fileID: 0}
-  enemyPortraitSlots:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
+  enemyPreviewImages: []
+  enemyPreviewUnknownOverlays: []
+  unknownTileName: '?'
+  unknownTileDescription: "\uC544\uC9C1 \uC815\uBCF4\uAC00 \uB4DC\uB7EC\uB098\uC9C0
+    \uC54A\uC558\uB2E4."
+  occupyButtonText: "\uC810\uB839"
+  moveButtonText: "\uC774\uB3D9"
 --- !u!1 &1111300129
 GameObject:
   m_ObjectHideFlags: 0
@@ -29424,6 +29427,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1491481234}
+  - component: {fileID: 1491481235}
   m_Layer: 5
   m_Name: TopcenterTitleRoot
   m_TagString: Untagged
@@ -29451,6 +29455,23 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: -32}
   m_SizeDelta: {x: 787, y: 64}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1491481235
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1491481233}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 692e800ebdf3bcf42a1f28c75257189b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WorldTopHudUI
+  worldRunManager: {fileID: 1594786362}
+  generationSettings: {fileID: 11400000, guid: 747885b4b3ca1c949b7a43e22fbef4aa, type: 2}
+  worldTitleText: {fileID: 1967614238}
+  soulText: {fileID: 623463198}
+  cashText: {fileID: 656989293}
 --- !u!1 &1495913680
 GameObject:
   m_ObjectHideFlags: 0
@@ -32251,7 +32272,11 @@ MonoBehaviour:
   eventController: {fileID: 1029137988}
   generateOnStart: 1
   playerPartyTemplate: {fileID: 11400000, guid: 512e5e2f0489bc2409a8d48ca2729fdd, type: 2}
-  persistentSoul: 0
+  persistentSoul: 111111
+  persistentCash: 22222
+  worldTopHudUI: {fileID: 1491481235}
+  revealedEnemyPreviewCount: 1
+  playerDisplayName: Neo
   conquestConditionRoot: {fileID: 0}
   worldConquestButton: {fileID: 0}
 --- !u!114 &1594786363
@@ -35692,7 +35717,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c02886b51a65ce946b2a0b8c8b8a75a4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HexWorldMapUI
-  contentRoot: {fileID: 297895102}
   tileContainer: {fileID: 85804143}
   tilePrefab: {fileID: 6487873725811226268, guid: 56b0faf7a9aec5e4685b1e92cf15d22f, type: 3}
   backgroundButton: {fileID: 545968270}
@@ -38760,8 +38784,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: WorldName  Normal Medium
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: ca852be99b271354f89bf35470b56f16, type: 2}
+  m_sharedMaterial: {fileID: 5661338464539886934, guid: ca852be99b271354f89bf35470b56f16, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []

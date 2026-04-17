@@ -45,45 +45,34 @@ public class WorldGenerationSettings : ScriptableObject
 
     public Sprite GetFactionTileSprite(FactionType faction)
     {
-        for (int i = 0; i < factionPresentations.Count; i++)
-        {
-            if (factionPresentations[i] != null && factionPresentations[i].faction == faction)
-                return factionPresentations[i].tileSprite;
-        }
-        return null;
+        FactionPresentation presentation = GetFactionPresentation(faction);
+        return presentation != null ? presentation.tileSprite : null;
     }
 
     public Color GetFactionFallbackColor(FactionType faction)
     {
-        for (int i = 0; i < factionPresentations.Count; i++)
-        {
-            if (factionPresentations[i] != null && factionPresentations[i].faction == faction)
-                return factionPresentations[i].fallbackColor;
-        }
-        return Color.white;
+        FactionPresentation presentation = GetFactionPresentation(faction);
+        return presentation != null ? presentation.fallbackColor : Color.white;
     }
 
     public string GetFactionDisplayName(FactionType faction)
     {
-        for (int i = 0; i < factionPresentations.Count; i++)
-        {
-            if (factionPresentations[i] != null && factionPresentations[i].faction == faction)
-            {
-                if (!string.IsNullOrWhiteSpace(factionPresentations[i].displayName))
-                    return factionPresentations[i].displayName;
-            }
-        }
+        FactionPresentation presentation = GetFactionPresentation(faction);
+        if (presentation != null && !string.IsNullOrWhiteSpace(presentation.displayName))
+            return presentation.displayName;
         return faction.ToString();
+    }
+
+    public Sprite GetFactionUnknownSprite(FactionType faction)
+    {
+        FactionPresentation presentation = GetFactionPresentation(faction);
+        return presentation != null ? presentation.unknownSprite : null;
     }
 
     public IReadOnlyList<Sprite> GetFactionEnemyPortraitPool(FactionType faction)
     {
-        for (int i = 0; i < factionPresentations.Count; i++)
-        {
-            if (factionPresentations[i] != null && factionPresentations[i].faction == faction)
-                return factionPresentations[i].enemyPortraitPool;
-        }
-        return Array.Empty<Sprite>();
+        FactionPresentation presentation = GetFactionPresentation(faction);
+        return presentation != null ? presentation.enemyPortraitPool : Array.Empty<Sprite>();
     }
 
     public Sprite GetTileDisplayIcon(WorldTileData tile)
@@ -94,13 +83,35 @@ public class WorldGenerationSettings : ScriptableObject
         if (tile.isPlayerStart && StartTileIcon != null)
             return StartTileIcon;
 
-        return GetEventIcon(tile.eventType);
+        WorldEventPresentation presentation = GetEventPresentation(tile.eventType);
+        if (presentation == null)
+            return null;
+
+        if (tile.currentOwner == FactionType.Player && presentation.iconDark != null)
+            return presentation.iconDark;
+
+        return presentation.icon;
+    }
+
+    public Sprite GetQuestionMarkSprite(WorldTileData tile)
+    {
+        if (tile == null)
+            return null;
+
+        FactionType questionFaction = tile.nativeFaction != FactionType.None ? tile.nativeFaction : tile.currentOwner;
+        return GetFactionUnknownSprite(questionFaction);
     }
 
     public Sprite GetEventIcon(WorldTileEventType eventType)
     {
         WorldEventPresentation presentation = GetEventPresentation(eventType);
         return presentation != null ? presentation.icon : null;
+    }
+
+    public Sprite GetEventDarkIcon(WorldTileEventType eventType)
+    {
+        WorldEventPresentation presentation = GetEventPresentation(eventType);
+        return presentation != null ? presentation.iconDark : null;
     }
 
     public string GetEventDisplayName(WorldTileEventType eventType)
@@ -163,6 +174,16 @@ public class WorldGenerationSettings : ScriptableObject
         }
     }
 
+    private FactionPresentation GetFactionPresentation(FactionType faction)
+    {
+        for (int i = 0; i < factionPresentations.Count; i++)
+        {
+            if (factionPresentations[i] != null && factionPresentations[i].faction == faction)
+                return factionPresentations[i];
+        }
+        return null;
+    }
+
     private WorldEventPresentation GetEventPresentation(WorldTileEventType eventType)
     {
         for (int i = 0; i < eventPresentations.Count; i++)
@@ -180,6 +201,7 @@ public class FactionPresentation
     public FactionType faction = FactionType.None;
     public string displayName;
     public Sprite tileSprite;
+    public Sprite unknownSprite;
     public Color fallbackColor = Color.white;
     public List<Sprite> enemyPortraitPool = new List<Sprite>();
 }
@@ -191,6 +213,7 @@ public class WorldEventPresentation
     public string displayName;
     [TextArea(2, 5)] public string description;
     public Sprite icon;
+    public Sprite iconDark;
 }
 
 [Serializable]

@@ -17,8 +17,14 @@ public class WorldRunManager : MonoBehaviour
     [Header("Player Party")]
     [SerializeField] private PartyDefinition playerPartyTemplate;
 
-    [Header("Persistent Soul")]
+    [Header("Persistent Currencies")]
     [SerializeField] private int persistentSoul;
+    [SerializeField] private int persistentCash;
+
+    [Header("World HUD")]
+    [SerializeField] private WorldTopHudUI worldTopHudUI;
+    [SerializeField, Range(0,4)] private int revealedEnemyPreviewCount = 0;
+    [SerializeField] private string playerDisplayName = "플레이어";
 
     [Header("Optional Conquest UI")]
     [SerializeField] private GameObject conquestConditionRoot;
@@ -31,6 +37,9 @@ public class WorldRunManager : MonoBehaviour
     public PartyDefinition PlayerPartyTemplate => playerPartyTemplate;
     public WorldRunTransientState CurrentWorldRunState => currentWorldRunState;
     public int PersistentSoul => persistentSoul;
+    public int PersistentCash => persistentCash;
+    public int RevealedEnemyPreviewCount => Mathf.Clamp(revealedEnemyPreviewCount, 0, 4);
+    public string PlayerDisplayName => string.IsNullOrWhiteSpace(playerDisplayName) ? "플레이어" : playerDisplayName;
 
     public WorldMapData MapData { get; private set; }
     public WorldTileData CurrentTile { get; private set; }
@@ -89,6 +98,9 @@ public class WorldRunManager : MonoBehaviour
 
         if (worldMapUI != null)
             worldMapUI.Initialize(this, MapData, generationSettings);
+
+        if (worldTopHudUI != null)
+            worldTopHudUI.Initialize(this, generationSettings);
 
         RefreshConquestButtonState();
         RaiseSelectionChanged();
@@ -239,7 +251,21 @@ public class WorldRunManager : MonoBehaviour
     public void AddPersistentSoul(int amount)
     {
         persistentSoul += Mathf.Max(0, amount);
+        RaiseStorageChanged();
     }
+
+    public void AddPersistentCash(int amount)
+    {
+        persistentCash += Mathf.Max(0, amount);
+        RaiseStorageChanged();
+    }
+
+    public void SetRevealedEnemyPreviewCount(int count)
+    {
+        revealedEnemyPreviewCount = Mathf.Clamp(count, 0, 4);
+        RaiseWorldStateChanged();
+    }
+
 
     public void AddWorldSoul(int amount)
     {
@@ -788,6 +814,8 @@ public class WorldRunManager : MonoBehaviour
         RefreshConquestButtonState();
         if (worldMapUI != null && MapData != null)
             worldMapUI.RefreshAll(MapData);
+        if (worldTopHudUI != null)
+            worldTopHudUI.Refresh();
     }
 
     private void RaiseSelectionChanged()

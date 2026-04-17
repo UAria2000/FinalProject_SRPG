@@ -4,24 +4,19 @@ using UnityEngine.UI;
 
 public class HexWorldMapUI : MonoBehaviour
 {
-    [Header("Roots")]
-    [SerializeField] private RectTransform contentRoot;
+    [Header("References")]
     [SerializeField] private RectTransform tileContainer;
-
-    [Header("Prefabs")]
     [SerializeField] private HexTileView tilePrefab;
-
-    [Header("Optional UI")]
     [SerializeField] private Button backgroundButton;
     [SerializeField] private WorldMapDragPan dragPan;
 
     [Header("Tile Layout")]
-    [SerializeField] private float tileRadius = 200f;
-    [SerializeField] private bool resizeTileRectFromRadius = true;
+    [SerializeField] private float tileRadius = 96f;
+    [SerializeField] private bool resizeTileRectFromRadius = false;
     [SerializeField] private float horizontalSpacingMultiplier = 1f;
     [SerializeField] private float verticalSpacingMultiplier = 1f;
 
-    [Header("Aura Sprites")]
+    [Header("Tile Auras")]
     [SerializeField] private Sprite currentAuraSprite;
     [SerializeField] private Color currentAuraColor = Color.white;
     [SerializeField] private Sprite selectedAuraSprite;
@@ -29,24 +24,19 @@ public class HexWorldMapUI : MonoBehaviour
     [SerializeField] private Sprite reachableAuraSprite;
     [SerializeField] private Color reachableAuraColor = Color.white;
 
-    [Header("Camera Follow")]
+    [Header("Camera Focus")]
     [SerializeField] private bool focusCurrentTileOnGenerate = true;
     [SerializeField] private bool focusCurrentTileOnMove = true;
 
-    private readonly Dictionary<int, HexTileView> tileViews = new Dictionary<int, HexTileView>();
     private WorldRunManager runManager;
     private WorldGenerationSettings settings;
+    private Dictionary<int, HexTileView> tileViews = new Dictionary<int, HexTileView>();
     private Bounds generatedLocalBounds;
-
-    public RectTransform ContentRoot => contentRoot;
 
     public void Initialize(WorldRunManager manager, WorldMapData mapData, WorldGenerationSettings generationSettings)
     {
         runManager = manager;
         settings = generationSettings;
-
-        if (dragPan != null)
-            dragPan.Configure(contentRoot);
 
         if (backgroundButton != null)
         {
@@ -106,24 +96,26 @@ public class HexWorldMapUI : MonoBehaviour
                 showAura = auraSprite != null;
             }
 
-            Sprite tileSprite = settings.GetFactionTileSprite(tile.currentOwner);
-            Color tileColor = settings.GetFactionFallbackColor(tile.currentOwner);
+            FactionType visualFaction = tile.nativeFaction != FactionType.None ? tile.nativeFaction : tile.currentOwner;
+            Sprite tileSprite = settings.GetFactionTileSprite(visualFaction);
+            Color tileColor = settings.GetFactionFallbackColor(visualFaction);
             Sprite iconSprite = settings.GetTileDisplayIcon(tile);
-            bool showQuestionMark = !tile.revealed;
-            bool iconAlwaysVisible = tile.isPlayerStart && settings != null && settings.StartTileIcon != null;
-            bool iconVisible = iconAlwaysVisible || tile.revealed;
-            bool disableIcon = tile.isIconDisabled;
+            Sprite questionSprite = settings.GetQuestionMarkSprite(tile);
+            bool showQuestionMark = !tile.revealed && tile.currentOwner != FactionType.Player;
+            bool iconAlwaysVisible = tile.isPlayerStart && settings.StartTileIcon != null;
+            bool iconVisible = iconAlwaysVisible || tile.revealed || tile.currentOwner == FactionType.Player;
 
             view.SetVisual(
                 tileSprite,
                 tileColor,
                 iconSprite,
                 iconVisible,
+                questionSprite,
                 showQuestionMark,
                 showAura,
                 auraSprite,
                 auraColor,
-                disableIcon);
+                false);
         }
     }
 
