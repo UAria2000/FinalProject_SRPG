@@ -10,6 +10,7 @@ public class WorldRunManager : MonoBehaviour
     [SerializeField] private HexWorldMapUI worldMapUI;
     [SerializeField] private SelectedTileInfoPanel selectedTileInfoPanel;
     [SerializeField] private WorldEventController eventController;
+    [SerializeField] private WorldQuestController questController;
 
     [Header("Startup")]
     [SerializeField] private bool generateOnStart = true;
@@ -54,6 +55,7 @@ public class WorldRunManager : MonoBehaviour
 
     private WorldRevealController revealController;
     private WorldMovementController movementController;
+    private WorldTileData previousTileBeforeArrival;
 
     private void Awake()
     {
@@ -95,6 +97,9 @@ public class WorldRunManager : MonoBehaviour
 
         if (eventController != null)
             eventController.Initialize(this, generationSettings);
+
+        if (questController == null)
+            questController = UnityEngine.Object.FindFirstObjectByType<WorldQuestController>();
 
         if (worldMapUI != null)
             worldMapUI.Initialize(this, MapData, generationSettings);
@@ -190,8 +195,13 @@ public class WorldRunManager : MonoBehaviour
             return;
 
         tile.revealed = true;
+
         if (conquerTile)
+        {
             tile.currentOwner = FactionType.Player;
+            questController?.NotifyTileCaptured(tile);
+        }
+
         tile.isResolved = markResolved;
         tile.isIconDisabled = disableIcon;
 
@@ -205,6 +215,13 @@ public class WorldRunManager : MonoBehaviour
             return;
 
         ResolveMapEvent(tile, true, true, true);
+
+        if (tile.eventType == WorldTileEventType.EliteBattle)
+            questController?.NotifyEliteBattleWon();
+        else if (tile.eventType == WorldTileEventType.Boss)
+            questController?.NotifyBossBattleWon();
+
+        questController?.TryShowQueuedCompletionPopup();
         FocusCurrentTile();
     }
 
@@ -696,6 +713,28 @@ public class WorldRunManager : MonoBehaviour
         return true;
     }
 
+    public void HandleQuestAcceptedFromPopup()
+    {
+        if (CurrentTile == null)
+            return;
+
+        // 퀘스트 수락 시 현재 퀘스트 타일 점령
+        ResolveMapEvent(CurrentTile, true, true, true);
+        FocusCurrentTile();
+    }
+
+    public void HandleQuestRejectedFromPopup()
+    {
+        WorldTileData returnTile = previousTileBeforeArrival;
+
+        if (returnTile == null && MapData != null)
+            returnTile = MapData.GetStartTile();
+
+        if (returnTile != null && returnTile != CurrentTile)
+            MoveToTileInternal(returnTile, false);
+        else
+            RaiseWorldStateChanged();
+    }
     private bool HasInventoryItem(ItemDefinition item)
     {
         if (item == null)
@@ -790,6 +829,10 @@ public class WorldRunManager : MonoBehaviour
         if (tile == null || !CanMoveTo(tile))
             return;
 
+        WorldTileData previousTile = CurrentTile;
+        if (triggerArrivalEvent)
+            previousTileBeforeArrival = previousTile;
+
         CurrentTile = tile;
         SelectedTile = null;
         revealController?.RevealAround(tile);
@@ -812,10 +855,14 @@ public class WorldRunManager : MonoBehaviour
     {
         OnWorldStateChanged?.Invoke();
         RefreshConquestButtonState();
+
         if (worldMapUI != null && MapData != null)
             worldMapUI.RefreshAll(MapData);
+
         if (worldTopHudUI != null)
             worldTopHudUI.Refresh();
+
+        questController?.TryShowQueuedCompletionPopup();
     }
 
     private void RaiseSelectionChanged()

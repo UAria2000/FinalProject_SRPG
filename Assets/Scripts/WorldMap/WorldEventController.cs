@@ -5,6 +5,7 @@ public class WorldEventController : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private WorldEventPopupUI eventPopupUI;
+    [SerializeField] private WorldQuestController questController;
     [SerializeField] private WorldBattleBridge battleBridge;
     [SerializeField] private BattleManager battleManager;
 
@@ -14,19 +15,24 @@ public class WorldEventController : MonoBehaviour
     [SerializeField] private string restResolvedSuffix = "\n\n파티가 휴식을 취해 체력을 회복했다.";
     [SerializeField] private string graveyardSuffix = "\n\n묘지는 재사용 가능한 이벤트로 남아 있습니다.";
     [SerializeField] private string merchantSuffix = "\n\n상점 상세 기능은 추후 연결 예정입니다.";
-    [SerializeField] private string questSuffix = "\n\n퀘스트 상세 분기는 추후 연결 예정입니다.";
     [SerializeField] private string treasureSuffix = "\n\n보상을 지급하는 세부 로직은 추후 연결 예정입니다.";
 
     private WorldRunManager runManager;
     private WorldGenerationSettings settings;
     private bool popupOpen;
 
-    public bool IsBusy => popupOpen || (battleBridge != null && battleBridge.IsBattleRunning);
+    public bool IsBusy =>
+        popupOpen ||
+        (questController != null && questController.IsPopupOpen) ||
+        (battleBridge != null && battleBridge.IsBattleRunning);
 
     public void Initialize(WorldRunManager manager, WorldGenerationSettings generationSettings)
     {
         runManager = manager;
         settings = generationSettings;
+
+        if (questController == null)
+            questController = Object.FindFirstObjectByType<WorldQuestController>();
 
         if (battleBridge != null)
             battleBridge.Initialize(manager, generationSettings);
@@ -39,6 +45,9 @@ public class WorldEventController : MonoBehaviour
 
         if (tile.IsCombatEvent)
             return TryStartCombatEvent(tile);
+
+        if (tile.eventType == WorldTileEventType.Quest)
+            return TryOpenQuestEvent(tile);
 
         return TryOpenSimpleEvent(tile);
     }
@@ -64,6 +73,15 @@ public class WorldEventController : MonoBehaviour
         });
 
         return false;
+    }
+
+    private bool TryOpenQuestEvent(WorldTileData tile)
+    {
+        if (questController != null && questController.TryOpenQuestOfferFromTile(tile))
+            return true;
+
+        // 퀘스트 컨트롤러가 빠져 있거나 열기 실패 시에만 fallback
+        return TryOpenSimpleEvent(tile);
     }
 
     private bool TryOpenSimpleEvent(WorldTileData tile)
@@ -122,12 +140,23 @@ public class WorldEventController : MonoBehaviour
 
         switch (tile.eventType)
         {
-            case WorldTileEventType.Rest: sb.Append(restResolvedSuffix); break;
-            case WorldTileEventType.Treasure: sb.Append(treasureSuffix); break;
-            case WorldTileEventType.Merchant: sb.Append(merchantSuffix); break;
-            case WorldTileEventType.Quest: sb.Append(questSuffix); break;
-            case WorldTileEventType.Graveyard: sb.Append(graveyardSuffix); break;
+            case WorldTileEventType.Rest:
+                sb.Append(restResolvedSuffix);
+                break;
+
+            case WorldTileEventType.Treasure:
+                sb.Append(treasureSuffix);
+                break;
+
+            case WorldTileEventType.Merchant:
+                sb.Append(merchantSuffix);
+                break;
+
+            case WorldTileEventType.Graveyard:
+                sb.Append(graveyardSuffix);
+                break;
         }
+
         return sb.ToString();
     }
 

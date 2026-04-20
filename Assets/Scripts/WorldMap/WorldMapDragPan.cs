@@ -10,6 +10,10 @@ public class WorldMapDragPan : MonoBehaviour
     [Header("Optional Drag Blockers")]
     [SerializeField] private RectTransform[] dragBlockers;
 
+    [Header("Optional Popup Lock")]
+    [SerializeField] private WorldQuestController questController;
+    [SerializeField] private bool autoFindQuestController = true;
+
     [Header("Pan")]
     [SerializeField] private float dragThreshold = 12f;
     [SerializeField] private bool clampPanToBounds = true;
@@ -52,10 +56,7 @@ public class WorldMapDragPan : MonoBehaviour
         inputLocked = locked;
 
         if (inputLocked)
-        {
-            pressed = false;
-            dragging = false;
-        }
+            ResetDragState();
     }
 
     public void Configure(RectTransform inContentRoot)
@@ -85,7 +86,7 @@ public class WorldMapDragPan : MonoBehaviour
 
     public bool ShouldSuppressClick()
     {
-        return inputLocked || dragging || suppressClickFrames > 0;
+        return IsInputActuallyLocked() || dragging || suppressClickFrames > 0;
     }
 
     public void CenterOnAnchoredPosition(Vector2 targetAnchoredPosition)
@@ -105,14 +106,39 @@ public class WorldMapDragPan : MonoBehaviour
         if (contentRoot == null || Mouse.current == null)
             return;
 
+        if (autoFindQuestController && questController == null)
+            questController = UnityEngine.Object.FindFirstObjectByType<WorldQuestController>();
+
         if (suppressClickFrames > 0)
             suppressClickFrames--;
 
-        if (inputLocked)
+        if (IsInputActuallyLocked())
+        {
+            ResetDragState();
             return;
+        }
 
         HandleZoom();
         HandlePan();
+    }
+
+    private bool IsInputActuallyLocked()
+    {
+        if (inputLocked)
+            return true;
+
+        if (questController != null && questController.IsPopupOpen)
+            return true;
+
+        return false;
+    }
+
+    private void ResetDragState()
+    {
+        pressed = false;
+        dragging = false;
+        pressScreenPosition = Vector2.zero;
+        contentStartPosition = Vector2.zero;
     }
 
     private void HandleZoom()

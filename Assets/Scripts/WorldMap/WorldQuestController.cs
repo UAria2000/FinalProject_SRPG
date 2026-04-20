@@ -9,6 +9,7 @@ public class WorldQuestController : MonoBehaviour
     [SerializeField] private WorldRunManager runManager;
     [SerializeField] private WorldQuestListPanelUI questListPanelUI;
     [SerializeField] private WorldQuestPopupUI questPopupUI;
+    [SerializeField] private WorldQuestAbandonConfirmPopupUI abandonConfirmPopupUI;
 
     [Header("Quest Definitions")]
     [SerializeField] private List<WorldQuestDefinition> questDefinitions = new List<WorldQuestDefinition>(4);
@@ -24,12 +25,15 @@ public class WorldQuestController : MonoBehaviour
     private WorldQuestState currentPopupQuest;
     private WorldQuestPopupMode currentPopupMode = WorldQuestPopupMode.None;
 
+    private WorldQuestState pendingAbandonQuest;
+
     public IReadOnlyList<WorldQuestState> ActiveAcceptedQuests => activeAcceptedQuests;
+    public bool IsPopupOpen => (questPopupUI != null && questPopupUI.IsOpen) || (abandonConfirmPopupUI != null && abandonConfirmPopupUI.IsOpen);
 
     private void Awake()
     {
         if (runManager == null)
-            runManager = Object.FindFirstObjectByType<WorldRunManager>();
+            runManager = UnityEngine.Object.FindFirstObjectByType<WorldRunManager>();
     }
 
     private void Start()
@@ -39,6 +43,9 @@ public class WorldQuestController : MonoBehaviour
 
         if (questPopupUI != null)
             questPopupUI.Initialize(this);
+
+        if (abandonConfirmPopupUI != null)
+            abandonConfirmPopupUI.Initialize(this);
 
         RefreshQuestListUI();
     }
@@ -116,7 +123,6 @@ public class WorldQuestController : MonoBehaviour
             return;
         }
 
-        // 퀘스트 수락 = 타일 점령 허용 쪽 훅
         TryInvokeRunManagerMethod("HandleQuestAcceptedFromPopup");
         HidePopupOnly();
         RefreshQuestListUI();
@@ -127,7 +133,6 @@ public class WorldQuestController : MonoBehaviour
         if (currentPopupQuest == null || currentPopupMode != WorldQuestPopupMode.Offer)
             return;
 
-        // 퀘스트 거절 = 타일 점령 안 하고 복귀 훅
         TryInvokeRunManagerMethod("HandleQuestRejectedFromPopup");
         HidePopupOnly();
     }
@@ -172,19 +177,29 @@ public class WorldQuestController : MonoBehaviour
         }
     }
 
-    public void CancelCurrentPopupQuest()
+    public void RequestAbandonFromCurrentPopup()
     {
         if (currentPopupQuest == null)
             return;
 
-        CancelQuestFromList(currentPopupQuest);
-        HidePopupOnly();
+        OpenAbandonConfirm(currentPopupQuest);
     }
 
     public void CancelQuestFromList(WorldQuestState quest)
     {
         if (quest == null || !quest.isAccepted || quest.isCompleted)
             return;
+
+        OpenAbandonConfirm(quest);
+    }
+
+    public void ConfirmQuestAbandon(WorldQuestState quest)
+    {
+        if (quest == null || !quest.isAccepted || quest.isCompleted)
+        {
+            CloseQuestAbandonConfirmPopup();
+            return;
+        }
 
         quest.isAccepted = false;
         quest.isCancelled = true;
@@ -193,7 +208,19 @@ public class WorldQuestController : MonoBehaviour
         blockedQuestTileIds.Add(quest.sourceTileId);
         activeAcceptedQuests.Remove(quest);
 
+        if (currentPopupQuest == quest && currentPopupMode == WorldQuestPopupMode.Active)
+            HidePopupOnly();
+
+        CloseQuestAbandonConfirmPopup();
         RefreshQuestListUI();
+    }
+
+    public void CloseQuestAbandonConfirmPopup()
+    {
+        pendingAbandonQuest = null;
+
+        if (abandonConfirmPopupUI != null)
+            abandonConfirmPopupUI.Hide();
     }
 
     public void CloseCurrentPopup()
@@ -203,6 +230,14 @@ public class WorldQuestController : MonoBehaviour
 
         HidePopupOnly();
         RefreshQuestListUI();
+    }
+
+    public void CloseCurrentPopupFromOutsideClick()
+    {
+        if (currentPopupMode != WorldQuestPopupMode.Active)
+            return;
+
+        HidePopupOnly();
     }
 
     public void NotifyEnemyKilled(int count = 1)
@@ -279,6 +314,12 @@ public class WorldQuestController : MonoBehaviour
 
     public void TryShowQueuedCompletionPopup()
     {
+        if (questPopupUI != null && questPopupUI.IsOpen)
+            return;
+
+        if (abandonConfirmPopupUI != null && abandonConfirmPopupUI.IsOpen)
+            return;
+
         for (int i = 0; i < activeAcceptedQuests.Count; i++)
         {
             WorldQuestState quest = activeAcceptedQuests[i];
@@ -373,7 +414,6 @@ public class WorldQuestController : MonoBehaviour
         if (quest == null || quest.isCancelled || !quest.isCompleted)
             yield break;
 
-        // 전투 중 팝업 금지. 월드맵으로 돌아온 뒤 별도 호출로 띄움.
         quest.completionPopupQueued = false;
         quest.completionPopupShown = false;
     }
@@ -382,6 +422,17 @@ public class WorldQuestController : MonoBehaviour
     {
         if (questListPanelUI != null)
             questListPanelUI.Refresh();
+    }
+
+    private void OpenAbandonConfirm(WorldQuestState quest)
+    {
+        if (quest == null)
+            return;
+
+        pendingAbandonQuest = quest;
+
+        if (abandonConfirmPopupUI != null)
+            abandonConfirmPopupUI.Show(quest);
     }
 
     private void HidePopupOnly()
@@ -499,7 +550,6 @@ public class WorldQuestController : MonoBehaviour
         if (runManager == null || amount <= 0)
             return false;
 
-        // 프로젝트마다 메서드명이 달라질 수 있어서 reflection fallback 사용
         string[] methodNames =
         {
             "AddPersistentSoul",

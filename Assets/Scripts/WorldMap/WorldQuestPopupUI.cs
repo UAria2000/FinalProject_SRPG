@@ -15,6 +15,7 @@ public class WorldQuestPopupUI : MonoBehaviour
 {
     [Header("Root")]
     [SerializeField] private GameObject root;
+    [SerializeField] private Button outsideCloseButton;
 
     [Header("Texts")]
     [SerializeField] private TMP_Text titleText;
@@ -43,6 +44,7 @@ public class WorldQuestPopupUI : MonoBehaviour
     private WorldQuestState currentQuest;
     private WorldQuestPopupMode currentMode = WorldQuestPopupMode.None;
     private bool canAcceptCurrentQuest;
+    private bool allowOutsideClose;
 
     public bool IsOpen => root != null && root.activeSelf;
     public WorldQuestState CurrentQuest => currentQuest;
@@ -80,6 +82,12 @@ public class WorldQuestPopupUI : MonoBehaviour
             closeButton.onClick.AddListener(HandleCloseClicked);
         }
 
+        if (outsideCloseButton != null)
+        {
+            outsideCloseButton.onClick.RemoveAllListeners();
+            outsideCloseButton.onClick.AddListener(HandleOutsideClicked);
+        }
+
         Hide();
     }
 
@@ -93,6 +101,7 @@ public class WorldQuestPopupUI : MonoBehaviour
         currentQuest = quest;
         currentMode = WorldQuestPopupMode.Offer;
         canAcceptCurrentQuest = canAccept;
+        allowOutsideClose = false;
 
         if (root != null)
             root.SetActive(true);
@@ -108,6 +117,7 @@ public class WorldQuestPopupUI : MonoBehaviour
         currentQuest = quest;
         currentMode = WorldQuestPopupMode.Active;
         canAcceptCurrentQuest = false;
+        allowOutsideClose = true;
 
         if (root != null)
             root.SetActive(true);
@@ -123,6 +133,7 @@ public class WorldQuestPopupUI : MonoBehaviour
         currentQuest = quest;
         currentMode = WorldQuestPopupMode.Completed;
         canAcceptCurrentQuest = false;
+        allowOutsideClose = false;
 
         if (root != null)
             root.SetActive(true);
@@ -159,6 +170,7 @@ public class WorldQuestPopupUI : MonoBehaviour
         currentQuest = null;
         currentMode = WorldQuestPopupMode.None;
         canAcceptCurrentQuest = false;
+        allowOutsideClose = false;
 
         if (root != null)
             root.SetActive(false);
@@ -285,6 +297,9 @@ public class WorldQuestPopupUI : MonoBehaviour
 
         if (closeButton != null)
             closeButton.gameObject.SetActive(active || completed);
+
+        if (outsideCloseButton != null)
+            outsideCloseButton.gameObject.SetActive(active && allowOutsideClose);
     }
 
     private void HandleAcceptClicked()
@@ -299,7 +314,7 @@ public class WorldQuestPopupUI : MonoBehaviour
 
     private void HandleCancelQuestClicked()
     {
-        owner?.CancelCurrentPopupQuest();
+        owner?.RequestAbandonFromCurrentPopup();
     }
 
     private void HandleClaimAllClicked()
@@ -310,5 +325,13 @@ public class WorldQuestPopupUI : MonoBehaviour
     private void HandleCloseClicked()
     {
         owner?.CloseCurrentPopup();
+    }
+
+    private void HandleOutsideClicked()
+    {
+        if (!allowOutsideClose)
+            return;
+
+        owner?.CloseCurrentPopupFromOutsideClick();
     }
 }
