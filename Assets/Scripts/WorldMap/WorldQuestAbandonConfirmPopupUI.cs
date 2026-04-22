@@ -1,3 +1,4 @@
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -10,16 +11,20 @@ public class WorldQuestAbandonConfirmPopupUI : MonoBehaviour
 
     [Header("Texts")]
     [SerializeField] private TMP_Text messageText;
+    [SerializeField] private TMP_Text confirmButtonText;
+    [SerializeField] private TMP_Text closeButtonText;
 
     [Header("Buttons")]
     [SerializeField] private Button abandonButton;
     [SerializeField] private Button closeButton;
 
-    [Header("Message")]
+    [Header("Defaults")]
     [SerializeField] private string defaultMessage = "정말 이 퀘스트를 포기하시겠습니까?\n진행도는 초기화되며 다시 받을 수 없습니다.";
+    [SerializeField] private string defaultConfirmLabel = "퀘스트 포기";
+    [SerializeField] private string defaultCloseLabel = "닫기";
 
-    private WorldQuestController owner;
-    private WorldQuestState currentQuest;
+    private Action confirmAction;
+    private Action closeAction;
 
     public bool IsOpen => root != null && root.activeSelf;
 
@@ -40,43 +45,60 @@ public class WorldQuestAbandonConfirmPopupUI : MonoBehaviour
         if (abandonButton != null)
         {
             abandonButton.onClick.RemoveAllListeners();
-            abandonButton.onClick.AddListener(HandleAbandonClicked);
+            abandonButton.onClick.AddListener(HandleConfirmClicked);
         }
 
         Hide();
     }
 
-    public void Initialize(WorldQuestController controller)
+    public void Initialize(WorldQuestController _)
     {
-        owner = controller;
+        // 하위 호환용. 현재는 액션 콜백 방식만 사용.
     }
 
-    public void Show(WorldQuestState quest)
+    public void Show(
+        string message = null,
+        string confirmLabel = null,
+        string cancelLabel = null,
+        Action onConfirm = null,
+        Action onCancel = null)
     {
-        currentQuest = quest;
+        confirmAction = onConfirm;
+        closeAction = onCancel;
 
         if (root != null)
             root.SetActive(true);
 
         if (messageText != null)
-            messageText.text = defaultMessage;
+            messageText.text = string.IsNullOrEmpty(message) ? defaultMessage : message;
+
+        if (confirmButtonText != null)
+            confirmButtonText.text = string.IsNullOrEmpty(confirmLabel) ? defaultConfirmLabel : confirmLabel;
+
+        if (closeButtonText != null)
+            closeButtonText.text = string.IsNullOrEmpty(cancelLabel) ? defaultCloseLabel : cancelLabel;
     }
 
     public void Hide()
     {
-        currentQuest = null;
+        confirmAction = null;
+        closeAction = null;
 
         if (root != null)
             root.SetActive(false);
     }
 
-    private void HandleAbandonClicked()
+    private void HandleConfirmClicked()
     {
-        owner?.ConfirmQuestAbandon(currentQuest);
+        Action action = confirmAction;
+        Hide();
+        action?.Invoke();
     }
 
     private void HandleCloseClicked()
     {
-        owner?.CloseQuestAbandonConfirmPopup();
+        Action action = closeAction;
+        Hide();
+        action?.Invoke();
     }
 }

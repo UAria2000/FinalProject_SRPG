@@ -9,6 +9,7 @@ public class HexWorldMapUI : MonoBehaviour
     [SerializeField] private HexTileView tilePrefab;
     [SerializeField] private Button backgroundButton;
     [SerializeField] private WorldMapDragPan dragPan;
+    [SerializeField] private WorldQuestController questController;
 
     [Header("Tile Layout")]
     [SerializeField] private float tileRadius = 96f;
@@ -24,6 +25,10 @@ public class HexWorldMapUI : MonoBehaviour
     [SerializeField] private Sprite reachableAuraSprite;
     [SerializeField] private Color reachableAuraColor = Color.white;
 
+    [Header("Quest Target Aura")]
+    [SerializeField] private Sprite questTargetAuraSprite;
+    [SerializeField] private Color questTargetAuraColor = Color.white;
+
     [Header("Camera Focus")]
     [SerializeField] private bool focusCurrentTileOnGenerate = true;
     [SerializeField] private bool focusCurrentTileOnMove = true;
@@ -37,6 +42,9 @@ public class HexWorldMapUI : MonoBehaviour
     {
         runManager = manager;
         settings = generationSettings;
+
+        if (questController == null)
+            questController = UnityEngine.Object.FindFirstObjectByType<WorldQuestController>();
 
         if (backgroundButton != null)
         {
@@ -60,6 +68,9 @@ public class HexWorldMapUI : MonoBehaviour
         if (mapData == null || settings == null || runManager == null)
             return;
 
+        if (questController == null)
+            questController = UnityEngine.Object.FindFirstObjectByType<WorldQuestController>();
+
         for (int i = 0; i < mapData.Tiles.Count; i++)
         {
             WorldTileData tile = mapData.Tiles[i];
@@ -72,6 +83,7 @@ public class HexWorldMapUI : MonoBehaviour
             bool isCurrent = runManager.IsCurrentTile(tile);
             bool isSelected = runManager.IsSelectedTile(tile);
             bool isReachable = !isSelected && !isCurrent && runManager.IsAdjacentReachable(tile);
+            bool isQuestTarget = questController != null && questController.IsActiveCaptureTargetTile(tile.tileId);
 
             Sprite auraSprite = null;
             Color auraColor = Color.white;
@@ -89,6 +101,12 @@ public class HexWorldMapUI : MonoBehaviour
                 auraColor = selectedAuraColor;
                 showAura = auraSprite != null;
             }
+            else if (isQuestTarget)
+            {
+                auraSprite = questTargetAuraSprite;
+                auraColor = questTargetAuraColor;
+                showAura = auraSprite != null;
+            }
             else if (isReachable)
             {
                 auraSprite = reachableAuraSprite;
@@ -96,9 +114,6 @@ public class HexWorldMapUI : MonoBehaviour
                 showAura = auraSprite != null;
             }
 
-            // 핵심 수정:
-            // 미공개 ? 는 nativeFaction 기준으로 보여주되,
-            // 공개된 타일의 베이스 컬러는 플레이어 점령 시 Player 팩션 컬러를 사용한다.
             FactionType visualFaction;
             if (tile.currentOwner == FactionType.Player)
             {

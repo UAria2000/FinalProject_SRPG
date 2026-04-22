@@ -7,6 +7,7 @@ public class WorldBattleBridge : MonoBehaviour
     [Header("Battle References")]
     [SerializeField] private BattleManager battleManager;
     [SerializeField] private RandomEnemyEncounterBootstrapper encounterBootstrapper;
+    [SerializeField] private WorldQuestController questController;
 
     [Header("Transition Roots")]
     [SerializeField] private GameObject worldMapRoot;
@@ -42,6 +43,10 @@ public class WorldBattleBridge : MonoBehaviour
     {
         runManager = manager;
         settings = generationSettings;
+
+        if (questController == null)
+            questController = UnityEngine.Object.FindFirstObjectByType<WorldQuestController>();
+
         EnsureBattleEndedSubscription();
     }
 
@@ -209,6 +214,14 @@ public class WorldBattleBridge : MonoBehaviour
     private IEnumerator ShowVictoryRewardRoutine()
     {
         BattleRewardSummary summary = battleManager != null ? battleManager.CurrentBattleRewardSummary : null;
+
+        if (summary != null && questController != null)
+        {
+            int defeatedCount = summary.defeatedEnemyUnits != null ? summary.defeatedEnemyUnits.Count : 0;
+            if (defeatedCount > 0)
+                questController.NotifyEnemyKilled(defeatedCount);
+        }
+
         if (summary != null && runManager != null)
         {
             runManager.AddWorldSoul(summary.soulReward);

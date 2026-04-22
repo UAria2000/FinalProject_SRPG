@@ -33,7 +33,10 @@ public class WorldQuestRowUI : MonoBehaviour
             checkboxImage.sprite = quest.isCompleted ? checkedSprite : uncheckedSprite;
 
         if (questText != null)
-            questText.text = quest.GetProgressText();
+        {
+            questText.richText = true;
+            questText.text = quest.GetListProgressTextRich();
+        }
 
         if (cancelButton != null)
         {

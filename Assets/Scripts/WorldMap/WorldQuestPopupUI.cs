@@ -27,6 +27,11 @@ public class WorldQuestPopupUI : MonoBehaviour
     [SerializeField] private Image soulIconImage;
     [SerializeField] private TMP_Text soulRewardText;
 
+    [Header("Experience Reward")]
+    [SerializeField] private GameObject experienceRewardRoot;
+    [SerializeField] private Image experienceIconImage;
+    [SerializeField] private TMP_Text experienceRewardText;
+
     [Header("Reward Slots")]
     [SerializeField] private List<WorldQuestPopupRewardSlotUI> rewardSlots = new List<WorldQuestPopupRewardSlotUI>(4);
 
@@ -107,7 +112,7 @@ public class WorldQuestPopupUI : MonoBehaviour
             root.SetActive(true);
 
         RefreshCommonTexts(quest);
-        RefreshSoulReward(quest);
+        RefreshImmediateRewards(quest);
         RefreshRewardSlots(quest, false);
         RefreshButtons();
     }
@@ -123,7 +128,7 @@ public class WorldQuestPopupUI : MonoBehaviour
             root.SetActive(true);
 
         RefreshCommonTexts(quest);
-        RefreshSoulReward(quest);
+        RefreshImmediateRewards(quest);
         RefreshRewardSlots(quest, false);
         RefreshButtons();
     }
@@ -139,7 +144,7 @@ public class WorldQuestPopupUI : MonoBehaviour
             root.SetActive(true);
 
         RefreshCommonTexts(quest);
-        RefreshSoulReward(quest);
+        RefreshImmediateRewards(quest);
         RefreshRewardSlots(quest, true);
         RefreshButtons();
     }
@@ -216,12 +221,13 @@ public class WorldQuestPopupUI : MonoBehaviour
             progressText.text = quest.GetProgressText();
     }
 
-    private void RefreshSoulReward(WorldQuestState quest)
+    private void RefreshImmediateRewards(WorldQuestState quest)
     {
         if (quest == null || quest.definition == null)
             return;
 
         bool showSoul = quest.definition.soulReward > 0;
+        bool showExp = quest.definition.experienceReward > 0;
 
         if (soulRewardRoot != null)
             soulRewardRoot.SetActive(showSoul);
@@ -231,6 +237,15 @@ public class WorldQuestPopupUI : MonoBehaviour
 
         if (soulIconImage != null)
             soulIconImage.gameObject.SetActive(showSoul);
+
+        if (experienceRewardRoot != null)
+            experienceRewardRoot.SetActive(showExp);
+
+        if (experienceRewardText != null)
+            experienceRewardText.text = showExp ? quest.definition.experienceReward.ToString() : string.Empty;
+
+        if (experienceIconImage != null)
+            experienceIconImage.gameObject.SetActive(showExp);
     }
 
     private void RefreshRewardSlots(WorldQuestState quest, bool completedMode)

@@ -11,6 +11,7 @@ public class WorldRunManager : MonoBehaviour
     [SerializeField] private SelectedTileInfoPanel selectedTileInfoPanel;
     [SerializeField] private WorldEventController eventController;
     [SerializeField] private WorldQuestController questController;
+    [SerializeField] private SaveCoordinator saveCoordinator;
 
     [Header("Startup")]
     [SerializeField] private bool generateOnStart = true;
@@ -57,6 +58,8 @@ public class WorldRunManager : MonoBehaviour
     private WorldMovementController movementController;
     private WorldTileData previousTileBeforeArrival;
 
+    private string runtimeDifficultyId = "normal";
+    public string RuntimeDifficultyId => runtimeDifficultyId;
     private void Awake()
     {
         if (worldConquestButton != null)
@@ -64,13 +67,27 @@ public class WorldRunManager : MonoBehaviour
             worldConquestButton.onClick.RemoveAllListeners();
             worldConquestButton.onClick.AddListener(HandleWorldConquestButtonPressed);
         }
+
+        if (saveCoordinator == null)
+            saveCoordinator = UnityEngine.Object.FindFirstObjectByType<SaveCoordinator>();
     }
 
     private void Start()
     {
         GetOrCreatePlayerPartyRuntimeState();
+
+        if (saveCoordinator == null)
+            saveCoordinator = UnityEngine.Object.FindFirstObjectByType<SaveCoordinator>();
+
+        saveCoordinator?.LoadProfileIntoCurrentScene();
+
         if (generateOnStart)
             GenerateNewWorld();
+    }
+
+    private void RequestAutoSaveAll()
+    {
+        saveCoordinator?.SaveAll();
     }
 
     public void GenerateNewWorld()
@@ -111,6 +128,7 @@ public class WorldRunManager : MonoBehaviour
         RaiseSelectionChanged();
         RaiseWorldStateChanged();
         OnCurrentTileChanged?.Invoke(CurrentTile);
+        RequestAutoSaveAll();
     }
 
     public void HandleTileClicked(int tileId)
@@ -207,6 +225,7 @@ public class WorldRunManager : MonoBehaviour
 
         RefreshConquestButtonState();
         RaiseWorldStateChanged();
+        RequestAutoSaveAll();
     }
 
     public void ResolveCombatVictory(WorldTileData tile)
@@ -223,6 +242,7 @@ public class WorldRunManager : MonoBehaviour
 
         questController?.TryShowQueuedCompletionPopup();
         FocusCurrentTile();
+        RequestAutoSaveAll();
     }
 
     public void ResolveCombatDefeat(WorldTileData tile, bool returnToStartTile)
@@ -269,6 +289,7 @@ public class WorldRunManager : MonoBehaviour
     {
         persistentSoul += Mathf.Max(0, amount);
         RaiseStorageChanged();
+        RequestAutoSaveAll();
     }
 
     public void AddPersistentCash(int amount)
@@ -289,6 +310,7 @@ public class WorldRunManager : MonoBehaviour
         amount = Mathf.Max(0, amount);
         persistentSoul += amount;
         GetOrCreateWorldRunState()?.AddSoulEarnedInWorld(amount);
+        RequestAutoSaveAll();
     }
 
     public void AddCapturedPrisoners(IReadOnlyList<UnitDefinition> units)
@@ -301,6 +323,7 @@ public class WorldRunManager : MonoBehaviour
             state.AddPrisoner(units[i]);
 
         RaiseStorageChanged();
+        RequestAutoSaveAll();
     }
 
     public void AddLootToWorldInventory(IReadOnlyList<ItemDefinition> items)
@@ -313,6 +336,7 @@ public class WorldRunManager : MonoBehaviour
             state.AddItem(items[i], 1);
 
         RaiseStorageChanged();
+        RequestAutoSaveAll();
     }
 
     public WorldSettlementSummary BuildSettlementSummary(bool wasVictory)
@@ -371,6 +395,7 @@ public class WorldRunManager : MonoBehaviour
         int conversionOnly = Mathf.Max(0, summary.totalSettlementSoulAward - summary.worldEarnedSoulAlreadyGranted);
         persistentSoul += conversionOnly;
         ResetWorldRunStateForNewWorld();
+        RequestAutoSaveAll();
     }
 
     public bool TryRestoreAdjacentFactionTileAsBattle(WorldTileData failedTile)
@@ -457,6 +482,7 @@ public class WorldRunManager : MonoBehaviour
 
         RefreshConquestButtonState();
         RaiseStorageChanged();
+        RequestAutoSaveAll();
     }
 
     public IReadOnlyList<InventoryStackData> GetStorageInventory()
@@ -496,6 +522,7 @@ public class WorldRunManager : MonoBehaviour
 
             state.sharedConsumableItem = null;
             RaiseStorageChanged();
+            RequestAutoSaveAll();
             return true;
         }
 
@@ -526,6 +553,7 @@ public class WorldRunManager : MonoBehaviour
 
         state.sharedConsumableItem = item;
         RaiseStorageChanged();
+        RequestAutoSaveAll();
         return true;
     }
 
@@ -540,6 +568,7 @@ public class WorldRunManager : MonoBehaviour
 
         persistentSoul -= clamped;
         RaiseStorageChanged();
+        RequestAutoSaveAll();
         return true;
     }
 
@@ -553,6 +582,7 @@ public class WorldRunManager : MonoBehaviour
 
         prisoner.MarkSoulPaid();
         RaiseStorageChanged();
+        RequestAutoSaveAll();
         return true;
     }
 
@@ -565,6 +595,7 @@ public class WorldRunManager : MonoBehaviour
         bool removed = state.prisoners.Remove(prisoner);
         if (removed)
             RaiseStorageChanged();
+            RequestAutoSaveAll();
 
         return removed;
     }
@@ -598,6 +629,7 @@ public class WorldRunManager : MonoBehaviour
         b.startSlotIndex = temp;
 
         RaiseStorageChanged();
+        RequestAutoSaveAll();
         return true;
     }
 
@@ -659,6 +691,7 @@ public class WorldRunManager : MonoBehaviour
                 data.slot1Item = null;
 
             RaiseStorageChanged();
+            RequestAutoSaveAll();
             return true;
         }
 
@@ -676,6 +709,7 @@ public class WorldRunManager : MonoBehaviour
             data.slot1Item = item;
 
         RaiseStorageChanged();
+        RequestAutoSaveAll();
         return true;
     }
 
@@ -734,6 +768,266 @@ public class WorldRunManager : MonoBehaviour
             MoveToTileInternal(returnTile, false);
         else
             RaiseWorldStateChanged();
+    }
+
+    public void StartNewWorldFromSetup(WorldGenerationSettings templateSettings, string difficultyId, int radius)
+    {
+        if (templateSettings == null)
+        {
+            Debug.LogError("[WorldRunManager] templateSettings is null.");
+            return;
+        }
+
+        WorldGenerationSettings runtimeSettings = Instantiate(templateSettings);
+        runtimeSettings.radius = Mathf.Clamp(radius, 1, 64);
+
+        generationSettings = runtimeSettings;
+        runtimeDifficultyId = string.IsNullOrWhiteSpace(difficultyId) ? "normal" : difficultyId;
+
+        GenerateNewWorld();
+    }
+
+    public bool RestoreWorldRunFromSave(
+        ActiveWorldRunSaveData saveData,
+        WorldGenerationSettings templateSettings,
+        SaveReferenceResolver resolver)
+    {
+        if (saveData == null || !saveData.hasActiveWorld || resolver == null)
+            return false;
+
+        if (templateSettings == null)
+        {
+            Debug.LogError("[WorldRunManager] templateSettings is null.");
+            return false;
+        }
+
+        WorldGenerationSettings runtimeSettings = Instantiate(templateSettings);
+        runtimeSettings.radius = Mathf.Clamp(saveData.mapRadius, 1, 64);
+
+        generationSettings = runtimeSettings;
+        runtimeDifficultyId = string.IsNullOrWhiteSpace(saveData.difficultyId) ? "normal" : saveData.difficultyId;
+
+        ResetWorldRunStateForNewWorld();
+
+        MapData = BuildMapDataFromSave(saveData);
+        if (MapData == null)
+            return false;
+
+        revealController = new WorldRevealController(MapData);
+        movementController = new WorldMovementController(MapData);
+
+        RestorePartyRuntimeFromSave(saveData);
+        RestoreTransientWorldStateFromSave(saveData, resolver);
+
+        CurrentTile = MapData.GetTileById(saveData.currentTileId);
+        if (CurrentTile == null)
+            CurrentTile = MapData.GetStartTile();
+
+        SelectedTile = MapData.GetTileById(saveData.selectedTileId);
+
+        if (selectedTileInfoPanel != null)
+        {
+            selectedTileInfoPanel.Initialize(this, generationSettings);
+            if (SelectedTile == null)
+                selectedTileInfoPanel.HidePanel();
+            else
+                selectedTileInfoPanel.ShowTile(SelectedTile);
+        }
+
+        if (eventController != null)
+            eventController.Initialize(this, generationSettings);
+
+        if (questController == null)
+            questController = UnityEngine.Object.FindFirstObjectByType<WorldQuestController>();
+
+        questController?.LoadFromSave(saveData.activeQuests);
+
+        if (worldMapUI != null)
+            worldMapUI.Initialize(this, MapData, generationSettings);
+
+        if (worldTopHudUI != null)
+            worldTopHudUI.Initialize(this, generationSettings);
+
+        RefreshConquestButtonState();
+        RaiseSelectionChanged();
+        RaiseWorldStateChanged();
+        OnCurrentTileChanged?.Invoke(CurrentTile);
+
+        return true;
+    }
+
+    private WorldMapData BuildMapDataFromSave(ActiveWorldRunSaveData saveData)
+    {
+        if (saveData == null || saveData.tiles == null || saveData.tiles.Count == 0)
+            return null;
+
+        WorldMapData map = new WorldMapData();
+        map.radius = saveData.mapRadius;
+
+        for (int i = 0; i < saveData.tiles.Count; i++)
+        {
+            WorldTileSaveData saved = saveData.tiles[i];
+            if (saved == null)
+                continue;
+
+            WorldTileData tile = new WorldTileData
+            {
+                tileId = saved.tileId,
+                coord = new HexCoord(saved.q, saved.r),
+                nativeFaction = (FactionType)saved.nativeFaction,
+                currentOwner = (FactionType)saved.currentOwner,
+                eventType = (WorldTileEventType)saved.eventType,
+                revealed = saved.revealed,
+                isPlayerStart = saved.isPlayerStart,
+                isResolved = saved.isResolved,
+                isIconDisabled = saved.isIconDisabled,
+            };
+
+            map.tiles.Add(tile);
+
+            if (tile.isPlayerStart)
+                map.startTileId = tile.tileId;
+        }
+
+        map.RebuildLookup();
+        return map;
+    }
+
+    private void RestorePartyRuntimeFromSave(ActiveWorldRunSaveData saveData)
+    {
+        BattlePartyRuntimeState runtime = GetOrCreatePlayerPartyRuntimeState();
+        if (runtime == null || runtime.members == null || saveData == null || saveData.worldPartyMembers == null)
+            return;
+
+        Dictionary<string, PartyMemberData> byId = new Dictionary<string, PartyMemberData>();
+        for (int i = 0; i < runtime.members.Count; i++)
+        {
+            PartyMemberData member = runtime.members[i];
+            if (member == null || string.IsNullOrWhiteSpace(member.instanceId))
+                continue;
+
+            byId[member.instanceId] = member;
+        }
+
+        for (int i = 0; i < saveData.worldPartyMembers.Count; i++)
+        {
+            WorldPartyMemberRuntimeSaveData saved = saveData.worldPartyMembers[i];
+            if (saved == null || string.IsNullOrWhiteSpace(saved.unitInstanceId))
+                continue;
+
+            if (!byId.TryGetValue(saved.unitInstanceId, out PartyMemberData member))
+                continue;
+
+            member.currentLevel = Mathf.Max(1, saved.currentLevel);
+            member.persistentCurrentHP = Mathf.Max(0, saved.persistentCurrentHP);
+            member.startSlotIndex = Mathf.Clamp(saved.startSlotIndex, 0, 3);
+        }
+    }
+
+    private void RestoreTransientWorldStateFromSave(ActiveWorldRunSaveData saveData, SaveReferenceResolver resolver)
+    {
+        WorldRunTransientState state = GetOrCreateWorldRunState();
+        if (state == null || saveData == null || resolver == null)
+            return;
+
+        state.inventory.Clear();
+        state.prisoners.Clear();
+        state.sharedConsumableItem = null;
+        state.partyEquipmentAssignments.Clear();
+        state.worldEarnedSoulAlreadyGranted = 0;
+        state.nextPrisonerSequence = 1;
+
+        if (saveData.worldInventory != null)
+        {
+            for (int i = 0; i < saveData.worldInventory.Count; i++)
+            {
+                WorldInventoryItemSaveData saved = saveData.worldInventory[i];
+                if (saved == null || string.IsNullOrWhiteSpace(saved.itemId) || saved.amount <= 0)
+                    continue;
+
+                ItemDefinition item = resolver.FindItemDefinition(saved.itemId);
+                if (item == null)
+                    continue;
+
+                state.inventory.Add(new InventoryStackData
+                {
+                    item = item,
+                    amount = Mathf.Max(1, saved.amount)
+                });
+            }
+        }
+
+        if (saveData.prisoners != null)
+        {
+            long maxSequence = 0;
+
+            for (int i = 0; i < saveData.prisoners.Count; i++)
+            {
+                CapturedPrisonerSaveData saved = saveData.prisoners[i];
+                if (saved == null || string.IsNullOrWhiteSpace(saved.sourceUnitId))
+                    continue;
+
+                UnitDefinition unit = resolver.FindUnitDefinition(saved.sourceUnitId);
+                if (unit == null)
+                    continue;
+
+                PrisonerRuntimeData prisoner = new PrisonerRuntimeData
+                {
+                    prisonerInstanceId = saved.prisonerInstanceId,
+                    sourceUnit = unit,
+                    prisonerNameOverride = saved.prisonerNameOverride,
+                    capturedLevel = Mathf.Max(1, saved.capturedLevel),
+                    isExchangeable = saved.isExchangeable,
+                    corruptionConditionType = (PrisonerCorruptionConditionType)saved.corruptionConditionType,
+                    targetValue = Mathf.Max(1, saved.targetValue),
+                    currentValue = Mathf.Max(0, saved.currentValue),
+                    captureSequence = saved.captureSequence
+                };
+
+                state.prisoners.Add(prisoner);
+                if (prisoner.captureSequence > maxSequence)
+                    maxSequence = prisoner.captureSequence;
+            }
+
+            state.nextPrisonerSequence = maxSequence + 1;
+        }
+
+        if (!string.IsNullOrWhiteSpace(saveData.sharedConsumableItemId))
+            state.sharedConsumableItem = resolver.FindItemDefinition(saveData.sharedConsumableItemId);
+
+        if (saveData.equipmentAssignments != null)
+        {
+            Dictionary<string, PartyEquipmentAssignmentData> byUnit = new Dictionary<string, PartyEquipmentAssignmentData>();
+
+            for (int i = 0; i < saveData.equipmentAssignments.Count; i++)
+            {
+                WorldEquipmentAssignmentSaveData saved = saveData.equipmentAssignments[i];
+                if (saved == null || string.IsNullOrWhiteSpace(saved.unitInstanceId) || string.IsNullOrWhiteSpace(saved.itemId))
+                    continue;
+
+                ItemDefinition item = resolver.FindItemDefinition(saved.itemId);
+                if (item == null)
+                    continue;
+
+                if (!byUnit.TryGetValue(saved.unitInstanceId, out PartyEquipmentAssignmentData assign))
+                {
+                    assign = new PartyEquipmentAssignmentData
+                    {
+                        memberInstanceId = saved.unitInstanceId
+                    };
+                    byUnit[saved.unitInstanceId] = assign;
+                    state.partyEquipmentAssignments.Add(assign);
+                }
+
+                int slotIndex = Mathf.Clamp(saved.slotIndex, 0, 1);
+                if (slotIndex == 0)
+                    assign.slot0Item = item;
+                else
+                    assign.slot1Item = item;
+            }
+        }
+
+        RaiseStorageChanged();
     }
     private bool HasInventoryItem(ItemDefinition item)
     {
@@ -846,6 +1140,7 @@ public class WorldRunManager : MonoBehaviour
         OnCurrentTileChanged?.Invoke(CurrentTile);
         RaiseSelectionChanged();
         RaiseWorldStateChanged();
+        RequestAutoSaveAll();
 
         if (triggerArrivalEvent && eventController != null)
             eventController.TryHandleArrival(tile);

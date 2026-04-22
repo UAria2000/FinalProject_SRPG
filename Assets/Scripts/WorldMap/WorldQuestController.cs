@@ -5,11 +5,19 @@ using UnityEngine;
 
 public class WorldQuestController : MonoBehaviour
 {
+    private enum ConfirmPopupMode
+    {
+        None = 0,
+        AbandonQuest = 1,
+        IgnoreUnclaimedRewardsAndClose = 2
+    }
+
     [Header("References")]
     [SerializeField] private WorldRunManager runManager;
     [SerializeField] private WorldQuestListPanelUI questListPanelUI;
     [SerializeField] private WorldQuestPopupUI questPopupUI;
     [SerializeField] private WorldQuestAbandonConfirmPopupUI abandonConfirmPopupUI;
+    [SerializeField] private SaveCoordinator saveCoordinator;
 
     [Header("Quest Definitions")]
     [SerializeField] private List<WorldQuestDefinition> questDefinitions = new List<WorldQuestDefinition>(4);
@@ -17,15 +25,27 @@ public class WorldQuestController : MonoBehaviour
     [Header("Rules")]
     [SerializeField] private int maxActiveQuests = 5;
     [SerializeField] private float completionPopupDelay = 0.65f;
+    [SerializeField] private float immediateRewardGrantDelay = 1f;
+
+    [Header("Confirm Popup Texts")]
+    [SerializeField] private string abandonMessage = "정말 이 퀘스트를 포기하시겠습니까?\n진행도는 초기화되며 다시 받을 수 없습니다.";
+    [SerializeField] private string abandonConfirmLabel = "퀘스트 포기";
+    [SerializeField] private string confirmCloseLabel = "닫기";
+
+    [SerializeField] private string unclaimedRewardMessage = "수령하지 않은 보상이 있습니다.\n정말 무시하고 닫으시겠습니까?";
+    [SerializeField] private string ignoreRewardConfirmLabel = "무시하고 닫기";
 
     private readonly Dictionary<int, WorldQuestState> generatedQuestByTileId = new Dictionary<int, WorldQuestState>();
     private readonly HashSet<int> blockedQuestTileIds = new HashSet<int>();
     private readonly List<WorldQuestState> activeAcceptedQuests = new List<WorldQuestState>();
+    private readonly List<WorldQuestState> visibleQuestBuffer = new List<WorldQuestState>();
+    private readonly HashSet<WorldQuestState> delayedImmediateRewardScheduled = new HashSet<WorldQuestState>();
 
     private WorldQuestState currentPopupQuest;
     private WorldQuestPopupMode currentPopupMode = WorldQuestPopupMode.None;
 
-    private WorldQuestState pendingAbandonQuest;
+    private WorldQuestState pendingConfirmQuest;
+    private ConfirmPopupMode pendingConfirmMode = ConfirmPopupMode.None;
 
     public IReadOnlyList<WorldQuestState> ActiveAcceptedQuests => activeAcceptedQuests;
     public bool IsPopupOpen => (questPopupUI != null && questPopupUI.IsOpen) || (abandonConfirmPopupUI != null && abandonConfirmPopupUI.IsOpen);
@@ -50,22 +70,76 @@ public class WorldQuestController : MonoBehaviour
         RefreshQuestListUI();
     }
 
+    private void RequestAutoSaveAll()
+    {
+        saveCoordinator?.SaveAll();
+    }
+
     public IReadOnlyList<WorldQuestState> GetVisibleQuestList()
     {
-        return activeAcceptedQuests;
+        visibleQuestBuffer.Clear();
+
+        for (int i = 0; i < activeAcceptedQuests.Count; i++)
+        {
+            WorldQuestState quest = activeAcceptedQuests[i];
+            if (quest == null)
+                continue;
+            if (quest.isCancelled)
+                continue;
+            if (quest.isCompleted)
+                continue;
+            if (!quest.isAccepted)
+                continue;
+
+            visibleQuestBuffer.Add(quest);
+        }
+
+        return visibleQuestBuffer;
     }
 
     public bool HasReachedQuestLimit()
     {
         int count = 0;
+
         for (int i = 0; i < activeAcceptedQuests.Count; i++)
         {
             WorldQuestState q = activeAcceptedQuests[i];
-            if (q != null && !q.isCancelled && !q.completionPopupClosed)
-                count++;
+            if (q == null)
+                continue;
+            if (q.isCancelled)
+                continue;
+            if (!q.isAccepted)
+                continue;
+            if (q.isCompleted)
+                continue;
+
+            count++;
         }
 
         return count >= maxActiveQuests;
+    }
+
+    public bool IsActiveCaptureTargetTile(int tileId)
+    {
+        if (tileId < 0)
+            return false;
+
+        for (int i = 0; i < activeAcceptedQuests.Count; i++)
+        {
+            WorldQuestState quest = activeAcceptedQuests[i];
+            if (quest == null || !quest.isAccepted || quest.isCancelled || quest.isCompleted)
+                continue;
+            if (quest.definition == null)
+                continue;
+
+            if (quest.definition.questType == WorldQuestType.CaptureSpecificTile &&
+                quest.assignedTargetTileId == tileId)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public bool TryOpenQuestOfferFromTile(WorldTileData sourceTile)
@@ -164,14 +238,16 @@ public class WorldQuestController : MonoBehaviour
         if (quest.isCompleted)
         {
             currentPopupMode = WorldQuestPopupMode.Completed;
-            EnsureSoulGranted(quest);
 
             if (questPopupUI != null)
                 questPopupUI.ShowCompleted(quest);
+
+            ScheduleImmediateRewardsForQuest(quest);
         }
         else
         {
             currentPopupMode = WorldQuestPopupMode.Active;
+
             if (questPopupUI != null)
                 questPopupUI.ShowActive(quest);
         }
@@ -182,7 +258,12 @@ public class WorldQuestController : MonoBehaviour
         if (currentPopupQuest == null)
             return;
 
-        OpenAbandonConfirm(currentPopupQuest);
+        OpenConfirmPopup(
+            currentPopupQuest,
+            ConfirmPopupMode.AbandonQuest,
+            abandonMessage,
+            abandonConfirmLabel,
+            confirmCloseLabel);
     }
 
     public void CancelQuestFromList(WorldQuestState quest)
@@ -190,7 +271,12 @@ public class WorldQuestController : MonoBehaviour
         if (quest == null || !quest.isAccepted || quest.isCompleted)
             return;
 
-        OpenAbandonConfirm(quest);
+        OpenConfirmPopup(
+            quest,
+            ConfirmPopupMode.AbandonQuest,
+            abandonMessage,
+            abandonConfirmLabel,
+            confirmCloseLabel);
     }
 
     public void ConfirmQuestAbandon(WorldQuestState quest)
@@ -207,6 +293,7 @@ public class WorldQuestController : MonoBehaviour
 
         blockedQuestTileIds.Add(quest.sourceTileId);
         activeAcceptedQuests.Remove(quest);
+        delayedImmediateRewardScheduled.Remove(quest);
 
         if (currentPopupQuest == quest && currentPopupMode == WorldQuestPopupMode.Active)
             HidePopupOnly();
@@ -217,7 +304,8 @@ public class WorldQuestController : MonoBehaviour
 
     public void CloseQuestAbandonConfirmPopup()
     {
-        pendingAbandonQuest = null;
+        pendingConfirmQuest = null;
+        pendingConfirmMode = ConfirmPopupMode.None;
 
         if (abandonConfirmPopupUI != null)
             abandonConfirmPopupUI.Hide();
@@ -226,7 +314,24 @@ public class WorldQuestController : MonoBehaviour
     public void CloseCurrentPopup()
     {
         if (currentPopupQuest != null && currentPopupMode == WorldQuestPopupMode.Completed)
-            currentPopupQuest.completionPopupClosed = true;
+        {
+            if (currentPopupQuest.HasAnyUnclaimedItemRewards())
+            {
+                OpenConfirmPopup(
+                    currentPopupQuest,
+                    ConfirmPopupMode.IgnoreUnclaimedRewardsAndClose,
+                    unclaimedRewardMessage,
+                    ignoreRewardConfirmLabel,
+                    confirmCloseLabel);
+                return;
+            }
+
+            FinalizeCompletedQuestClose(currentPopupQuest);
+            HidePopupOnly();
+            RefreshQuestListUI();
+            TryShowQueuedCompletionPopup();
+            return;
+        }
 
         HidePopupOnly();
         RefreshQuestListUI();
@@ -268,7 +373,6 @@ public class WorldQuestController : MonoBehaviour
             WorldQuestState quest = activeAcceptedQuests[i];
             if (quest == null || quest.isCompleted || quest.isCancelled || !quest.isAccepted)
                 continue;
-
             if (quest.definition == null)
                 continue;
 
@@ -325,19 +429,17 @@ public class WorldQuestController : MonoBehaviour
             WorldQuestState quest = activeAcceptedQuests[i];
             if (quest == null)
                 continue;
-
             if (!quest.isCompleted || quest.completionPopupClosed || quest.completionPopupShown)
                 continue;
 
             quest.completionPopupShown = true;
-            EnsureSoulGranted(quest);
-
             currentPopupQuest = quest;
             currentPopupMode = WorldQuestPopupMode.Completed;
 
             if (questPopupUI != null)
                 questPopupUI.ShowCompleted(quest);
 
+            ScheduleImmediateRewardsForQuest(quest);
             RefreshQuestListUI();
             return;
         }
@@ -347,10 +449,8 @@ public class WorldQuestController : MonoBehaviour
     {
         if (quest == null || !quest.isCompleted)
             return;
-
         if (!quest.CanClaimItemAt(rewardIndex))
             return;
-
         if (quest.definition == null || quest.definition.itemRewards == null || rewardIndex < 0 || rewardIndex >= quest.definition.itemRewards.Count)
             return;
 
@@ -372,26 +472,111 @@ public class WorldQuestController : MonoBehaviour
         if (currentPopupQuest == null || !currentPopupQuest.isCompleted)
             return;
 
-        if (currentPopupQuest.definition == null || currentPopupQuest.definition.itemRewards == null)
-            return;
-
-        for (int i = 0; i < currentPopupQuest.definition.itemRewards.Count; i++)
+        if (currentPopupQuest.definition != null && currentPopupQuest.definition.itemRewards != null)
         {
-            if (!currentPopupQuest.CanClaimItemAt(i))
-                continue;
+            for (int i = 0; i < currentPopupQuest.definition.itemRewards.Count; i++)
+            {
+                if (!currentPopupQuest.CanClaimItemAt(i))
+                    continue;
 
-            WorldQuestRewardItemEntry reward = currentPopupQuest.definition.itemRewards[i];
-            if (reward == null || reward.item == null)
-                continue;
+                WorldQuestRewardItemEntry reward = currentPopupQuest.definition.itemRewards[i];
+                if (reward == null || reward.item == null)
+                    continue;
 
-            if (TryGrantItemReward(reward.item, Mathf.Max(1, reward.amount)))
-                currentPopupQuest.MarkItemClaimed(i);
+                if (TryGrantItemReward(reward.item, Mathf.Max(1, reward.amount)))
+                    currentPopupQuest.MarkItemClaimed(i);
+            }
         }
 
-        if (questPopupUI != null)
-            questPopupUI.ShowCompleted(currentPopupQuest);
+        FinalizeCompletedQuestClose(currentPopupQuest);
+        HidePopupOnly();
+        RefreshQuestListUI();
+        TryShowQueuedCompletionPopup();
     }
 
+    public void LoadFromSave(IReadOnlyList<WorldQuestSaveData> savedQuests)
+    {
+        generatedQuestByTileId.Clear();
+        blockedQuestTileIds.Clear();
+        activeAcceptedQuests.Clear();
+        visibleQuestBuffer.Clear();
+        delayedImmediateRewardScheduled.Clear();
+
+        currentPopupQuest = null;
+        currentPopupMode = WorldQuestPopupMode.None;
+        pendingConfirmQuest = null;
+        pendingConfirmMode = ConfirmPopupMode.None;
+
+        if (questPopupUI != null)
+            questPopupUI.Hide();
+
+        if (abandonConfirmPopupUI != null)
+            abandonConfirmPopupUI.Hide();
+
+        if (savedQuests == null)
+        {
+            RefreshQuestListUI();
+            return;
+        }
+
+        for (int i = 0; i < savedQuests.Count; i++)
+        {
+            WorldQuestSaveData save = savedQuests[i];
+            if (save == null)
+                continue;
+
+            WorldQuestDefinition def = FindQuestDefinitionById(save.questId);
+            if (def == null)
+                continue;
+
+            WorldQuestState quest = new WorldQuestState();
+            quest.Initialize(def, save.sourceTileId);
+
+            quest.assignedTargetTileId = save.assignedTargetTileId;
+            quest.currentProgress = save.currentProgress;
+            quest.targetProgress = Mathf.Max(1, save.targetProgress);
+            quest.isAccepted = save.isAccepted;
+            quest.isCancelled = save.isCancelled;
+            quest.isCompleted = save.isCompleted;
+            quest.completionPopupQueued = save.completionPopupQueued;
+            quest.completionPopupShown = save.completionPopupShown;
+            quest.completionPopupClosed = save.completionPopupClosed;
+            quest.soulGranted = save.soulGranted;
+            quest.experienceGranted = save.experienceGranted;
+
+            quest.itemClaimed.Clear();
+            if (save.itemClaimed != null)
+                quest.itemClaimed.AddRange(save.itemClaimed);
+
+            generatedQuestByTileId[quest.sourceTileId] = quest;
+
+            if (quest.isCancelled)
+            {
+                blockedQuestTileIds.Add(quest.sourceTileId);
+                continue;
+            }
+
+            if (quest.isAccepted || (quest.isCompleted && !quest.completionPopupClosed))
+                activeAcceptedQuests.Add(quest);
+        }
+
+        RefreshQuestListUI();
+    }
+
+    private WorldQuestDefinition FindQuestDefinitionById(string questId)
+    {
+        if (string.IsNullOrWhiteSpace(questId))
+            return null;
+
+        for (int i = 0; i < questDefinitions.Count; i++)
+        {
+            WorldQuestDefinition def = questDefinitions[i];
+            if (def != null && def.questId == questId)
+                return def;
+        }
+
+        return null;
+    }
     private void PostProgressRefresh()
     {
         RefreshQuestListUI();
@@ -424,15 +609,60 @@ public class WorldQuestController : MonoBehaviour
             questListPanelUI.Refresh();
     }
 
-    private void OpenAbandonConfirm(WorldQuestState quest)
+    private void OpenConfirmPopup(
+        WorldQuestState quest,
+        ConfirmPopupMode mode,
+        string message,
+        string confirmLabel,
+        string closeLabel)
     {
         if (quest == null)
             return;
 
-        pendingAbandonQuest = quest;
+        pendingConfirmQuest = quest;
+        pendingConfirmMode = mode;
 
         if (abandonConfirmPopupUI != null)
-            abandonConfirmPopupUI.Show(quest);
+        {
+            abandonConfirmPopupUI.Show(
+                message,
+                confirmLabel,
+                closeLabel,
+                HandleConfirmPopupConfirmed,
+                HandleConfirmPopupCancelled);
+        }
+    }
+
+    private void HandleConfirmPopupConfirmed()
+    {
+        WorldQuestState quest = pendingConfirmQuest;
+        ConfirmPopupMode mode = pendingConfirmMode;
+
+        pendingConfirmQuest = null;
+        pendingConfirmMode = ConfirmPopupMode.None;
+
+        switch (mode)
+        {
+            case ConfirmPopupMode.AbandonQuest:
+                ConfirmQuestAbandon(quest);
+                break;
+
+            case ConfirmPopupMode.IgnoreUnclaimedRewardsAndClose:
+                if (quest != null)
+                {
+                    FinalizeCompletedQuestClose(quest);
+                    HidePopupOnly();
+                    RefreshQuestListUI();
+                    TryShowQueuedCompletionPopup();
+                }
+                break;
+        }
+    }
+
+    private void HandleConfirmPopupCancelled()
+    {
+        pendingConfirmQuest = null;
+        pendingConfirmMode = ConfirmPopupMode.None;
     }
 
     private void HidePopupOnly()
@@ -444,16 +674,64 @@ public class WorldQuestController : MonoBehaviour
             questPopupUI.Hide();
     }
 
-    private void EnsureSoulGranted(WorldQuestState quest)
+    private void FinalizeCompletedQuestClose(WorldQuestState quest)
     {
-        if (quest == null || quest.soulGranted || quest.definition == null)
+        if (quest == null)
             return;
 
-        int soul = Mathf.Max(0, quest.definition.soulReward);
-        if (soul > 0)
-            TryGrantSoulReward(soul);
+        quest.completionPopupClosed = true;
+        activeAcceptedQuests.Remove(quest);
+        delayedImmediateRewardScheduled.Remove(quest);
+    }
 
-        quest.soulGranted = true;
+    private void ScheduleImmediateRewardsForQuest(WorldQuestState quest)
+    {
+        if (quest == null || quest.definition == null)
+            return;
+
+        bool hasImmediateRewards =
+            (!quest.soulGranted && quest.definition.soulReward > 0) ||
+            (!quest.experienceGranted && quest.definition.experienceReward > 0);
+
+        if (!hasImmediateRewards)
+            return;
+
+        if (delayedImmediateRewardScheduled.Contains(quest))
+            return;
+
+        delayedImmediateRewardScheduled.Add(quest);
+        StartCoroutine(GrantImmediateRewardsAfterDelay(quest));
+    }
+
+    private IEnumerator GrantImmediateRewardsAfterDelay(WorldQuestState quest)
+    {
+        yield return new WaitForSeconds(immediateRewardGrantDelay);
+
+        delayedImmediateRewardScheduled.Remove(quest);
+
+        if (quest == null || quest.definition == null || quest.isCancelled)
+            yield break;
+
+        if (!quest.soulGranted)
+        {
+            int soul = Mathf.Max(0, quest.definition.soulReward);
+            if (soul > 0)
+                TryGrantSoulReward(soul);
+
+            quest.soulGranted = true;
+        }
+
+        if (!quest.experienceGranted)
+        {
+            int exp = Mathf.Max(0, quest.definition.experienceReward);
+            if (exp > 0)
+                TryGrantPartyExperienceReward(exp);
+
+            quest.experienceGranted = true;
+        }
+
+        if (questPopupUI != null && quest == currentPopupQuest && currentPopupMode == WorldQuestPopupMode.Completed)
+            questPopupUI.ShowCompleted(quest);
     }
 
     private WorldQuestDefinition PickQuestDefinition(WorldTileData sourceTile, WorldMapData mapData)
@@ -526,13 +804,10 @@ public class WorldQuestController : MonoBehaviour
             WorldTileData tile = tiles[i];
             if (tile == null)
                 continue;
-
             if (tile.tileId == sourceTileId)
                 continue;
-
             if (tile.isPlayerStart)
                 continue;
-
             if (tile.currentOwner == FactionType.Player)
                 continue;
 
@@ -573,6 +848,38 @@ public class WorldQuestController : MonoBehaviour
         }
 
         Debug.Log($"[WorldQuestController] Soul reward granted (fallback log only): {amount}");
+        return false;
+    }
+
+    private bool TryGrantPartyExperienceReward(int amount)
+    {
+        if (runManager == null || amount <= 0)
+            return false;
+
+        string[] methodNames =
+        {
+            "AddPartyExperienceToAllMembers",
+            "GrantPartyExperienceReward",
+            "AddPartyExperienceReward",
+            "GainPartyExperience",
+            "AddPartyExp"
+        };
+
+        for (int i = 0; i < methodNames.Length; i++)
+        {
+            MethodInfo method = runManager.GetType().GetMethod(methodNames[i], BindingFlags.Public | BindingFlags.Instance);
+            if (method == null)
+                continue;
+
+            ParameterInfo[] parameters = method.GetParameters();
+            if (parameters.Length == 1 && parameters[0].ParameterType == typeof(int))
+            {
+                method.Invoke(runManager, new object[] { amount });
+                return true;
+            }
+        }
+
+        Debug.LogWarning($"[WorldQuestController] Party EXP reward method not found on WorldRunManager. Reward amount={amount}");
         return false;
     }
 

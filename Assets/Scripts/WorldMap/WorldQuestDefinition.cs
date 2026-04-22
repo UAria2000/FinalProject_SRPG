@@ -17,5 +17,6 @@ public class WorldQuestDefinition
 
     [Header("Rewards")]
     [Min(0)] public int soulReward = 0;
+    [Min(0)] public int experienceReward = 0;
     public List<WorldQuestRewardItemEntry> itemRewards = new List<WorldQuestRewardItemEntry>(4);
 }

@@ -7,6 +7,7 @@ public class PersistentProfileController : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private WorldRunManager worldRunManager;
+    [SerializeField] private SaveCoordinator saveCoordinator;
 
     [Header("Persistent Profile")]
     [SerializeField] private PersistentProfileState persistentProfile = new PersistentProfileState();
@@ -20,49 +21,62 @@ public class PersistentProfileController : MonoBehaviour
     public PersistentProfileState Profile => persistentProfile;
     public float PromotionBonusPercentPerRank => promotionBonusPercentPerRank;
 
+    private bool isInitializing;
+
     private void Awake()
     {
         if (worldRunManager == null)
             worldRunManager = GetComponent<WorldRunManager>() ?? UnityEngine.Object.FindFirstObjectByType<WorldRunManager>();
+
+        if (saveCoordinator == null)
+            saveCoordinator = UnityEngine.Object.FindFirstObjectByType<SaveCoordinator>();
 
         EnsureInitialized();
     }
 
     public void EnsureInitialized()
     {
-        persistentProfile.EnsureDefaults();
-
-        if (worldRunManager == null)
+        if (isInitializing)
             return;
 
-        BattlePartyRuntimeState runtime = worldRunManager.GetOrCreatePlayerPartyRuntimeState();
-        if (runtime == null || runtime.members == null)
-            return;
-
-        if (persistentProfile.rosterUnits.Count == 0)
+        isInitializing = true;
+        try
         {
-            for (int i = 0; i < runtime.members.Count; i++)
+            persistentProfile.EnsureDefaults();
+
+            if (worldRunManager == null)
+                return;
+
+            BattlePartyRuntimeState runtime = worldRunManager.GetOrCreatePlayerPartyRuntimeState();
+            if (runtime == null || runtime.members == null)
+                return;
+
+            if (persistentProfile.rosterUnits.Count == 0)
             {
-                PartyMemberData member = runtime.members[i];
-                if (member == null || member.unitDefinition == null)
-                    continue;
+                for (int i = 0; i < runtime.members.Count; i++)
+                {
+                    PartyMemberData member = runtime.members[i];
+                    if (member == null || member.unitDefinition == null)
+                        continue;
 
-                EnsureMemberInstanceId(member);
+                    EnsureMemberInstanceId(member);
 
-                if (member.unitDefinition.isMainPlayerCharacter)
-                    continue;
+                    PersistentRosterUnitData rosterUnit = PersistentRosterUnitData.CreateFromPartyMember(
+                        member,
+                        false,
+                        persistentProfile.ConsumeObtainedOrder());
 
-                PersistentRosterUnitData rosterUnit = PersistentRosterUnitData.CreateFromPartyMember(
-                    member,
-                    false,
-                    persistentProfile.ConsumeObtainedOrder());
-
-                persistentProfile.rosterUnits.Add(rosterUnit);
+                    persistentProfile.rosterUnits.Add(rosterUnit);
+                }
+            }
+            else
+            {
+                SyncRosterFromActivePartyRuntime();
             }
         }
-        else
+        finally
         {
-            SyncRosterFromActivePartyRuntime();
+            isInitializing = false;
         }
     }
 
@@ -79,6 +93,14 @@ public class PersistentProfileController : MonoBehaviour
             return null;
 
         EnsureInitialized();
+        return FindRosterUnitInternal(instanceId);
+    }
+
+    private PersistentRosterUnitData FindRosterUnitInternal(string instanceId)
+    {
+        if (string.IsNullOrWhiteSpace(instanceId))
+            return null;
+
         for (int i = 0; i < persistentProfile.rosterUnits.Count; i++)
         {
             PersistentRosterUnitData unit = persistentProfile.rosterUnits[i];
@@ -330,6 +352,9 @@ public class PersistentProfileController : MonoBehaviour
         if (unit == null)
             return false;
 
+        if (unit.unitDefinition != null && unit.unitDefinition.isMainPlayerCharacter)
+            return false;
+
         if (unit.isFavorite)
             return false;
 
@@ -413,14 +438,63 @@ public class PersistentProfileController : MonoBehaviour
         if (unit.obtainedOrder <= 0)
             unit.obtainedOrder = persistentProfile.ConsumeObtainedOrder();
 
-        if (FindRosterUnit(unit.instanceId) == null)
+        if (FindRosterUnitInternal(unit.instanceId) == null)
             persistentProfile.rosterUnits.Add(unit);
 
         RaiseProfileChanged();
     }
 
+    public void RebuildActivePartyFromSavedIds(IReadOnlyList<string> savedInstanceIds)
+    {
+        EnsureInitialized();
+        if (worldRunManager == null)
+            return;
+
+        BattlePartyRuntimeState runtime = worldRunManager.GetOrCreatePlayerPartyRuntimeState();
+        if (runtime == null)
+            return;
+
+        List<PartyMemberData> rebuilt = new List<PartyMemberData>();
+
+        if (savedInstanceIds != null)
+        {
+            for (int i = 0; i < savedInstanceIds.Count && rebuilt.Count < 4; i++)
+            {
+                string instanceId = savedInstanceIds[i];
+                if (string.IsNullOrWhiteSpace(instanceId))
+                    continue;
+
+                PersistentRosterUnitData rosterUnit = FindRosterUnitInternal(instanceId);
+                if (rosterUnit == null)
+                    continue;
+
+                if (FindPartyMemberIndexByInstanceId(rebuilt, rosterUnit.instanceId) >= 0)
+                    continue;
+
+                rebuilt.Add(rosterUnit.CreateRuntimePartyMember(rebuilt.Count, promotionBonusPercentPerRank));
+            }
+        }
+
+        if (rebuilt.Count <= 0)
+        {
+            List<PartyMemberData> fallback = GetOrderedPartyMembers();
+            for (int i = 0; i < fallback.Count && rebuilt.Count < 4; i++)
+            {
+                PartyMemberData member = fallback[i];
+                if (member != null)
+                    rebuilt.Add(member.CloneRuntime());
+            }
+        }
+
+        NormalizePartySlots(rebuilt);
+        runtime.members = rebuilt;
+    }
+
     private void SyncRosterFromActivePartyRuntime()
     {
+        if (isInitializing)
+            return;
+
         if (worldRunManager == null)
             return;
 
@@ -431,15 +505,18 @@ public class PersistentProfileController : MonoBehaviour
         for (int i = 0; i < runtime.members.Count; i++)
         {
             PartyMemberData member = runtime.members[i];
-            if (member == null || member.unitDefinition == null || member.unitDefinition.isMainPlayerCharacter)
+            if (member == null || member.unitDefinition == null)
                 continue;
 
             EnsureMemberInstanceId(member);
 
-            PersistentRosterUnitData rosterUnit = FindRosterUnit(member.instanceId);
+            PersistentRosterUnitData rosterUnit = FindRosterUnitInternal(member.instanceId);
             if (rosterUnit == null)
             {
-                rosterUnit = PersistentRosterUnitData.CreateFromPartyMember(member, false, persistentProfile.ConsumeObtainedOrder());
+                rosterUnit = PersistentRosterUnitData.CreateFromPartyMember(
+                    member,
+                    false,
+                    persistentProfile.ConsumeObtainedOrder());
                 persistentProfile.rosterUnits.Add(rosterUnit);
             }
             else
@@ -590,5 +667,6 @@ public class PersistentProfileController : MonoBehaviour
     private void RaiseProfileChanged()
     {
         OnProfileChanged?.Invoke();
+        saveCoordinator?.SaveProfile();
     }
 }

@@ -22,7 +22,10 @@ public class WorldQuestState
     public bool completionPopupQueued = false;
     public bool completionPopupShown = false;
     public bool completionPopupClosed = false;
+
+    // 즉시 지급 보상
     public bool soulGranted = false;
+    public bool experienceGranted = false;
 
     public List<bool> itemClaimed = new List<bool>();
 
@@ -40,6 +43,7 @@ public class WorldQuestState
         completionPopupShown = false;
         completionPopupClosed = false;
         soulGranted = false;
+        experienceGranted = false;
 
         itemClaimed.Clear();
         int rewardCount = questDefinition != null && questDefinition.itemRewards != null
@@ -62,8 +66,8 @@ public class WorldQuestState
 
             case WorldQuestType.CaptureSpecificTile:
                 return isCompleted
-                    ? "지정 지역 점령하기 (완료)"
-                    : "지정 지역 점령하기";
+                    ? "지정지역 점령하기 (완료)"
+                    : "지정지역 점령하기";
 
             case WorldQuestType.WinEliteBattle:
                 return $"정예 전투 {targetProgress}회 승리 ({currentProgress}/{targetProgress})";
@@ -73,6 +77,23 @@ public class WorldQuestState
 
             default:
                 return definition.displayName;
+        }
+    }
+
+    public string GetListProgressTextRich()
+    {
+        if (definition == null)
+            return string.Empty;
+
+        switch (definition.questType)
+        {
+            case WorldQuestType.CaptureSpecificTile:
+                return isCompleted
+                    ? "<color=#FF4B4B>지정지역</color> 점령하기 (완료)"
+                    : "<color=#FF4B4B>지정지역</color> 점령하기";
+
+            default:
+                return GetProgressText();
         }
     }
 
@@ -141,5 +162,19 @@ public class WorldQuestState
         }
 
         return true;
+    }
+
+    public bool HasAnyUnclaimedItemRewards()
+    {
+        if (definition == null || definition.itemRewards == null || definition.itemRewards.Count == 0)
+            return false;
+
+        for (int i = 0; i < itemClaimed.Count; i++)
+        {
+            if (!itemClaimed[i])
+                return true;
+        }
+
+        return false;
     }
 }
