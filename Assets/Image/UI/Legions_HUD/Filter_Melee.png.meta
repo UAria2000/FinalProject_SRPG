@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: a4649eadaf78c514bb57552138a9b8a1
+guid: 64480ce560829264e807acfb68e3c1c7
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -7576570194631093863
-    second: HUD_DarkTop_0
+      213: -3880150595549302218
+    second: Filter_Melee_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -46,7 +46,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -96,30 +96,17 @@ TextureImporter:
     ignorePlatformSupport: 0
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
-  - serializedVersion: 4
-    buildTarget: Android
-    maxTextureSize: 2048
-    resizeAlgorithm: 0
-    textureFormat: -1
-    textureCompression: 1
-    compressionQuality: 50
-    crunchedCompression: 0
-    allowsAlphaSplitting: 0
-    overridden: 0
-    ignorePlatformSupport: 0
-    androidETC2FallbackOverride: 0
-    forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: HUD_DarkTop_0
+      name: Filter_Melee_0
       rect:
         serializedVersion: 2
         x: 0
-        y: 815
-        width: 2560
-        height: 625
+        y: 0
+        width: 76
+        height: 30
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +115,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 9919335ec8d9ad690800000000000000
-      internalID: -7576570194631093863
+      spriteID: 632734d579fe62ac0800000000000000
+      internalID: -3880150595549302218
       vertices: []
       indices: 
       edges: []
@@ -138,7 +125,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 5e97eb03825dee720800000000000000
+    spriteID: 
     internalID: 0
     vertices: []
     indices: 
@@ -148,7 +135,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      HUD_DarkTop_0: -7576570194631093863
+      Filter_Melee_0: -3880150595549302218
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
