@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public static class BarracksFormula
+public static class LegionFormula
 {
     public static int GetExpToNextLevel(int currentLevel)
     {
@@ -47,29 +47,6 @@ public static class BarracksFormula
         return Mathf.FloorToInt(GetTotalInvestedPromotionShards(currentRank) * 0.5f);
     }
 
-    public static ClassShardType ResolveClassShardType(UnitDefinition unitDefinition)
-    {
-        CharacterRangeType rangeType = unitDefinition != null ? unitDefinition.rangeType : CharacterRangeType.Melee;
-        switch (rangeType)
-        {
-            case CharacterRangeType.Melee: return ClassShardType.Melee;
-            case CharacterRangeType.Mid: return ClassShardType.Mid;
-            case CharacterRangeType.Ranged: return ClassShardType.Ranged;
-            default: return ClassShardType.Melee;
-        }
-    }
-
-    public static string GetClassShardTypeLabel(ClassShardType type)
-    {
-        switch (type)
-        {
-            case ClassShardType.Melee: return "근거리 파편";
-            case ClassShardType.Mid: return "중거리 파편";
-            case ClassShardType.Ranged: return "원거리 파편";
-            default: return "클래스 파편";
-        }
-    }
-
     public static float GetPromotionMultiplier(int rank, float promotionPercentPerRank)
     {
         return 1f + Mathf.Max(0, rank) * Mathf.Max(0f, promotionPercentPerRank) * 0.01f;
@@ -80,11 +57,13 @@ public static class BarracksFormula
         if (unit == null)
             return "-";
 
-        return string.Format("{0}({1})", unit.currentLevel, unit.originalLevel);
+        return $"{unit.currentLevel}({unit.originalLevel})";
     }
+
+    public static string GetPromotionShardLabel() => "승급 파편";
 }
 
-public struct BarracksEquipmentBonusSummary
+public struct LegionEquipmentBonusSummary
 {
     public int maxHp;
     public int dmg;
