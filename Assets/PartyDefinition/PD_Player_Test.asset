@@ -22,6 +22,8 @@ MonoBehaviour:
     fixedEpitaph: 
     currentLevel: 1
     originalLevel: 1
+    promotionRank: 0
+    promotionBonusPercentPerRank: 1
     statVariance:
       maxHpDelta: 5
       dmgDelta: 1
@@ -46,6 +48,8 @@ MonoBehaviour:
     fixedEpitaph: 
     currentLevel: 1
     originalLevel: 1
+    promotionRank: 0
+    promotionBonusPercentPerRank: 1
     statVariance:
       maxHpDelta: 0
       dmgDelta: 0
@@ -71,6 +75,8 @@ MonoBehaviour:
     fixedEpitaph: 
     currentLevel: 1
     originalLevel: 1
+    promotionRank: 0
+    promotionBonusPercentPerRank: 1
     statVariance:
       maxHpDelta: 0
       dmgDelta: 0
@@ -84,6 +90,8 @@ MonoBehaviour:
       stunResistDelta: 0
     learnedSkills:
     - {fileID: 11400000, guid: df2c88b97964f4742b88c58d6bcc44d0, type: 2}
+    - {fileID: 11400000, guid: 6bb52dca9f386cd42a22372990628cf9, type: 2}
+    - {fileID: 11400000, guid: 6bb52dca9f386cd42a22372990628cf9, type: 2}
     - {fileID: 11400000, guid: 6bb52dca9f386cd42a22372990628cf9, type: 2}
     battleLootDrops: []
     persistentCurrentHP: 100
