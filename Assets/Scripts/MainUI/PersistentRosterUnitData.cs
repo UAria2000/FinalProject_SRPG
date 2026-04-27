@@ -17,13 +17,19 @@ public class PersistentRosterUnitData
     public bool isExchangeable;
     public bool isFavorite;
 
+    [Header("Legion Instance")]
+    [Tooltip("true면 UnitDefinition의 NFT 기본값과 무관하게 NFT/교환 가능 유닛으로 표시된다.")]
+    public bool isNft;
+    [Tooltip("구버전 저장 데이터 호환용. 현재 방패 랭크는 promotionRank와 동일하며 이 값은 사용하지 않는다.")]
+    [Range(0, 9)] public int unitRankOverride = 0;
+
     [Header("Level / EXP")]
     public int currentLevel = 1;
     public int originalLevel = 1;
     public int currentExp = 0;
 
     [Header("Promotion")]
-    [Min(0)] public int promotionRank = 0;
+    [Range(1, 9)] public int promotionRank = 1;
 
     [Header("Stats")]
     public UnitInstanceStatVariance statVariance = new UnitInstanceStatVariance();
@@ -61,7 +67,7 @@ public class PersistentRosterUnitData
         unitViewDefinition = member.unitViewDefinition;
         currentLevel = Mathf.Max(1, member.currentLevel);
         originalLevel = Mathf.Max(1, member.originalLevel);
-        promotionRank = Mathf.Max(0, member.promotionRank);
+        promotionRank = LegionFormula.ClampLegionRank(member.promotionRank);
         statVariance = member.statVariance != null ? member.statVariance.CloneRuntime() : new UnitInstanceStatVariance();
         learnedSkills = member.learnedSkills != null ? new List<SkillDefinition>(member.learnedSkills) : new List<SkillDefinition>();
         battleLootDrops = member.battleLootDrops != null ? new List<ItemDropDefinition>(member.battleLootDrops) : new List<ItemDropDefinition>();
@@ -83,7 +89,7 @@ public class PersistentRosterUnitData
         runtime.fixedEpitaph = fixedEpitaph;
         runtime.currentLevel = Mathf.Max(1, currentLevel);
         runtime.originalLevel = Mathf.Max(1, originalLevel);
-        runtime.promotionRank = Mathf.Max(0, promotionRank);
+        runtime.promotionRank = LegionFormula.ClampLegionRank(promotionRank);
         runtime.promotionBonusPercentPerRank = Mathf.Max(0f, promotionBonusPercentPerRank);
         runtime.statVariance = statVariance != null ? statVariance.CloneRuntime() : new UnitInstanceStatVariance();
         runtime.learnedSkills = learnedSkills != null ? new List<SkillDefinition>(learnedSkills) : new List<SkillDefinition>();
@@ -100,6 +106,22 @@ public class PersistentRosterUnitData
         return unitDefinition != null ? unitDefinition.unitName : "Unit";
     }
 
+    public int GetLegionRank()
+    {
+        // 방패 랭크는 승급 랭크와 동일하다.
+        return LegionFormula.ClampLegionRank(promotionRank);
+    }
+
+    public bool IsNftUnit()
+    {
+        return isNft || isExchangeable || (unitDefinition != null && unitDefinition.isNftUnit);
+    }
+
+    public bool CanDefinitionBeDecomposed()
+    {
+        return unitDefinition == null || unitDefinition.canBeDecomposed;
+    }
+
     public void EnsureDefaults()
     {
         if (string.IsNullOrWhiteSpace(instanceId))
@@ -107,7 +129,11 @@ public class PersistentRosterUnitData
 
         currentLevel = Mathf.Max(1, currentLevel);
         originalLevel = Mathf.Max(1, originalLevel);
-        promotionRank = Mathf.Max(0, promotionRank);
+        promotionRank = LegionFormula.ClampLegionRank(promotionRank);
+        unitRankOverride = Mathf.Clamp(unitRankOverride, 0, 9);
+
+        if (unitDefinition != null && unitDefinition.isNftUnit)
+            isNft = true;
 
         if (statVariance == null)
             statVariance = new UnitInstanceStatVariance();

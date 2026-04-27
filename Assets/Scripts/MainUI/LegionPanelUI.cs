@@ -1,14 +1,61 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 
 public enum LegionSortKey
 {
+    None,
     Obtained,
     Name,
     Level,
+    Rank,
+    NFT,
+}
+
+public enum LegionSortDirection
+{
+    None,
+    Descending,
+    Ascending,
+}
+
+[System.Serializable]
+public class LegionButtonVisualState
+{
+    public Button button;
+    public Image image;
+    public Sprite offSprite;
+    public Sprite onSprite;
+    public GameObject offRoot;
+    public GameObject onRoot;
+
+    public void Bind(UnityAction action)
+    {
+        if (button == null || action == null)
+            return;
+
+        button.onClick.RemoveAllListeners();
+        button.onClick.AddListener(action);
+    }
+
+    public void SetOn(bool on)
+    {
+        if (image != null)
+        {
+            Sprite target = on ? onSprite : offSprite;
+            if (target != null)
+                image.sprite = target;
+        }
+
+        if (onRoot != null)
+            onRoot.SetActive(on);
+        if (offRoot != null)
+            offRoot.SetActive(!on);
+    }
 }
 
 public class LegionPanelUI : MainUIPanelBase
@@ -20,6 +67,7 @@ public class LegionPanelUI : MainUIPanelBase
     [SerializeField] private LegionDetailPanelUI detailPanelUI;
     [SerializeField] private LegionRenamePopupUI renamePopupUI;
     [SerializeField] private LegionDecomposeConfirmPopupUI decomposeConfirmPopupUI;
+    [SerializeField] private WorldTopHudUI topHudUI;
 
     [Header("Grid")]
     [SerializeField] private RectTransform rosterGridRoot;
@@ -36,12 +84,42 @@ public class LegionPanelUI : MainUIPanelBase
     [SerializeField] private TMP_Text multiSelectButtonText;
     [SerializeField] private Button decomposeButton;
 
+    [Header("Top Currency Override (Optional)")]
+    [Tooltip("WorldTopHudUI를 쓰지 않고 레기온 패널 안에 직접 표시할 때 연결한다.")]
+    [SerializeField] private TMP_Text topSoulText;
+    [SerializeField] private TMP_Text topShardText;
+    [SerializeField] private TMP_Text topSoulGainText;
+    [SerializeField] private TMP_Text topShardGainText;
+    [SerializeField] private CanvasGroup topSoulGainCanvasGroup;
+    [SerializeField] private CanvasGroup topShardGainCanvasGroup;
+    [SerializeField] private float topGainFadeDuration = 1.15f;
+    [SerializeField] private Color gainTextColor = new Color(0.35f, 1f, 0.35f, 1f);
+
+    [Header("Sort Button Visuals")]
+    [SerializeField] private LegionButtonVisualState sortObtainedButton;
+    [SerializeField] private LegionButtonVisualState sortNameButton;
+    [SerializeField] private LegionButtonVisualState sortLevelButton;
+    [SerializeField] private LegionButtonVisualState sortRankButton;
+    [SerializeField] private LegionButtonVisualState sortNftButton;
+
+    [Header("Filter Button Visuals")]
+    [SerializeField] private LegionButtonVisualState filterNftButton;
+    [SerializeField] private LegionButtonVisualState filterFavoriteButton;
+    [SerializeField] private LegionButtonVisualState filterMeleeButton;
+    [SerializeField] private LegionButtonVisualState filterMidButton;
+    [SerializeField] private LegionButtonVisualState filterRangedButton;
+
     [Header("State")]
-    [SerializeField] private LegionSortKey sortKey = LegionSortKey.Obtained;
-    [SerializeField] private bool sortAscending;
-    [SerializeField] private bool filterExchangeableOnly;
+    [SerializeField] private LegionSortKey sortKey = LegionSortKey.None;
+    [SerializeField] private LegionSortDirection sortDirection = LegionSortDirection.None;
+    [SerializeField] private bool sortAscending; // legacy inspector compatibility
+    [SerializeField] private bool filterExchangeableOnly; // legacy inspector field. NFT 필터와 동일하게 처리.
+    [SerializeField] private bool filterNftOnly;
     [SerializeField] private bool filterFavoriteOnly;
-    [SerializeField] private CharacterRangeType? filterRange;
+    [SerializeField] private bool filterMeleeOnly;
+    [SerializeField] private bool filterMidOnly;
+    [SerializeField] private bool filterRangedOnly;
+    [SerializeField] private CharacterRangeType? filterRange; // legacy compatibility only
 
     private readonly List<LegionUnitCardUI> runtimeCards = new();
     private readonly HashSet<string> decomposeSelectedIds = new();
@@ -49,6 +127,8 @@ public class LegionPanelUI : MainUIPanelBase
     private int pageIndex;
     private PersistentRosterUnitData selectedUnit;
     private bool decomposeSelectionMode;
+    private Coroutine localSoulGainFadeRoutine;
+    private Coroutine localShardGainFadeRoutine;
 
     public PersistentProfileController ProfileController => persistentProfileController;
     public WorldRunManager RuntimeWorldRunManager => worldRunManager;
@@ -59,13 +139,27 @@ public class LegionPanelUI : MainUIPanelBase
         base.Awake();
 
         if (persistentProfileController == null)
-            persistentProfileController = UnityEngine.Object.FindFirstObjectByType<PersistentProfileController>();
+            persistentProfileController = Object.FindFirstObjectByType<PersistentProfileController>();
+        if (topHudUI == null)
+            topHudUI = Object.FindFirstObjectByType<WorldTopHudUI>();
 
         EnsureRuntimeCards();
         BindButton(prevButton, PrevPage);
         BindButton(nextButton, NextPage);
         BindButton(multiSelectButton, ToggleMultiSelectMode);
         BindButton(decomposeButton, HandleDecomposeButtonClicked);
+
+        sortObtainedButton?.Bind(ToggleSortObtained);
+        sortNameButton?.Bind(ToggleSortName);
+        sortLevelButton?.Bind(ToggleSortLevel);
+        sortRankButton?.Bind(ToggleSortRank);
+        sortNftButton?.Bind(ToggleSortNFT);
+
+        filterNftButton?.Bind(ToggleFilterNft);
+        filterFavoriteButton?.Bind(ToggleFilterFavorite);
+        filterMeleeButton?.Bind(SetFilterMelee);
+        filterMidButton?.Bind(SetFilterMid);
+        filterRangedButton?.Bind(SetFilterRanged);
     }
 
     private void Start()
@@ -82,6 +176,9 @@ public class LegionPanelUI : MainUIPanelBase
         if (worldRunManager != null)
             worldRunManager.OnStorageChanged += RefreshAll;
 
+        if (topHudUI != null)
+            topHudUI.SetLegionShardVisible(true);
+
         RefreshAll();
     }
 
@@ -92,6 +189,9 @@ public class LegionPanelUI : MainUIPanelBase
         if (worldRunManager != null)
             worldRunManager.OnStorageChanged -= RefreshAll;
 
+        if (topHudUI != null)
+            topHudUI.SetLegionShardVisible(false);
+
         decomposeSelectionMode = false;
         decomposeSelectedIds.Clear();
     }
@@ -99,6 +199,8 @@ public class LegionPanelUI : MainUIPanelBase
     public void RefreshAll()
     {
         EnsureRuntimeCards();
+        NormalizeLegacyFilterState();
+        SyncLegacySortState();
 
         List<PersistentRosterUnitData> filtered = BuildFilteredUnits();
         int totalPages = Mathf.Max(1, Mathf.CeilToInt(filtered.Count / (float)UnitsPerPage));
@@ -133,6 +235,8 @@ public class LegionPanelUI : MainUIPanelBase
             detailPanelUI.Bind(this, persistentProfileController, selectedUnit);
 
         RefreshBottomActionUI();
+        RefreshTopCurrencyUI();
+        RefreshSortFilterVisuals();
     }
 
     private void RefreshBottomActionUI()
@@ -142,17 +246,30 @@ public class LegionPanelUI : MainUIPanelBase
 
         int soulGain = 0;
         int shardGain = 0;
+        List<PersistentRosterUnitData> selectedUnits = GetSelectedUnitsForDecompose();
         if (persistentProfileController != null)
-            persistentProfileController.GetDecomposePreview(GetSelectedUnitsForDecompose(), out soulGain, out shardGain);
+            persistentProfileController.GetDecomposePreview(selectedUnits, out soulGain, out shardGain);
 
         if (decomposeCountText != null)
-            decomposeCountText.text = $"{decomposeSelectedIds.Count}분해시 획득";
+            decomposeCountText.text = $"{selectedUnits.Count}분해시 획득";
         if (decomposeShardPreviewText != null)
             decomposeShardPreviewText.text = $"x {shardGain:N0}";
         if (decomposeSoulPreviewText != null)
             decomposeSoulPreviewText.text = $"x {soulGain:N0}";
         if (decomposeButton != null)
-            decomposeButton.interactable = decomposeSelectionMode && decomposeSelectedIds.Count > 0;
+            decomposeButton.interactable = decomposeSelectionMode && selectedUnits.Count > 0;
+    }
+
+    private void RefreshTopCurrencyUI()
+    {
+        if (topSoulText != null)
+            topSoulText.text = worldRunManager != null ? worldRunManager.PersistentSoul.ToString("N0") : "0";
+
+        if (topShardText != null)
+            topShardText.text = persistentProfileController != null ? persistentProfileController.GetUnitShardCount().ToString("N0") : "0";
+
+        if (topHudUI != null)
+            topHudUI.Refresh();
     }
 
     public bool TryGetPromotionBonusPercentPerRank(out float percent)
@@ -247,32 +364,51 @@ public class LegionPanelUI : MainUIPanelBase
         {
             decomposeConfirmPopupUI.Show(
                 "분해 확인",
-                $"선택한 {selectedUnits.Count}개의 유닛을 분해하시겠습니까?\n획득 예정: 승급 파편 {shardGain:N0}, 소울 {soulGain:N0}",
-                () =>
-                {
-                    persistentProfileController.TryBatchDecompose(selectedUnits);
-                    decomposeSelectedIds.Clear();
-                    decomposeSelectionMode = false;
-                    selectedUnit = null;
-                    RefreshAll();
-                });
+                $"선택한 {selectedUnits.Count}개의 유닛을 분해하시겠습니까?\n획득 예정: 유닛 파편 {shardGain:N0}, 소울 {soulGain:N0}",
+                () => ExecuteConfirmedDecompose(selectedUnits, soulGain, shardGain));
         }
         else
         {
-            persistentProfileController.TryBatchDecompose(selectedUnits);
-            decomposeSelectedIds.Clear();
-            decomposeSelectionMode = false;
-            selectedUnit = null;
-            RefreshAll();
+            ExecuteConfirmedDecompose(selectedUnits, soulGain, shardGain);
         }
     }
 
+    private void ExecuteConfirmedDecompose(IReadOnlyList<PersistentRosterUnitData> selectedUnits, int soulGain, int shardGain)
+    {
+        if (persistentProfileController == null || selectedUnits == null || selectedUnits.Count <= 0)
+            return;
+
+        bool changed = persistentProfileController.TryBatchDecompose(selectedUnits);
+        if (changed)
+            ShowCurrencyGainFeedback(soulGain, shardGain);
+
+        decomposeSelectedIds.Clear();
+        decomposeSelectionMode = false;
+        selectedUnit = null;
+        RefreshAll();
+    }
+
+    public void ToggleSortObtained() => ToggleSort(LegionSortKey.Obtained);
     public void ToggleSortName() => ToggleSort(LegionSortKey.Name);
     public void ToggleSortLevel() => ToggleSort(LegionSortKey.Level);
+    public void ToggleSortRank() => ToggleSort(LegionSortKey.Rank);
+    public void ToggleSortNFT() => ToggleSort(LegionSortKey.NFT);
+
+    public void SetSortNewest() => SetSortObtainedNewest();
 
     public void SetSortObtainedNewest()
     {
         sortKey = LegionSortKey.Obtained;
+        sortDirection = LegionSortDirection.Descending;
+        sortAscending = false;
+        pageIndex = 0;
+        RefreshAll();
+    }
+
+    public void ClearSort()
+    {
+        sortKey = LegionSortKey.None;
+        sortDirection = LegionSortDirection.None;
         sortAscending = false;
         pageIndex = 0;
         RefreshAll();
@@ -280,7 +416,21 @@ public class LegionPanelUI : MainUIPanelBase
 
     public void ToggleFilterExchangeable()
     {
-        filterExchangeableOnly = !filterExchangeableOnly;
+        ToggleFilterNft();
+    }
+
+    public void ToggleFilterNft()
+    {
+        filterNftOnly = !filterNftOnly;
+        filterExchangeableOnly = filterNftOnly;
+        pageIndex = 0;
+        RefreshAll();
+    }
+
+    public void SetFilterNFTOnly()
+    {
+        filterNftOnly = true;
+        filterExchangeableOnly = true;
         pageIndex = 0;
         RefreshAll();
     }
@@ -294,6 +444,9 @@ public class LegionPanelUI : MainUIPanelBase
 
     public void SetFilterAllRange()
     {
+        filterMeleeOnly = false;
+        filterMidOnly = false;
+        filterRangedOnly = false;
         filterRange = null;
         pageIndex = 0;
         RefreshAll();
@@ -301,35 +454,46 @@ public class LegionPanelUI : MainUIPanelBase
 
     public void SetFilterMelee()
     {
-        filterRange = filterRange == CharacterRangeType.Melee ? (CharacterRangeType?)null : CharacterRangeType.Melee;
+        filterMeleeOnly = !filterMeleeOnly;
+        filterRange = null;
         pageIndex = 0;
         RefreshAll();
     }
 
     public void SetFilterMid()
     {
-        filterRange = filterRange == CharacterRangeType.Mid ? (CharacterRangeType?)null : CharacterRangeType.Mid;
+        filterMidOnly = !filterMidOnly;
+        filterRange = null;
         pageIndex = 0;
         RefreshAll();
     }
 
     public void SetFilterRanged()
     {
-        filterRange = filterRange == CharacterRangeType.Ranged ? (CharacterRangeType?)null : CharacterRangeType.Ranged;
+        filterRangedOnly = !filterRangedOnly;
+        filterRange = null;
         pageIndex = 0;
         RefreshAll();
     }
 
     private void ToggleSort(LegionSortKey key)
     {
-        if (sortKey == key)
-            sortAscending = !sortAscending;
-        else
+        if (sortKey != key)
         {
             sortKey = key;
-            sortAscending = true;
+            sortDirection = LegionSortDirection.Descending;
+        }
+        else if (sortDirection == LegionSortDirection.Descending)
+        {
+            sortDirection = LegionSortDirection.Ascending;
+        }
+        else
+        {
+            sortKey = LegionSortKey.None;
+            sortDirection = LegionSortDirection.None;
         }
 
+        sortAscending = sortDirection == LegionSortDirection.Ascending;
         pageIndex = 0;
         RefreshAll();
     }
@@ -401,25 +565,72 @@ public class LegionPanelUI : MainUIPanelBase
             : new List<PersistentRosterUnitData>();
 
         units = units.Where(PassesFilter).ToList();
+        ApplySort(units);
+        return units;
+    }
+
+    private void ApplySort(List<PersistentRosterUnitData> units)
+    {
+        if (units == null)
+            return;
+
+        bool asc = sortDirection == LegionSortDirection.Ascending;
+        bool hasSort = sortKey != LegionSortKey.None && sortDirection != LegionSortDirection.None;
+
+        if (!hasSort)
+        {
+            units.Sort((a, b) =>
+            {
+                int priority = GetLegionSortPriority(b).CompareTo(GetLegionSortPriority(a));
+                if (priority != 0)
+                    return priority;
+                return b.obtainedOrder.CompareTo(a.obtainedOrder);
+            });
+            return;
+        }
 
         switch (sortKey)
         {
+            case LegionSortKey.Obtained:
+                units.Sort((a, b) => asc ? a.obtainedOrder.CompareTo(b.obtainedOrder) : b.obtainedOrder.CompareTo(a.obtainedOrder));
+                break;
             case LegionSortKey.Name:
-                units = sortAscending
-                    ? units.OrderBy(u => u.GetDisplayName()).ThenByDescending(u => u.obtainedOrder).ToList()
-                    : units.OrderByDescending(u => u.GetDisplayName()).ThenByDescending(u => u.obtainedOrder).ToList();
+                units.Sort((a, b) =>
+                {
+                    int cmp = string.Compare(a.GetDisplayName(), b.GetDisplayName(), System.StringComparison.CurrentCulture);
+                    if (!asc) cmp = -cmp;
+                    return cmp != 0 ? cmp : b.obtainedOrder.CompareTo(a.obtainedOrder);
+                });
                 break;
             case LegionSortKey.Level:
-                units = sortAscending
-                    ? units.OrderBy(u => u.currentLevel).ThenByDescending(u => u.obtainedOrder).ToList()
-                    : units.OrderByDescending(u => u.currentLevel).ThenByDescending(u => u.obtainedOrder).ToList();
+                units.Sort((a, b) =>
+                {
+                    int cmp = a.currentLevel.CompareTo(b.currentLevel);
+                    if (!asc) cmp = -cmp;
+                    return cmp != 0 ? cmp : b.obtainedOrder.CompareTo(a.obtainedOrder);
+                });
                 break;
-            default:
-                units = units.OrderByDescending(u => u.obtainedOrder).ToList();
+            case LegionSortKey.Rank:
+                units.Sort((a, b) =>
+                {
+                    int cmp = a.GetLegionRank().CompareTo(b.GetLegionRank());
+                    if (!asc) cmp = -cmp;
+                    if (cmp != 0) return cmp;
+                    int priority = GetLegionSortPriority(b).CompareTo(GetLegionSortPriority(a));
+                    return priority != 0 ? priority : b.obtainedOrder.CompareTo(a.obtainedOrder);
+                });
+                break;
+            case LegionSortKey.NFT:
+                units.Sort((a, b) =>
+                {
+                    int cmp = a.IsNftUnit().CompareTo(b.IsNftUnit());
+                    if (!asc) cmp = -cmp;
+                    if (cmp != 0) return cmp;
+                    int priority = GetLegionSortPriority(b).CompareTo(GetLegionSortPriority(a));
+                    return priority != 0 ? priority : b.obtainedOrder.CompareTo(a.obtainedOrder);
+                });
                 break;
         }
-
-        return units;
     }
 
     private bool PassesFilter(PersistentRosterUnitData unit)
@@ -427,20 +638,142 @@ public class LegionPanelUI : MainUIPanelBase
         if (unit == null)
             return false;
 
-        if (filterExchangeableOnly && !unit.isExchangeable)
+        if (unit.unitDefinition != null && !unit.unitDefinition.showInLegion)
+            return false;
+
+        bool nftFilterActive = filterExchangeableOnly || filterNftOnly;
+        bool anyFilterActive = nftFilterActive
+                            || filterFavoriteOnly
+                            || filterMeleeOnly
+                            || filterMidOnly
+                            || filterRangedOnly;
+
+        // 필터가 하나도 켜져 있지 않으면 모든 레기온 표시 유닛을 보여준다.
+        if (!anyFilterActive)
+            return true;
+
+        // 필터끼리는 AND 조건이다.
+        // 예: NFT + 즐겨찾기 + 근거리 필터가 켜져 있으면
+        //     NFT이면서, 즐겨찾기이면서, 근거리인 유닛만 표시한다.
+        if (nftFilterActive && !unit.IsNftUnit())
             return false;
 
         if (filterFavoriteOnly && !unit.isFavorite)
             return false;
 
-        if (filterRange.HasValue)
-        {
-            CharacterRangeType range = unit.unitDefinition != null ? unit.unitDefinition.rangeType : CharacterRangeType.Melee;
-            if (range != filterRange.Value)
-                return false;
-        }
+        CharacterRangeType range = unit.unitDefinition != null ? unit.unitDefinition.rangeType : CharacterRangeType.Melee;
+        if (filterMeleeOnly && range != CharacterRangeType.Melee)
+            return false;
+        if (filterMidOnly && range != CharacterRangeType.Mid)
+            return false;
+        if (filterRangedOnly && range != CharacterRangeType.Ranged)
+            return false;
 
         return true;
+    }
+
+    private void NormalizeLegacyFilterState()
+    {
+        if (filterExchangeableOnly && !filterNftOnly)
+            filterNftOnly = true;
+
+        if (filterRange.HasValue)
+        {
+            filterMeleeOnly |= filterRange.Value == CharacterRangeType.Melee;
+            filterMidOnly |= filterRange.Value == CharacterRangeType.Mid;
+            filterRangedOnly |= filterRange.Value == CharacterRangeType.Ranged;
+            filterRange = null;
+        }
+    }
+
+    private void SyncLegacySortState()
+    {
+        if (sortKey == LegionSortKey.None)
+        {
+            sortDirection = LegionSortDirection.None;
+            sortAscending = false;
+            return;
+        }
+
+        if (sortDirection == LegionSortDirection.None)
+            sortDirection = sortAscending ? LegionSortDirection.Ascending : LegionSortDirection.Descending;
+
+        sortAscending = sortDirection == LegionSortDirection.Ascending;
+    }
+
+    private void RefreshSortFilterVisuals()
+    {
+        bool hasSort = sortKey != LegionSortKey.None && sortDirection != LegionSortDirection.None;
+        sortObtainedButton?.SetOn(hasSort && sortKey == LegionSortKey.Obtained);
+        sortNameButton?.SetOn(hasSort && sortKey == LegionSortKey.Name);
+        sortLevelButton?.SetOn(hasSort && sortKey == LegionSortKey.Level);
+        sortRankButton?.SetOn(hasSort && sortKey == LegionSortKey.Rank);
+        sortNftButton?.SetOn(hasSort && sortKey == LegionSortKey.NFT);
+
+        filterNftButton?.SetOn(filterExchangeableOnly || filterNftOnly);
+        filterFavoriteButton?.SetOn(filterFavoriteOnly);
+        filterMeleeButton?.SetOn(filterMeleeOnly);
+        filterMidButton?.SetOn(filterMidOnly);
+        filterRangedButton?.SetOn(filterRangedOnly);
+    }
+
+    private void ShowCurrencyGainFeedback(int soulGain, int shardGain)
+    {
+        if (topHudUI != null)
+            topHudUI.ShowTemporaryGain(soulGain, shardGain);
+
+        if (soulGain > 0 && topSoulGainText != null)
+        {
+            if (localSoulGainFadeRoutine != null)
+                StopCoroutine(localSoulGainFadeRoutine);
+            localSoulGainFadeRoutine = StartCoroutine(FadeLocalGainText(topSoulGainText, topSoulGainCanvasGroup, soulGain));
+        }
+
+        if (shardGain > 0 && topShardGainText != null)
+        {
+            if (localShardGainFadeRoutine != null)
+                StopCoroutine(localShardGainFadeRoutine);
+            localShardGainFadeRoutine = StartCoroutine(FadeLocalGainText(topShardGainText, topShardGainCanvasGroup, shardGain));
+        }
+    }
+
+    private IEnumerator FadeLocalGainText(TMP_Text text, CanvasGroup group, int amount)
+    {
+        if (text == null)
+            yield break;
+
+        text.text = $"(+{amount:N0})";
+        text.color = gainTextColor;
+        text.gameObject.SetActive(true);
+
+        if (group != null)
+            group.alpha = 1f;
+
+        float duration = Mathf.Max(0.05f, topGainFadeDuration);
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float alpha = Mathf.Lerp(1f, 0f, elapsed / duration);
+            if (group != null)
+                group.alpha = alpha;
+            else
+            {
+                Color c = text.color;
+                c.a = alpha;
+                text.color = c;
+            }
+            yield return null;
+        }
+
+        if (group != null)
+            group.alpha = 0f;
+        text.gameObject.SetActive(false);
+    }
+
+    private static int GetLegionSortPriority(PersistentRosterUnitData unit)
+    {
+        return unit != null && unit.unitDefinition != null ? unit.unitDefinition.legionSortPriority : 0;
     }
 
     private List<PersistentRosterUnitData> GetSelectedUnitsForDecompose()
@@ -460,7 +793,7 @@ public class LegionPanelUI : MainUIPanelBase
         return result;
     }
 
-    private static void BindButton(Button button, UnityEngine.Events.UnityAction action)
+    private static void BindButton(Button button, UnityAction action)
     {
         if (button == null)
             return;

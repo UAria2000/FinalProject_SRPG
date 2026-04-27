@@ -1,7 +1,7 @@
 using System;
-using System.Collections.Generic;
 using UnityEngine;
 
+[Obsolete("클래스별/스킬별 샤드는 폐기되었습니다. 모든 호출은 공용 유닛 파편으로 처리됩니다.")]
 public enum ClassShardType
 {
     Melee,
@@ -10,6 +10,7 @@ public enum ClassShardType
 }
 
 [Serializable]
+[Obsolete("클래스별/스킬별 샤드는 폐기되었습니다. 저장/신규 로직에서 사용하지 않습니다.")]
 public class ClassShardAmountData
 {
     public ClassShardType shardType = ClassShardType.Melee;
@@ -20,77 +21,80 @@ public class ClassShardAmountData
 public class PersistentAccountCurrencyState
 {
     public int cashCurrency = 0;
-    public List<ClassShardAmountData> classShards = new List<ClassShardAmountData>();
 
-    public int GetShardCount(ClassShardType type)
+    [Header("Common Legion Currency")]
+    [Tooltip("전 유닛 공통 승급/분해 파편. 기존 클래스별/스킬별 샤드는 더 이상 사용하지 않는다.")]
+    public int unitShardCurrency = 0;
+
+    public int GetCommonShardCount()
     {
         EnsureDefaults();
-        for (int i = 0; i < classShards.Count; i++)
-        {
-            if (classShards[i] != null && classShards[i].shardType == type)
-                return Mathf.Max(0, classShards[i].amount);
-        }
-
-        return 0;
+        return Mathf.Max(0, unitShardCurrency);
     }
 
-    public void AddShards(ClassShardType type, int amount)
+    public void SetCommonShardCount(int amount)
+    {
+        unitShardCurrency = Mathf.Max(0, amount);
+    }
+
+    public void AddCommonShards(int amount)
     {
         if (amount == 0)
             return;
 
-        EnsureDefaults();
-        ClassShardAmountData entry = GetOrCreateEntry(type);
-        entry.amount = Mathf.Max(0, entry.amount + amount);
+        unitShardCurrency = Mathf.Max(0, unitShardCurrency + amount);
     }
 
-    public bool TrySpendShards(ClassShardType type, int amount)
+    public bool TrySpendCommonShards(int amount)
     {
         int clamped = Mathf.Max(0, amount);
         if (clamped <= 0)
             return true;
 
         EnsureDefaults();
-        ClassShardAmountData entry = GetOrCreateEntry(type);
-        if (entry.amount < clamped)
+        if (unitShardCurrency < clamped)
             return false;
 
-        entry.amount -= clamped;
+        unitShardCurrency -= clamped;
         return true;
+    }
+
+    public int GetShardCount(ClassShardType type)
+    {
+        // 신규 정책: 파편은 전 유닛 공통이다. type은 호환용으로만 남긴다.
+        return GetCommonShardCount();
+    }
+
+    public void AddShards(ClassShardType type, int amount)
+    {
+        // 신규 정책: 파편은 전 유닛 공통이다. type은 호환용으로만 남긴다.
+        AddCommonShards(amount);
+    }
+
+    public bool TrySpendShards(ClassShardType type, int amount)
+    {
+        // 신규 정책: 파편은 전 유닛 공통이다. type은 호환용으로만 남긴다.
+        return TrySpendCommonShards(amount);
+    }
+
+    public int GetLegacyClassShardCount(ClassShardType type)
+    {
+        return 0;
+    }
+
+    public int GetLegacyClassShardTotal()
+    {
+        return 0;
+    }
+
+    public void ClearLegacyClassShards()
+    {
+        // 클래스별/스킬별 샤드는 폐기. 저장 데이터 이관도 하지 않는다.
     }
 
     public void EnsureDefaults()
     {
-        if (classShards == null)
-            classShards = new List<ClassShardAmountData>();
-
-        EnsureEntry(ClassShardType.Melee);
-        EnsureEntry(ClassShardType.Mid);
-        EnsureEntry(ClassShardType.Ranged);
-    }
-
-    private void EnsureEntry(ClassShardType type)
-    {
-        for (int i = 0; i < classShards.Count; i++)
-        {
-            if (classShards[i] != null && classShards[i].shardType == type)
-                return;
-        }
-
-        classShards.Add(new ClassShardAmountData { shardType = type, amount = 0 });
-    }
-
-    private ClassShardAmountData GetOrCreateEntry(ClassShardType type)
-    {
-        EnsureEntry(type);
-        for (int i = 0; i < classShards.Count; i++)
-        {
-            if (classShards[i] != null && classShards[i].shardType == type)
-                return classShards[i];
-        }
-
-        ClassShardAmountData fallback = new ClassShardAmountData { shardType = type, amount = 0 };
-        classShards.Add(fallback);
-        return fallback;
+        cashCurrency = Mathf.Max(0, cashCurrency);
+        unitShardCurrency = Mathf.Max(0, unitShardCurrency);
     }
 }

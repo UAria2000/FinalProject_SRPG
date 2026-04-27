@@ -12,7 +12,10 @@ public class PersistentProfileController : MonoBehaviour
     [Header("Persistent Profile")]
     [SerializeField] private PersistentProfileState persistentProfile = new PersistentProfileState();
 
-    [Header("Promotion")]
+    [Header("Level / Promotion")]
+    [Min(1)]
+    [SerializeField] private int defaultLevelCap = 999;
+
     [Range(0f, 20f)]
     [SerializeField] private float promotionBonusPercentPerRank = 1f;
 
@@ -143,7 +146,7 @@ public class PersistentProfileController : MonoBehaviour
     public int GetMainCharacterLevelCap()
     {
         if (worldRunManager == null)
-            return 1;
+            return Mathf.Max(1, defaultLevelCap);
 
         BattlePartyRuntimeState runtime = worldRunManager.GetOrCreatePlayerPartyRuntimeState();
         if (runtime != null && runtime.members != null)
@@ -156,7 +159,7 @@ public class PersistentProfileController : MonoBehaviour
             }
         }
 
-        return 1;
+        return Mathf.Max(1, defaultLevelCap);
     }
 
     public bool TryAssignRosterUnitToPartyAuto(PersistentRosterUnitData unit)
@@ -330,13 +333,14 @@ public class PersistentProfileController : MonoBehaviour
 
     public int GetPromotionShardCount()
     {
+        return GetUnitShardCount();
+    }
+
+    public int GetUnitShardCount()
+    {
         EnsureInitialized();
         persistentProfile.accountCurrencies.EnsureDefaults();
-        int total = 0;
-        total += persistentProfile.accountCurrencies.GetShardCount(ClassShardType.Melee);
-        total += persistentProfile.accountCurrencies.GetShardCount(ClassShardType.Mid);
-        total += persistentProfile.accountCurrencies.GetShardCount(ClassShardType.Ranged);
-        return total;
+        return persistentProfile.accountCurrencies.GetCommonShardCount();
     }
 
     public bool CanPromote(PersistentRosterUnitData unit, out int requiredShards)
@@ -345,7 +349,14 @@ public class PersistentProfileController : MonoBehaviour
         if (unit == null)
             return false;
 
+        unit.EnsureDefaults();
+        if (LegionFormula.IsMaxPromotionRank(unit.promotionRank))
+            return false;
+
         requiredShards = LegionFormula.GetPromotionCost(unit.promotionRank);
+        if (requiredShards <= 0)
+            return false;
+
         return GetPromotionShardCount() >= requiredShards;
     }
 
@@ -361,7 +372,7 @@ public class PersistentProfileController : MonoBehaviour
         if (!TrySpendPromotionShards(requiredShards))
             return false;
 
-        unit.promotionRank = Mathf.Max(0, unit.promotionRank) + 1;
+        unit.promotionRank = LegionFormula.ClampLegionRank(unit.promotionRank + 1);
         ApplyRosterUnitToActivePartyIfPresent(unit);
         RaiseProfileChanged();
         return true;
@@ -369,24 +380,12 @@ public class PersistentProfileController : MonoBehaviour
 
     private bool TrySpendPromotionShards(int required)
     {
-        int remain = Mathf.Max(0, required);
-        if (remain <= 0)
+        int clamped = Mathf.Max(0, required);
+        if (clamped <= 0)
             return true;
 
-        ClassShardType[] spendOrder = { ClassShardType.Melee, ClassShardType.Mid, ClassShardType.Ranged };
-        for (int i = 0; i < spendOrder.Length && remain > 0; i++)
-        {
-            ClassShardType type = spendOrder[i];
-            int owned = persistentProfile.accountCurrencies.GetShardCount(type);
-            int spend = Mathf.Min(owned, remain);
-            if (spend > 0)
-            {
-                persistentProfile.accountCurrencies.TrySpendShards(type, spend);
-                remain -= spend;
-            }
-        }
-
-        return remain <= 0;
+        persistentProfile.accountCurrencies.EnsureDefaults();
+        return persistentProfile.accountCurrencies.TrySpendCommonShards(clamped);
     }
 
     public bool CanDecompose(PersistentRosterUnitData unit)
@@ -395,6 +394,9 @@ public class PersistentProfileController : MonoBehaviour
             return false;
 
         if (unit.unitDefinition != null && unit.unitDefinition.isMainPlayerCharacter)
+            return false;
+
+        if (!unit.CanDefinitionBeDecomposed())
             return false;
 
         if (unit.isFavorite)
@@ -412,14 +414,15 @@ public class PersistentProfileController : MonoBehaviour
         if (!CanDecompose(unit) || worldRunManager == null)
             return false;
 
-        int soulGain = Mathf.Max(0, unit.unitDefinition != null ? unit.unitDefinition.baseSoulReward : 0);
+        int soulGain = LegionFormula.GetDecomposeSoulReward(unit);
         if (soulGain > 0)
             worldRunManager.AddPersistentSoul(soulGain);
 
-        int shardGain = Mathf.Max(1, LegionFormula.GetDecomposeRefundPromotionShards(unit.promotionRank));
-        persistentProfile.accountCurrencies.AddShards(ClassShardType.Melee, shardGain);
+        int shardGain = LegionFormula.GetTotalDecomposeShardReward(unit);
+        if (shardGain > 0)
+            persistentProfile.accountCurrencies.AddCommonShards(shardGain);
 
-        persistentProfile.rosterUnits.Remove(unit);
+        RemoveRosterUnitByInstanceId(unit.instanceId);
         RaiseProfileChanged();
         return true;
     }
@@ -453,8 +456,8 @@ public class PersistentProfileController : MonoBehaviour
             if (unit == null || !CanDecompose(unit))
                 continue;
 
-            soulGain += Mathf.Max(0, unit.unitDefinition != null ? unit.unitDefinition.baseSoulReward : 0);
-            shardGain += Mathf.Max(1, LegionFormula.GetDecomposeRefundPromotionShards(unit.promotionRank));
+            soulGain += LegionFormula.GetDecomposeSoulReward(unit);
+            shardGain += LegionFormula.GetTotalDecomposeShardReward(unit);
         }
     }
 
@@ -498,16 +501,24 @@ public class PersistentProfileController : MonoBehaviour
 
     public void AddClassShard(ClassShardType type, int amount)
     {
-        EnsureInitialized();
-        persistentProfile.accountCurrencies.AddShards(type, amount);
-        RaiseProfileChanged();
+        // 신규 정책: 파편은 전 유닛 공통이다. 기존 호출부 호환을 위해 type은 무시한다.
+        AddPromotionShard(amount);
     }
 
     public void AddPromotionShard(int amount)
     {
         EnsureInitialized();
-        persistentProfile.accountCurrencies.AddShards(ClassShardType.Melee, amount);
+        persistentProfile.accountCurrencies.AddCommonShards(amount);
         RaiseProfileChanged();
+    }
+
+    public bool TrySpendPromotionShardForDebug(int amount)
+    {
+        EnsureInitialized();
+        bool spent = persistentProfile.accountCurrencies.TrySpendCommonShards(amount);
+        if (spent)
+            RaiseProfileChanged();
+        return spent;
     }
 
     public void AddRosterUnit(PersistentRosterUnitData unit)
@@ -572,6 +583,24 @@ public class PersistentProfileController : MonoBehaviour
         runtime.members = rebuilt;
     }
 
+    private bool RemoveRosterUnitByInstanceId(string instanceId)
+    {
+        if (string.IsNullOrWhiteSpace(instanceId) || persistentProfile.rosterUnits == null)
+            return false;
+
+        for (int i = persistentProfile.rosterUnits.Count - 1; i >= 0; i--)
+        {
+            PersistentRosterUnitData candidate = persistentProfile.rosterUnits[i];
+            if (candidate != null && candidate.instanceId == instanceId)
+            {
+                persistentProfile.rosterUnits.RemoveAt(i);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private void SyncRosterFromActivePartyRuntime()
     {
         if (isInitializing)
@@ -609,7 +638,8 @@ public class PersistentProfileController : MonoBehaviour
                 rosterUnit.unitViewDefinition = member.unitViewDefinition;
                 rosterUnit.currentLevel = Mathf.Max(1, member.currentLevel);
                 rosterUnit.originalLevel = Mathf.Max(1, member.originalLevel);
-                rosterUnit.promotionRank = Mathf.Max(0, member.promotionRank);
+                member.promotionRank = LegionFormula.ClampLegionRank(member.promotionRank);
+                rosterUnit.promotionRank = LegionFormula.ClampLegionRank(member.promotionRank);
                 rosterUnit.statVariance = member.statVariance != null ? member.statVariance.CloneRuntime() : new UnitInstanceStatVariance();
                 rosterUnit.learnedSkills = member.learnedSkills != null ? new List<SkillDefinition>(member.learnedSkills) : new List<SkillDefinition>();
                 rosterUnit.battleLootDrops = member.battleLootDrops != null ? new List<ItemDropDefinition>(member.battleLootDrops) : new List<ItemDropDefinition>();
@@ -744,6 +774,8 @@ public class PersistentProfileController : MonoBehaviour
 
         if (string.IsNullOrWhiteSpace(member.instanceId))
             member.instanceId = Guid.NewGuid().ToString("N");
+
+        member.promotionRank = LegionFormula.ClampLegionRank(member.promotionRank);
     }
 
     private void RaiseProfileChanged()

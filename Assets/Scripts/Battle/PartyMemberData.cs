@@ -22,7 +22,7 @@ public class PartyMemberData
     public int originalLevel = 1;
 
     [Header("Promotion")]
-    [Min(0)] public int promotionRank = 0;
+    [Range(1, 9)] public int promotionRank = 1;
     [Range(0f, 100f)] public float promotionBonusPercentPerRank = 1f;
 
     [Header("Fixed Runtime Data")]
@@ -49,7 +49,7 @@ public class PartyMemberData
         clone.fixedEpitaph = fixedEpitaph;
         clone.currentLevel = currentLevel;
         clone.originalLevel = originalLevel;
-        clone.promotionRank = promotionRank;
+        clone.promotionRank = Mathf.Clamp(promotionRank <= 0 ? 1 : promotionRank, 1, 9);
         clone.promotionBonusPercentPerRank = promotionBonusPercentPerRank;
         clone.statVariance = statVariance != null ? statVariance.CloneRuntime() : new UnitInstanceStatVariance();
         clone.learnedSkills = learnedSkills != null ? new List<SkillDefinition>(learnedSkills) : new List<SkillDefinition>();

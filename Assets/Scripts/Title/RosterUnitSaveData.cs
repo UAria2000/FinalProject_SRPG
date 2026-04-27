@@ -11,6 +11,8 @@ public class RosterUnitSaveData
     public bool isMainCharacter;
     public bool isExchangeable;
     public bool isFavorite;
+    public bool isNft;
+    public int unitRankOverride;
     public bool canDismantle = true;
 
     public string instanceDisplayNameOverride;
@@ -21,7 +23,7 @@ public class RosterUnitSaveData
     public int originalLevel = 1;
     public int currentExp = 0;
 
-    public int promotionRank = 0;
+    public int promotionRank = 1;
     public float promotionBonusPercentPerRank = 1f;
 
     public int persistentCurrentHP = -1;
@@ -43,14 +45,16 @@ public class RosterUnitSaveData
             isMainCharacter = unit.unitDefinition != null && unit.unitDefinition.isMainPlayerCharacter,
             isExchangeable = unit.isExchangeable,
             isFavorite = unit.isFavorite,
-            canDismantle = !(unit.unitDefinition != null && unit.unitDefinition.isMainPlayerCharacter),
+            isNft = unit.IsNftUnit(),
+            unitRankOverride = Mathf.Clamp(unit.unitRankOverride, 0, 9),
+            canDismantle = unit.CanDefinitionBeDecomposed() && !(unit.unitDefinition != null && unit.unitDefinition.isMainPlayerCharacter),
             instanceDisplayNameOverride = unit.instanceDisplayNameOverride,
             fixedEpitaph = unit.fixedEpitaph,
             obtainedOrder = unit.obtainedOrder,
             level = Mathf.Max(1, unit.currentLevel),
             originalLevel = Mathf.Max(1, unit.originalLevel),
             currentExp = Mathf.Max(0, unit.currentExp),
-            promotionRank = Mathf.Max(0, unit.promotionRank),
+            promotionRank = LegionFormula.ClampLegionRank(unit.promotionRank),
             promotionBonusPercentPerRank = Mathf.Max(0f, promotionPercentPerRank),
             persistentCurrentHP = unit.persistentCurrentHP,
             statVariance = StatVarianceSaveData.FromRuntime(unit.statVariance),

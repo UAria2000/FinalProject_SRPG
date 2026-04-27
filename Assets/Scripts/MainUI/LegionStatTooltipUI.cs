@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 public class LegionStatTooltipUI : MonoBehaviour
 {
@@ -12,13 +13,24 @@ public class LegionStatTooltipUI : MonoBehaviour
     [SerializeField] private TMP_Text equipmentValueText;
     [SerializeField] private Vector2 cursorOffset = new Vector2(20f, -20f);
 
+    [Header("Raycast / Flicker Guard")]
+    [SerializeField] private CanvasGroup canvasGroup;
+    [SerializeField] private bool disableChildGraphicRaycasts = true;
+
     private bool visible;
 
     private void Awake()
     {
         if (tooltipRect == null)
             tooltipRect = transform as RectTransform;
+
+        EnsureNonBlockingRaycast();
         Hide();
+    }
+
+    private void OnEnable()
+    {
+        EnsureNonBlockingRaycast();
     }
 
     private void Update()
@@ -37,6 +49,8 @@ public class LegionStatTooltipUI : MonoBehaviour
         if (baseValueText != null) baseValueText.text = baseValue;
         if (varianceValueText != null) varianceValueText.text = varianceValue;
         if (equipmentValueText != null) equipmentValueText.text = equipmentValue;
+
+        EnsureNonBlockingRaycast();
         visible = true;
         gameObject.SetActive(true);
     }
@@ -45,5 +59,27 @@ public class LegionStatTooltipUI : MonoBehaviour
     {
         visible = false;
         gameObject.SetActive(false);
+    }
+
+    private void EnsureNonBlockingRaycast()
+    {
+        if (canvasGroup == null)
+            canvasGroup = GetComponent<CanvasGroup>();
+
+        if (canvasGroup == null)
+            canvasGroup = gameObject.AddComponent<CanvasGroup>();
+
+        canvasGroup.blocksRaycasts = false;
+        canvasGroup.interactable = false;
+
+        if (!disableChildGraphicRaycasts)
+            return;
+
+        Graphic[] graphics = GetComponentsInChildren<Graphic>(true);
+        for (int i = 0; i < graphics.Length; i++)
+        {
+            if (graphics[i] != null)
+                graphics[i].raycastTarget = false;
+        }
     }
 }

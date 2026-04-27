@@ -136,7 +136,7 @@ public class LegionDetailPanelUI : MonoBehaviour
         RefreshRankImage();
 
         if (exchangeableBadge != null)
-            exchangeableBadge.SetActive(boundUnit.isExchangeable);
+            exchangeableBadge.SetActive(boundUnit.IsNftUnit());
         if (favoriteOnRoot != null)
             favoriteOnRoot.SetActive(boundUnit.isFavorite);
         if (favoriteOffRoot != null)
@@ -153,7 +153,7 @@ public class LegionDetailPanelUI : MonoBehaviour
         if (rankImage == null)
             return;
 
-        int rank = Mathf.Clamp(boundUnit != null ? boundUnit.promotionRank : 0, 0, 9);
+        int rank = boundUnit != null ? boundUnit.GetLegionRank() : 0;
 
         if (rank <= 0 || rankSprites == null || rankSprites.Length < rank || rankSprites[rank - 1] == null)
         {

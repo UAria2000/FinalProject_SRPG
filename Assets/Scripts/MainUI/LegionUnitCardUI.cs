@@ -9,6 +9,10 @@ public class LegionUnitCardUI : MonoBehaviour, IPointerClickHandler
     [Header("Roots")]
     [SerializeField] private GameObject contentRoot;
 
+    [Header("Input")]
+    [Tooltip("카드 전체 클릭을 받는 투명 버튼. 비워두면 이 오브젝트의 IPointerClickHandler가 예비 클릭 영역으로 동작한다.")]
+    [SerializeField] private Button cardClickButton;
+
     [Header("Frame")]
     [SerializeField] private Image frameImage;
     [SerializeField] private Image selectedGoldFrameImage;
@@ -58,6 +62,12 @@ public class LegionUnitCardUI : MonoBehaviour, IPointerClickHandler
 
     private void Awake()
     {
+        if (cardClickButton != null)
+        {
+            cardClickButton.onClick.RemoveAllListeners();
+            cardClickButton.onClick.AddListener(HandleCardClicked);
+        }
+
         if (favoriteButton != null)
         {
             favoriteButton.onClick.RemoveAllListeners();
@@ -87,6 +97,9 @@ public class LegionUnitCardUI : MonoBehaviour, IPointerClickHandler
 
         gameObject.SetActive(hasUnit);
 
+        if (cardClickButton != null)
+            cardClickButton.interactable = hasUnit;
+
         if (!hasUnit)
             return;
 
@@ -102,9 +115,17 @@ public class LegionUnitCardUI : MonoBehaviour, IPointerClickHandler
 
     public void OnPointerClick(PointerEventData eventData)
     {
+        if (cardClickButton != null)
+            return;
+
         if (eventData.button != PointerEventData.InputButton.Left)
             return;
 
+        HandleCardClicked();
+    }
+
+    private void HandleCardClicked()
+    {
         if (boundUnit == null || owner == null)
             return;
 
@@ -153,7 +174,7 @@ public class LegionUnitCardUI : MonoBehaviour, IPointerClickHandler
         if (rankImage == null)
             return;
 
-        int rank = Mathf.Clamp(boundUnit != null ? boundUnit.promotionRank : 0, 0, 9);
+        int rank = boundUnit != null ? boundUnit.GetLegionRank() : 0;
 
         if (rank <= 0 || rankSprites == null || rankSprites.Length < rank || rankSprites[rank - 1] == null)
         {
@@ -185,7 +206,7 @@ public class LegionUnitCardUI : MonoBehaviour, IPointerClickHandler
     private void RefreshBadges()
     {
         if (exchangeableBadge != null)
-            exchangeableBadge.SetActive(boundUnit != null && boundUnit.isExchangeable);
+            exchangeableBadge.SetActive(boundUnit != null && boundUnit.IsNftUnit());
     }
 
     private void RefreshRange()
@@ -248,6 +269,9 @@ public class LegionUnitCardUI : MonoBehaviour, IPointerClickHandler
     private bool IsForbiddenForDecompose(PersistentRosterUnitData unit)
     {
         if (unit == null)
+            return true;
+
+        if (!unit.CanDefinitionBeDecomposed())
             return true;
 
         if (unit.isFavorite)

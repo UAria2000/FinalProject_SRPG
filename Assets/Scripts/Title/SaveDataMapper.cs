@@ -33,9 +33,12 @@ public static class SaveDataMapper
 
         if (profile.accountCurrencies != null)
         {
-            save.currencies.meleeShard = profile.accountCurrencies.GetShardCount(ClassShardType.Melee);
-            save.currencies.midShard = profile.accountCurrencies.GetShardCount(ClassShardType.Mid);
-            save.currencies.rangedShard = profile.accountCurrencies.GetShardCount(ClassShardType.Ranged);
+            int commonShard = profile.accountCurrencies.GetCommonShardCount();
+            save.currencies.unitShard = commonShard;
+            // legacy fields are kept for backward-compatible inspection only.
+            save.currencies.meleeShard = 0;
+            save.currencies.midShard = 0;
+            save.currencies.rangedShard = 0;
             save.currencies.cash = profile.accountCurrencies.cashCurrency;
         }
 
@@ -226,9 +229,10 @@ public static class SaveDataMapper
         profile.accountCurrencies.EnsureDefaults();
         profile.accountCurrencies.cashCurrency = Mathf.Max(0, saveData.currencies.cash);
 
-        SetShard(profile.accountCurrencies, ClassShardType.Melee, saveData.currencies.meleeShard);
-        SetShard(profile.accountCurrencies, ClassShardType.Mid, saveData.currencies.midShard);
-        SetShard(profile.accountCurrencies, ClassShardType.Ranged, saveData.currencies.rangedShard);
+        int commonShard = Mathf.Max(0, saveData.currencies.unitShard);
+        // 클래스별/스킬별 샤드는 폐기되었으므로 legacy melee/mid/ranged 값은 이관하지 않는다.
+        profile.accountCurrencies.SetCommonShardCount(commonShard);
+        profile.accountCurrencies.ClearLegacyClassShards();
 
         if (saveData.rosterUnits != null)
         {
@@ -265,10 +269,12 @@ public static class SaveDataMapper
         runtime.unitViewDefinition = resolver.FindUnitViewDefinition(data.unitViewDefinitionName);
         runtime.isExchangeable = data.isExchangeable;
         runtime.isFavorite = data.isFavorite;
+        runtime.isNft = data.isNft || (unitDef != null && unitDef.isNftUnit);
+        runtime.unitRankOverride = Mathf.Clamp(data.unitRankOverride, 0, 9);
         runtime.currentLevel = Mathf.Max(1, data.level);
         runtime.originalLevel = Mathf.Max(1, data.originalLevel);
         runtime.currentExp = Mathf.Max(0, data.currentExp);
-        runtime.promotionRank = Mathf.Max(0, data.promotionRank);
+        runtime.promotionRank = LegionFormula.ClampLegionRank(data.promotionRank);
         runtime.statVariance = data.statVariance != null ? data.statVariance.ToRuntime() : new UnitInstanceStatVariance();
         runtime.persistentCurrentHP = data.persistentCurrentHP;
         runtime.learnedSkills = new List<SkillDefinition>();
@@ -310,10 +316,8 @@ public static class SaveDataMapper
 
     private static void SetShard(PersistentAccountCurrencyState currencies, ClassShardType type, int amount)
     {
-        int current = currencies.GetShardCount(type);
-        int delta = Mathf.Max(0, amount) - current;
-        if (delta != 0)
-            currencies.AddShards(type, delta);
+        // Legacy helper. New shard policy is common/shared, so type is ignored.
+        currencies.SetCommonShardCount(Mathf.Max(0, amount));
     }
 
     private static void SetPrivateInt(object target, string fieldName, int value)

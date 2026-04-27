@@ -12,6 +12,10 @@ public class LegionSkillTooltipUI : MonoBehaviour
     [SerializeField] private TMP_Text descriptionText;
     [SerializeField] private Vector2 cursorOffset = new Vector2(24f, -24f);
 
+    [Header("Raycast / Flicker Guard")]
+    [SerializeField] private CanvasGroup canvasGroup;
+    [SerializeField] private bool disableChildGraphicRaycasts = true;
+
     private bool visible;
 
     private void Awake()
@@ -19,7 +23,13 @@ public class LegionSkillTooltipUI : MonoBehaviour
         if (tooltipRect == null)
             tooltipRect = transform as RectTransform;
 
+        EnsureNonBlockingRaycast();
         Hide();
+    }
+
+    private void OnEnable()
+    {
+        EnsureNonBlockingRaycast();
     }
 
     private void Update()
@@ -52,11 +62,12 @@ public class LegionSkillTooltipUI : MonoBehaviour
             titleText.text = skill.skillName;
 
         if (levelText != null)
-            levelText.text = skill.isBasicAttack ? "∆Ú≈∏" : $"Lv.{Mathf.Max(1, skillLevel)}";
+            levelText.text = skill.isBasicAttack ? "ÌèâÌÉÄ" : $"Lv.{Mathf.Max(1, skillLevel)}";
 
         if (descriptionText != null)
             descriptionText.text = skill.description;
 
+        EnsureNonBlockingRaycast();
         visible = true;
         gameObject.SetActive(true);
     }
@@ -65,5 +76,29 @@ public class LegionSkillTooltipUI : MonoBehaviour
     {
         visible = false;
         gameObject.SetActive(false);
+    }
+
+    private void EnsureNonBlockingRaycast()
+    {
+        if (canvasGroup == null)
+            canvasGroup = GetComponent<CanvasGroup>();
+
+        if (canvasGroup == null)
+            canvasGroup = gameObject.AddComponent<CanvasGroup>();
+
+        canvasGroup.blocksRaycasts = false;
+        canvasGroup.interactable = false;
+
+        if (!disableChildGraphicRaycasts)
+            return;
+
+        Graphic[] graphics = GetComponentsInChildren<Graphic>(true);
+        for (int i = 0; i < graphics.Length; i++)
+        {
+            if (graphics[i] != null && graphics[i] != iconImage)
+                graphics[i].raycastTarget = false;
+            else if (graphics[i] == iconImage)
+                graphics[i].raycastTarget = false;
+        }
     }
 }

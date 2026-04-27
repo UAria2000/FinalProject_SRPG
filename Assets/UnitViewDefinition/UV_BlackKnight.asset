@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: UV_BlackKnight
   m_EditorClassIdentifier: Assembly-CSharp::UnitViewDefinition
   slotFaceSprite: {fileID: 21300000, guid: a5fda384104f6d7439a64ac897bd2b8e, type: 3}
-  bustPortraitSprite: {fileID: 0}
+  bustPortraitSprite: {fileID: 21300000, guid: b697c0d97611b1c458ad3838d7e85d01, type: 3}
   deadSlotFaceSprite: {fileID: 21300000, guid: faeb620fa62036a4ab169e5da91abc30, type: 3}
-  deadBustPortraitSprite: {fileID: 0}
+  deadBustPortraitSprite: {fileID: 21300000, guid: 1a64be75ded8da542a5f41b0294bcf00, type: 3}
   battleSprite: {fileID: 21300000, guid: b697c0d97611b1c458ad3838d7e85d01, type: 3}
   deadBattleSprite: {fileID: 21300000, guid: 1a64be75ded8da542a5f41b0294bcf00, type: 3}
   viewPrefab: {fileID: 5061461418041598090, guid: edca2cd44571b8f4c80b0dfce99d6e95, type: 3}

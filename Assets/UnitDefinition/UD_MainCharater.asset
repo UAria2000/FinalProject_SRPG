@@ -15,6 +15,10 @@ MonoBehaviour:
   unitId: main_character
   unitName: "\uC8FC\uC778\uACF5"
   rangeType: 1
+  isNftUnit: 0
+  showInLegion: 1
+  legionSortPriority: 0
+  legionCategoryLabel: 
   maxHP: 150
   dmg: 100
   spd: 100
@@ -39,5 +43,7 @@ MonoBehaviour:
     stunResistRange: {x: 0, y: 0}
   isMainPlayerCharacter: 1
   baseSoulReward: 0
+  canBeDecomposed: 1
+  decomposeShardReward: 1
   canBeCaptured: 0
   captureRewardItem: {fileID: 0}
