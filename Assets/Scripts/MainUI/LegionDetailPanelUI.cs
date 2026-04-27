@@ -32,9 +32,8 @@ public class LegionDetailPanelUI : MonoBehaviour
 
     [Header("Rank")]
     [SerializeField] private Image rankImage;
-    [SerializeField] private Sprite[] rankSprites; // 1~9 rank sprites in order
+    [SerializeField] private Sprite[] rankSprites; // 1~9
 
-    [Header("Badges")]
     [SerializeField] private GameObject exchangeableBadge;
     [SerializeField] private GameObject favoriteOnRoot;
     [SerializeField] private GameObject favoriteOffRoot;
@@ -90,18 +89,13 @@ public class LegionDetailPanelUI : MonoBehaviour
         boundUnit = unit;
 
         bool hasUnit = boundUnit != null;
-
         if (emptyStateRoot != null)
             emptyStateRoot.SetActive(!hasUnit);
-
         if (contentRoot != null)
             contentRoot.SetActive(hasUnit);
 
         if (!hasUnit)
-        {
-            HideStatTooltip();
             return;
-        }
 
         BindButton(favoriteButton, () => owner?.HandleFavoriteToggleClicked());
         BindButton(renameButton, () => owner?.HandleRenameClicked());
@@ -120,10 +114,14 @@ public class LegionDetailPanelUI : MonoBehaviour
         if (boundUnit == null)
             return;
 
+        int maxHp = GetMaxHp(boundUnit, out _, out _, out _);
+        int currentHp = boundUnit.persistentCurrentHP < 0 ? maxHp : Mathf.Clamp(boundUnit.persistentCurrentHP, 0, maxHp);
+        bool isDead = currentHp <= 0;
+
         if (portraitImage != null)
         {
             Sprite portrait = boundUnit.unitViewDefinition != null
-                ? boundUnit.unitViewDefinition.GetBustPortraitSprite()
+                ? boundUnit.unitViewDefinition.GetBustPortraitSprite(isDead)
                 : null;
 
             portraitImage.sprite = portrait;
@@ -133,29 +131,18 @@ public class LegionDetailPanelUI : MonoBehaviour
         SetText(nameText, boundUnit.GetDisplayName());
         SetText(levelText, $"Lv.{LegionFormula.FormatLevelWithOriginal(boundUnit)}");
         SetText(expText, $"{Mathf.Max(0, boundUnit.currentExp)}/{LegionFormula.GetExpToNextLevel(boundUnit.currentLevel)}");
+        SetText(hpText, $"{currentHp}/{maxHp}");
 
         RefreshRankImage();
 
-        int maxHp = GetMaxHp(boundUnit, out _, out _, out _);
-        int currentHp = boundUnit.persistentCurrentHP < 0
-            ? maxHp
-            : Mathf.Clamp(boundUnit.persistentCurrentHP, 0, maxHp);
-
-        SetText(hpText, $"{currentHp}/{maxHp}");
-
         if (exchangeableBadge != null)
             exchangeableBadge.SetActive(boundUnit.isExchangeable);
-
         if (favoriteOnRoot != null)
             favoriteOnRoot.SetActive(boundUnit.isFavorite);
-
         if (favoriteOffRoot != null)
             favoriteOffRoot.SetActive(!boundUnit.isFavorite);
 
-        CharacterRangeType range = boundUnit.unitDefinition != null
-            ? boundUnit.unitDefinition.rangeType
-            : CharacterRangeType.Melee;
-
+        CharacterRangeType range = boundUnit.unitDefinition != null ? boundUnit.unitDefinition.rangeType : CharacterRangeType.Melee;
         if (meleeIcon != null) meleeIcon.SetActive(range == CharacterRangeType.Melee);
         if (midIcon != null) midIcon.SetActive(range == CharacterRangeType.Mid);
         if (rangedIcon != null) rangedIcon.SetActive(range == CharacterRangeType.Ranged);
@@ -207,7 +194,6 @@ public class LegionDetailPanelUI : MonoBehaviour
         bool canPromote = profileController.CanPromote(boundUnit, out int promoteCost);
         if (promoteButton != null)
             promoteButton.interactable = canPromote;
-
         SetText(promoteCostText, $"{profileController.GetPromotionShardCount():N0}/{promoteCost:N0}");
 
         bool canLevelUp = profileController.CanLevelUp(boundUnit, out int levelUpCost);
@@ -226,20 +212,15 @@ public class LegionDetailPanelUI : MonoBehaviour
         if (boundUnit == null)
             return;
 
-        LegionEquipmentBonusSummary bonus = profileController != null
-            ? profileController.GetEquipmentBonusSummary(boundUnit)
-            : default;
-
+        LegionEquipmentBonusSummary bonus = profileController != null ? profileController.GetEquipmentBonusSummary(boundUnit) : default;
         UnitDefinition def = boundUnit.unitDefinition;
         UnitInstanceStatVariance var = boundUnit.statVariance ?? new UnitInstanceStatVariance();
-
-        int totalIdt = GetIncomingDamageTakenTotal(def, var, bonus);
 
         SetText(dmgText, FormatStatValue((def?.dmg ?? 0) + var.dmgDelta + bonus.dmg));
         SetText(spdText, FormatStatValue((def?.spd ?? 0) + var.spdDelta + bonus.spd));
         SetText(hitText, FormatStatValue(Mathf.RoundToInt((def != null ? def.hit : 0f) * 10f) + var.hitDeltaX10 + bonus.hitX10));
         SetText(acText, FormatStatValue(Mathf.RoundToInt((def != null ? def.ac : 0f) * 10f) + var.acDeltaX10 + bonus.acX10));
-        SetText(idtText, FormatPercentStat(totalIdt));
+        SetText(idtText, FormatPercentStat(GetIncomingDamageTakenTotal(def, var, bonus)));
         SetText(criText, FormatStatValue((def?.cri ?? 0) + var.criDelta + bonus.cri));
         SetText(crdText, FormatStatValue((def?.crd ?? 0) + var.crdDelta + bonus.crd));
         SetText(poisonResText, FormatStatValue((def?.poisonResist ?? 0) + bonus.poisonRes));
@@ -274,9 +255,7 @@ public class LegionDetailPanelUI : MonoBehaviour
 
         UnitDefinition def = boundUnit.unitDefinition;
         UnitInstanceStatVariance var = boundUnit.statVariance ?? new UnitInstanceStatVariance();
-        LegionEquipmentBonusSummary bonus = profileController != null
-            ? profileController.GetEquipmentBonusSummary(boundUnit)
-            : default;
+        LegionEquipmentBonusSummary bonus = profileController != null ? profileController.GetEquipmentBonusSummary(boundUnit) : default;
 
         int baseValue = 0;
         int varianceValue = 0;
@@ -415,8 +394,8 @@ public class LegionDetailPanelUI : MonoBehaviour
         if (target == null || candidateNames == null)
             return 0;
 
-        System.Type type = target.GetType();
         const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+        System.Type type = target.GetType();
 
         for (int i = 0; i < candidateNames.Length; i++)
         {
