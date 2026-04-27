@@ -4,7 +4,8 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class LegionUnitCardUI : MonoBehaviour, IPointerClickHandler
+[RequireComponent(typeof(CanvasGroup))]
+public class LegionUnitCardUI : MonoBehaviour, IPointerClickHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
 {
     [Header("Roots")]
     [SerializeField] private GameObject contentRoot;
@@ -17,6 +18,8 @@ public class LegionUnitCardUI : MonoBehaviour, IPointerClickHandler
     [SerializeField] private Image frameImage;
     [SerializeField] private Image selectedGoldFrameImage;
     [SerializeField] private Image multiSelectSelectedFrameImage;
+    [Tooltip("레기온에서 파티 편성 후보로 선택된 카드 표시. 비워도 동작한다.")]
+    [SerializeField] private Image partyPendingFrameImage;
 
     [Header("Portrait")]
     [SerializeField] private Image fullbodyImage;
@@ -52,6 +55,7 @@ public class LegionUnitCardUI : MonoBehaviour, IPointerClickHandler
     [SerializeField] private TMP_Text hpText;
 
     private LegionPanelUI owner;
+    private CanvasGroup canvasGroup;
     private PersistentRosterUnitData boundUnit;
     private bool isInParty;
     private bool isCurrentSelected;
@@ -62,10 +66,16 @@ public class LegionUnitCardUI : MonoBehaviour, IPointerClickHandler
 
     private void Awake()
     {
+        canvasGroup = GetComponent<CanvasGroup>();
+
         if (cardClickButton != null)
         {
             cardClickButton.onClick.RemoveAllListeners();
-            cardClickButton.onClick.AddListener(HandleCardClicked);
+
+            LegionCardClickAreaUI proxy = cardClickButton.GetComponent<LegionCardClickAreaUI>();
+            if (proxy == null)
+                proxy = cardClickButton.gameObject.AddComponent<LegionCardClickAreaUI>();
+            proxy.Bind(this);
         }
 
         if (favoriteButton != null)
@@ -73,6 +83,15 @@ public class LegionUnitCardUI : MonoBehaviour, IPointerClickHandler
             favoriteButton.onClick.RemoveAllListeners();
             favoriteButton.onClick.AddListener(HandleFavoriteClicked);
         }
+    }
+
+    private void OnDisable()
+    {
+        if (canvasGroup != null)
+            canvasGroup.blocksRaycasts = true;
+
+        UIDragGhostUI.HideGhost();
+        owner?.EndUnitCardPartyDrag(this);
     }
 
     public void Bind(
@@ -118,10 +137,64 @@ public class LegionUnitCardUI : MonoBehaviour, IPointerClickHandler
         if (cardClickButton != null)
             return;
 
-        if (eventData.button != PointerEventData.InputButton.Left)
+        HandleCardInputClicked(eventData);
+    }
+
+    public void HandleCardInputClicked(PointerEventData eventData)
+    {
+        if (eventData != null && eventData.button != PointerEventData.InputButton.Left)
             return;
 
         HandleCardClicked();
+    }
+
+    public void BeginCardInputDrag(PointerEventData eventData)
+    {
+        OnBeginDrag(eventData);
+    }
+
+    public void HandleCardInputDrag(PointerEventData eventData)
+    {
+    }
+
+    public void EndCardInputDrag(PointerEventData eventData)
+    {
+        OnEndDrag(eventData);
+    }
+
+    public void OnBeginDrag(PointerEventData eventData)
+    {
+        if (eventData.button != PointerEventData.InputButton.Left)
+            return;
+
+        if (boundUnit == null || owner == null || isDecomposeMode)
+            return;
+
+        if (!owner.CanBeginUnitCardPartyDrag(boundUnit))
+            return;
+
+        if (canvasGroup != null)
+            canvasGroup.blocksRaycasts = false;
+
+        owner.BeginUnitCardPartyDrag(this);
+
+        Sprite ghostSprite = fullbodyImage != null ? fullbodyImage.sprite : null;
+        RectTransform source = fullbodyImage != null ? fullbodyImage.rectTransform : transform as RectTransform;
+        if (ghostSprite != null)
+            UIDragGhostUI.Show(ghostSprite, source);
+    }
+
+    public void OnDrag(PointerEventData eventData)
+    {
+    }
+
+    public void OnEndDrag(PointerEventData eventData)
+    {
+        if (canvasGroup != null)
+            canvasGroup.blocksRaycasts = true;
+
+        UIDragGhostUI.HideGhost();
+        owner?.EndUnitCardPartyDrag(this);
     }
 
     private void HandleCardClicked()
@@ -153,6 +226,9 @@ public class LegionUnitCardUI : MonoBehaviour, IPointerClickHandler
 
         if (multiSelectSelectedFrameImage != null)
             multiSelectSelectedFrameImage.gameObject.SetActive(isDecomposeMode && isSelectedForDecompose);
+
+        if (partyPendingFrameImage != null)
+            partyPendingFrameImage.gameObject.SetActive(!isDecomposeMode && owner != null && owner.IsPendingPartyCandidate(boundUnit));
 
         if (inPartyRoot != null)
             inPartyRoot.SetActive(isInParty);
@@ -408,12 +484,13 @@ public class LegionUnitCardUI : MonoBehaviour, IPointerClickHandler
 
         int baseHp = unit.unitDefinition != null ? unit.unitDefinition.maxHP : 1;
         int varianceHp = unit.statVariance != null ? unit.statVariance.maxHpDelta : 0;
+        int growthHp = Mathf.Max(0, unit.levelGrowthMaxHp);
 
         float promoMultiplier = 1f;
         if (owner != null && owner.TryGetPromotionBonusPercentPerRank(out float perRank))
             promoMultiplier = LegionFormula.GetPromotionMultiplier(unit.promotionRank, perRank);
 
-        return Mathf.Max(1, Mathf.RoundToInt((baseHp + varianceHp) * promoMultiplier));
+        return Mathf.Max(1, Mathf.RoundToInt((baseHp + varianceHp + growthHp) * promoMultiplier));
     }
 
     private static bool GetOptionalBool(object target, params string[] candidateNames)

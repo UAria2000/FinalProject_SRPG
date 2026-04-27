@@ -274,6 +274,8 @@ public static class SaveDataMapper
         runtime.currentLevel = Mathf.Max(1, data.level);
         runtime.originalLevel = Mathf.Max(1, data.originalLevel);
         runtime.currentExp = Mathf.Max(0, data.currentExp);
+        runtime.levelGrowthMaxHp = Mathf.Max(0, data.levelGrowthMaxHp);
+        runtime.levelGrowthDmg = Mathf.Max(0, data.levelGrowthDmg);
         runtime.promotionRank = LegionFormula.ClampLegionRank(data.promotionRank);
         runtime.statVariance = data.statVariance != null ? data.statVariance.ToRuntime() : new UnitInstanceStatVariance();
         runtime.persistentCurrentHP = data.persistentCurrentHP;

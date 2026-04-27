@@ -22,6 +22,8 @@ public class RosterUnitSaveData
     public int level = 1;
     public int originalLevel = 1;
     public int currentExp = 0;
+    public int levelGrowthMaxHp = 0;
+    public int levelGrowthDmg = 0;
 
     public int promotionRank = 1;
     public float promotionBonusPercentPerRank = 1f;
@@ -54,6 +56,8 @@ public class RosterUnitSaveData
             level = Mathf.Max(1, unit.currentLevel),
             originalLevel = Mathf.Max(1, unit.originalLevel),
             currentExp = Mathf.Max(0, unit.currentExp),
+            levelGrowthMaxHp = Mathf.Max(0, unit.levelGrowthMaxHp),
+            levelGrowthDmg = Mathf.Max(0, unit.levelGrowthDmg),
             promotionRank = LegionFormula.ClampLegionRank(unit.promotionRank),
             promotionBonusPercentPerRank = Mathf.Max(0f, promotionPercentPerRank),
             persistentCurrentHP = unit.persistentCurrentHP,

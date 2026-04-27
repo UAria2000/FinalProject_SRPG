@@ -1,5 +1,7 @@
 using UnityEngine;
+#if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
+#endif
 using UnityEngine.UI;
 
 public class UIDragGhostUI : MonoBehaviour
@@ -48,6 +50,12 @@ public class UIDragGhostUI : MonoBehaviour
         if (!visible)
             return;
 
+        if (!IsPrimaryPointerPressed())
+        {
+            InternalHide();
+            return;
+        }
+
         FollowMouse();
         transform.SetAsLastSibling();
     }
@@ -95,7 +103,8 @@ public class UIDragGhostUI : MonoBehaviour
             ghostImage.enabled = false;
         }
 
-        gameObject.SetActive(false);
+        if (gameObject.activeSelf)
+            gameObject.SetActive(false);
     }
 
     private void HideImmediate()
@@ -114,10 +123,19 @@ public class UIDragGhostUI : MonoBehaviour
 
     private void FollowMouse()
     {
-        if (ghostRect == null || Mouse.current == null)
+        if (ghostRect == null)
             return;
 
-        Vector2 mouseScreenPosition = Mouse.current.position.ReadValue();
+        Vector2 mouseScreenPosition;
+
+#if ENABLE_INPUT_SYSTEM
+        if (Mouse.current == null)
+            return;
+        mouseScreenPosition = Mouse.current.position.ReadValue();
+#else
+        mouseScreenPosition = Input.mousePosition;
+#endif
+
         Vector3 screenPosition = new Vector3(
             mouseScreenPosition.x + cursorOffset.x,
             mouseScreenPosition.y + cursorOffset.y,
@@ -125,5 +143,14 @@ public class UIDragGhostUI : MonoBehaviour
         );
 
         ghostRect.position = screenPosition;
+    }
+
+    private bool IsPrimaryPointerPressed()
+    {
+#if ENABLE_INPUT_SYSTEM
+        return Mouse.current != null && Mouse.current.leftButton.isPressed;
+#else
+        return Input.GetMouseButton(0);
+#endif
     }
 }

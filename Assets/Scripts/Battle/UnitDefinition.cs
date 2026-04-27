@@ -22,6 +22,13 @@ public class UnitDefinition : ScriptableObject
     public int maxHP = 10;
     public int dmg = 5;
     public int spd = 5;
+
+    [Header("Level Growth")]
+    [Tooltip("레벨업 1회당 증가할 HP 범위. 레벨업 시 범위 내 정수 1개가 무작위로 선택된다.")]
+    public Vector2Int hpGrowthPerLevel = new Vector2Int(2, 4);
+    [Tooltip("레벨업 1회당 증가할 DMG 범위. 레벨업 시 범위 내 정수 1개가 무작위로 선택된다.")]
+    public Vector2Int dmgGrowthPerLevel = new Vector2Int(1, 3);
+
     [Tooltip("실스탯. UI는 x10")]
     public float hit = 9f;
     [Tooltip("실스탯. UI는 x10")]

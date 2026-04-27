@@ -28,6 +28,12 @@ public class PersistentRosterUnitData
     public int originalLevel = 1;
     public int currentExp = 0;
 
+    [Header("Level Growth Total")]
+    [Tooltip("레벨업으로 누적 증가한 최대 HP. UnitDefinition 기본값/개체값과 별도로 더해진다.")]
+    public int levelGrowthMaxHp = 0;
+    [Tooltip("레벨업으로 누적 증가한 DMG. UnitDefinition 기본값/개체값과 별도로 더해진다.")]
+    public int levelGrowthDmg = 0;
+
     [Header("Promotion")]
     [Range(1, 9)] public int promotionRank = 1;
 
@@ -67,6 +73,9 @@ public class PersistentRosterUnitData
         unitViewDefinition = member.unitViewDefinition;
         currentLevel = Mathf.Max(1, member.currentLevel);
         originalLevel = Mathf.Max(1, member.originalLevel);
+        currentExp = Mathf.Max(0, member.currentExp);
+        levelGrowthMaxHp = Mathf.Max(0, member.levelGrowthMaxHp);
+        levelGrowthDmg = Mathf.Max(0, member.levelGrowthDmg);
         promotionRank = LegionFormula.ClampLegionRank(member.promotionRank);
         statVariance = member.statVariance != null ? member.statVariance.CloneRuntime() : new UnitInstanceStatVariance();
         learnedSkills = member.learnedSkills != null ? new List<SkillDefinition>(member.learnedSkills) : new List<SkillDefinition>();
@@ -89,6 +98,9 @@ public class PersistentRosterUnitData
         runtime.fixedEpitaph = fixedEpitaph;
         runtime.currentLevel = Mathf.Max(1, currentLevel);
         runtime.originalLevel = Mathf.Max(1, originalLevel);
+        runtime.currentExp = Mathf.Max(0, currentExp);
+        runtime.levelGrowthMaxHp = Mathf.Max(0, levelGrowthMaxHp);
+        runtime.levelGrowthDmg = Mathf.Max(0, levelGrowthDmg);
         runtime.promotionRank = LegionFormula.ClampLegionRank(promotionRank);
         runtime.promotionBonusPercentPerRank = Mathf.Max(0f, promotionBonusPercentPerRank);
         runtime.statVariance = statVariance != null ? statVariance.CloneRuntime() : new UnitInstanceStatVariance();
@@ -129,6 +141,9 @@ public class PersistentRosterUnitData
 
         currentLevel = Mathf.Max(1, currentLevel);
         originalLevel = Mathf.Max(1, originalLevel);
+        currentExp = Mathf.Max(0, currentExp);
+        levelGrowthMaxHp = Mathf.Max(0, levelGrowthMaxHp);
+        levelGrowthDmg = Mathf.Max(0, levelGrowthDmg);
         promotionRank = LegionFormula.ClampLegionRank(promotionRank);
         unitRankOverride = Mathf.Clamp(unitRankOverride, 0, 9);
 

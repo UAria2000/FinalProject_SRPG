@@ -20,6 +20,10 @@ public class BattleManager : MonoBehaviour
     [Header("Battle Rewards")]
     [SerializeField] private int maxEquipmentDropsPerBattle = 3;
     [SerializeField] [Range(0f,100f)] private float defaultEquipmentDropChancePercent = 20f;
+    [Tooltip("적 레벨이 1 오를 때마다 baseSoulReward가 증가하는 비율.")]
+    [SerializeField, Min(0f)] private float soulRewardIncreasePercentPerEnemyLevel = 10f;
+    [Tooltip("스케일된 소울 보상 대비 전투 EXP 보상 비율. 100이면 스케일된 소울과 같은 EXP.")]
+    [SerializeField, Min(0f)] private float expRewardPercentOfScaledSoulReward = 100f;
 
     private readonly BattleRewardSummary currentBattleRewardSummary = new BattleRewardSummary();
 
@@ -394,7 +398,18 @@ public class BattleManager : MonoBehaviour
             return;
 
         currentBattleRewardSummary.defeatedEnemyUnits.Add(unit.Definition);
-        currentBattleRewardSummary.soulReward += Mathf.Max(0, unit.Definition.baseSoulReward);
+
+        int enemyLevel = Mathf.Max(1, unit.CurrentLevel);
+        currentBattleRewardSummary.soulReward += LegionFormula.GetScaledEnemySoulReward(
+            unit.Definition,
+            enemyLevel,
+            soulRewardIncreasePercentPerEnemyLevel);
+
+        currentBattleRewardSummary.expReward += LegionFormula.GetEnemyExpReward(
+            unit.Definition,
+            enemyLevel,
+            soulRewardIncreasePercentPerEnemyLevel,
+            expRewardPercentOfScaledSoulReward);
 
         int remainingDropSlots = Mathf.Max(0, maxEquipmentDropsPerBattle - currentBattleRewardSummary.droppedItems.Count);
         if (remainingDropSlots <= 0 || unit.MemberData == null || unit.MemberData.battleLootDrops == null)

@@ -4,6 +4,7 @@ using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 public enum LegionSortKey
@@ -58,7 +59,7 @@ public class LegionButtonVisualState
     }
 }
 
-public class LegionPanelUI : MainUIPanelBase
+public class LegionPanelUI : MainUIPanelBase, IDropHandler
 {
     private const int UnitsPerPage = 10;
 
@@ -68,6 +69,11 @@ public class LegionPanelUI : MainUIPanelBase
     [SerializeField] private LegionRenamePopupUI renamePopupUI;
     [SerializeField] private LegionDecomposeConfirmPopupUI decomposeConfirmPopupUI;
     [SerializeField] private WorldTopHudUI topHudUI;
+    [SerializeField] private BottomPartySummaryPanelUI bottomPartySummaryPanelUI;
+
+    [Header("Party Link")]
+    [Tooltip("레기온 카드 클릭 시 하단 파티 슬롯에 배치할 후보로 선택한다. 드래그 배치는 이 값과 무관하게 동작한다.")]
+    [SerializeField] private bool clickCardSelectsPartyCandidate = true;
 
     [Header("Grid")]
     [SerializeField] private RectTransform rosterGridRoot;
@@ -142,6 +148,8 @@ public class LegionPanelUI : MainUIPanelBase
             persistentProfileController = Object.FindFirstObjectByType<PersistentProfileController>();
         if (topHudUI == null)
             topHudUI = Object.FindFirstObjectByType<WorldTopHudUI>();
+        if (bottomPartySummaryPanelUI == null)
+            bottomPartySummaryPanelUI = Object.FindFirstObjectByType<BottomPartySummaryPanelUI>();
 
         EnsureRuntimeCards();
         BindButton(prevButton, PrevPage);
@@ -178,6 +186,8 @@ public class LegionPanelUI : MainUIPanelBase
 
         if (topHudUI != null)
             topHudUI.SetLegionShardVisible(true);
+        if (bottomPartySummaryPanelUI != null)
+            bottomPartySummaryPanelUI.SetBarracksMode(true);
 
         RefreshAll();
     }
@@ -191,9 +201,12 @@ public class LegionPanelUI : MainUIPanelBase
 
         if (topHudUI != null)
             topHudUI.SetLegionShardVisible(false);
+        if (bottomPartySummaryPanelUI != null)
+            bottomPartySummaryPanelUI.SetBarracksMode(false);
 
         decomposeSelectionMode = false;
         decomposeSelectedIds.Clear();
+        UIDragGhostUI.HideGhost();
     }
 
     public void RefreshAll()
@@ -284,6 +297,59 @@ public class LegionPanelUI : MainUIPanelBase
         return true;
     }
 
+    public bool IsPendingPartyCandidate(PersistentRosterUnitData unit)
+    {
+        if (unit == null || bottomPartySummaryPanelUI == null || bottomPartySummaryPanelUI.PendingBarracksUnit == null)
+            return false;
+
+        return bottomPartySummaryPanelUI.PendingBarracksUnit.instanceId == unit.instanceId;
+    }
+
+    public bool CanBeginUnitCardPartyDrag(PersistentRosterUnitData unit)
+    {
+        if (unit == null || bottomPartySummaryPanelUI == null || persistentProfileController == null)
+            return false;
+
+        if (persistentProfileController.IsDeadUnit(unit))
+            return false;
+
+        return true;
+    }
+
+    public void BeginUnitCardPartyDrag(LegionUnitCardUI card)
+    {
+        if (card == null || card.BoundUnit == null || bottomPartySummaryPanelUI == null)
+            return;
+
+        bottomPartySummaryPanelUI.BeginBarracksUnitDrag(card.BoundUnit);
+    }
+
+    public void EndUnitCardPartyDrag(LegionUnitCardUI card)
+    {
+        if (card == null || card.BoundUnit == null || bottomPartySummaryPanelUI == null)
+            return;
+
+        bottomPartySummaryPanelUI.EndBarracksUnitDrag(card.BoundUnit);
+        RefreshAll();
+    }
+
+    public void OnDrop(PointerEventData eventData)
+    {
+        if (bottomPartySummaryPanelUI != null && bottomPartySummaryPanelUI.HasDraggedPartyEntry)
+            HandlePartyEntryDroppedToLegionPanel();
+    }
+
+    public void HandlePartyEntryDroppedToLegionPanel()
+    {
+        if (bottomPartySummaryPanelUI == null)
+            return;
+
+        bool removed = bottomPartySummaryPanelUI.TryRemoveDraggedPartyEntryToBarracks();
+        UIDragGhostUI.HideGhost();
+        if (removed)
+            RefreshAll();
+    }
+
     public void HandleUnitCardClicked(LegionUnitCardUI card)
     {
         if (card == null || card.BoundUnit == null)
@@ -297,6 +363,10 @@ public class LegionPanelUI : MainUIPanelBase
         }
 
         selectedUnit = card.BoundUnit;
+
+        if (clickCardSelectsPartyCandidate && bottomPartySummaryPanelUI != null)
+            bottomPartySummaryPanelUI.SelectBarracksUnitForParty(card.BoundUnit);
+
         RefreshAll();
     }
 

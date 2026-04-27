@@ -67,6 +67,12 @@ public class WorldSettlementPopupUI : MonoBehaviour
         sb.AppendLine($"월드 승리 보너스: +{s.victoryBonusPercent}%");
         sb.AppendLine();
         sb.AppendLine($"최종 정산 소울: {s.totalSettlementSoulAward}");
+        sb.AppendLine();
+        sb.AppendLine("정산 경험치:");
+        sb.AppendLine($"점령 타일: {s.conqueredTileCount}개 / EXP {s.conqueredTileExp}");
+        sb.AppendLine($"아이템 환산 EXP: {s.convertedItemExp}");
+        sb.AppendLine($"포로 환산 EXP: {s.convertedPrisonerExp}");
+        sb.AppendLine($"최종 정산 EXP: {s.totalSettlementExpAward}");
         return sb.ToString();
     }
 }

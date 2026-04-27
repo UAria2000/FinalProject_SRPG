@@ -13,6 +13,12 @@ public class WorldSettlementSummary
     public int victoryBonusPercent;
     public int totalSettlementSoulAward;
 
+    public int conqueredTileCount;
+    public int conqueredTileExp;
+    public int convertedItemExp;
+    public int convertedPrisonerExp;
+    public int totalSettlementExpAward;
+
     public readonly List<ItemDefinition> inventoryItems = new List<ItemDefinition>();
     public readonly List<UnitDefinition> prisonerUnits = new List<UnitDefinition>();
 }

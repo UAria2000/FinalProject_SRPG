@@ -16,6 +16,10 @@ public class PersistentProfileController : MonoBehaviour
     [Min(1)]
     [SerializeField] private int defaultLevelCap = 999;
 
+    [Tooltip("수동 레벨업 시 부족한 EXP 1을 대체하는 데 필요한 소울. 1이면 부족 EXP 1 = 소울 1.")]
+    [Min(0f)]
+    [SerializeField] private float soulPerMissingExp = 1f;
+
     [Range(0f, 20f)]
     [SerializeField] private float promotionBonusPercentPerRank = 1f;
 
@@ -119,6 +123,9 @@ public class PersistentProfileController : MonoBehaviour
         if (unit == null || worldRunManager == null)
             return false;
 
+        if (IsDeadUnit(unit))
+            return false;
+
         BattlePartyRuntimeState runtime = worldRunManager.GetOrCreatePlayerPartyRuntimeState();
         if (runtime == null || runtime.members == null)
             return false;
@@ -145,27 +152,42 @@ public class PersistentProfileController : MonoBehaviour
 
     public int GetMainCharacterLevelCap()
     {
-        if (worldRunManager == null)
-            return Mathf.Max(1, defaultLevelCap);
+        int foundLevel = 0;
 
-        BattlePartyRuntimeState runtime = worldRunManager.GetOrCreatePlayerPartyRuntimeState();
-        if (runtime != null && runtime.members != null)
+        if (persistentProfile != null && persistentProfile.rosterUnits != null)
         {
-            for (int i = 0; i < runtime.members.Count; i++)
+            for (int i = 0; i < persistentProfile.rosterUnits.Count; i++)
             {
-                PartyMemberData member = runtime.members[i];
-                if (member != null && IsMainCharacterPartyMember(member))
-                    return Mathf.Max(1, member.currentLevel);
+                PersistentRosterUnitData unit = persistentProfile.rosterUnits[i];
+                if (IsMainCharacter(unit))
+                    foundLevel = Mathf.Max(foundLevel, unit.currentLevel);
             }
         }
 
-        return Mathf.Max(1, defaultLevelCap);
+        if (worldRunManager != null)
+        {
+            BattlePartyRuntimeState runtime = worldRunManager.GetOrCreatePlayerPartyRuntimeState();
+            if (runtime != null && runtime.members != null)
+            {
+                for (int i = 0; i < runtime.members.Count; i++)
+                {
+                    PartyMemberData member = runtime.members[i];
+                    if (member != null && IsMainCharacterPartyMember(member))
+                        foundLevel = Mathf.Max(foundLevel, member.currentLevel);
+                }
+            }
+        }
+
+        return foundLevel > 0 ? Mathf.Max(1, foundLevel) : Mathf.Max(1, defaultLevelCap);
     }
 
     public bool TryAssignRosterUnitToPartyAuto(PersistentRosterUnitData unit)
     {
         EnsureInitialized();
         if (unit == null || worldRunManager == null)
+            return false;
+
+        if (IsDeadUnit(unit))
             return false;
 
         SyncRosterFromActivePartyRuntime();
@@ -191,6 +213,9 @@ public class PersistentProfileController : MonoBehaviour
     {
         EnsureInitialized();
         if (unit == null || worldRunManager == null)
+            return false;
+
+        if (IsDeadUnit(unit))
             return false;
 
         SyncRosterFromActivePartyRuntime();
@@ -308,27 +333,212 @@ public class PersistentProfileController : MonoBehaviour
         if (unit == null || worldRunManager == null)
             return false;
 
-        int cap = GetMainCharacterLevelCap();
-        requiredSoul = LegionFormula.GetRemainingSoulCostToNextLevel(unit, cap);
-        if (requiredSoul <= 0)
+        if (IsDeadUnit(unit))
             return false;
 
-        return worldRunManager.PersistentSoul >= requiredSoul;
+        unit.EnsureDefaults();
+        int cap = GetLevelCapForUnit(unit);
+        if (unit.currentLevel >= cap)
+            return false;
+
+        requiredSoul = LegionFormula.GetSoulCostToFillMissingExp(unit, cap, soulPerMissingExp);
+        return requiredSoul <= 0 || worldRunManager.PersistentSoul >= requiredSoul;
     }
 
     public bool TryLevelUp(PersistentRosterUnitData unit)
     {
+        EnsureInitialized();
         if (!CanLevelUp(unit, out int requiredSoul))
             return false;
 
-        if (!worldRunManager.TrySpendPersistentSoul(requiredSoul))
+        if (requiredSoul > 0 && !worldRunManager.TrySpendPersistentSoul(requiredSoul))
             return false;
 
-        unit.currentLevel = Mathf.Min(unit.currentLevel + 1, GetMainCharacterLevelCap());
-        unit.currentExp = 0;
+        if (!ApplySingleLevelUp(unit, consumeExp: true))
+            return false;
+
         ApplyRosterUnitToActivePartyIfPresent(unit);
         RaiseProfileChanged();
         return true;
+    }
+
+    public int GetLevelCapForUnit(PersistentRosterUnitData unit)
+    {
+        int defaultCap = Mathf.Max(1, defaultLevelCap);
+        if (unit == null)
+            return defaultCap;
+
+        if (IsMainCharacter(unit))
+            return defaultCap;
+
+        return Mathf.Max(1, GetMainCharacterLevelCap());
+    }
+
+    public bool IsDeadUnit(PersistentRosterUnitData unit)
+    {
+        if (unit == null)
+            return false;
+
+        return unit.persistentCurrentHP == 0;
+    }
+
+    public int AddExperienceToActivePartyMembers(int amount)
+    {
+        EnsureInitialized();
+        SyncRosterFromActivePartyRuntime();
+
+        int exp = Mathf.Max(0, amount);
+        if (exp <= 0 || worldRunManager == null)
+            return 0;
+
+        BattlePartyRuntimeState runtime = worldRunManager.GetOrCreatePlayerPartyRuntimeState();
+        if (runtime == null || runtime.members == null)
+            return 0;
+
+        int grantedUnitCount = 0;
+        for (int pass = 0; pass < 2; pass++)
+        {
+            bool mainPass = pass == 0;
+            for (int i = 0; i < runtime.members.Count; i++)
+            {
+                PartyMemberData member = runtime.members[i];
+                if (member == null || string.IsNullOrWhiteSpace(member.instanceId))
+                    continue;
+
+                if (member.persistentCurrentHP == 0)
+                    continue;
+
+                bool isMain = IsMainCharacterPartyMember(member);
+                if (mainPass != isMain)
+                    continue;
+
+                PersistentRosterUnitData rosterUnit = FindRosterUnitInternal(member.instanceId);
+                if (rosterUnit == null || IsDeadUnit(rosterUnit))
+                    continue;
+
+                if (AddExperienceToRosterUnit(rosterUnit, exp, true))
+                    grantedUnitCount++;
+            }
+        }
+
+        if (grantedUnitCount > 0)
+        {
+            SyncRosterToActivePartyRuntime();
+            RaiseProfileChanged();
+        }
+
+        return grantedUnitCount;
+    }
+
+    public bool AddExperienceToRosterUnit(PersistentRosterUnitData unit, int amount, bool autoLevelUp)
+    {
+        if (unit == null || amount <= 0 || IsDeadUnit(unit))
+            return false;
+
+        unit.EnsureDefaults();
+
+        int cap = GetLevelCapForUnit(unit);
+        unit.currentExp += Mathf.Max(0, amount);
+
+        if (autoLevelUp)
+            ResolveAutoLevelUps(unit, cap);
+
+        ClampExpAtLevelCap(unit, cap);
+        return true;
+    }
+
+    public void SyncFromActivePartyRuntimeAndSave()
+    {
+        EnsureInitialized();
+        SyncRosterFromActivePartyRuntime();
+        RaiseProfileChanged();
+    }
+
+    private void ResolveAutoLevelUps(PersistentRosterUnitData unit, int cap)
+    {
+        if (unit == null)
+            return;
+
+        int safeGuard = 0;
+        while (unit.currentLevel < cap && safeGuard < 1000)
+        {
+            int needExp = LegionFormula.GetExpToNextLevel(unit.currentLevel);
+            if (unit.currentExp < needExp)
+                break;
+
+            ApplySingleLevelUp(unit, consumeExp: true);
+            safeGuard++;
+        }
+    }
+
+    private bool ApplySingleLevelUp(PersistentRosterUnitData unit, bool consumeExp)
+    {
+        if (unit == null)
+            return false;
+
+        int cap = GetLevelCapForUnit(unit);
+        if (unit.currentLevel >= cap)
+            return false;
+
+        int needExp = LegionFormula.GetExpToNextLevel(unit.currentLevel);
+        if (consumeExp)
+            unit.currentExp = Mathf.Max(0, unit.currentExp - needExp);
+        else
+            unit.currentExp = 0;
+
+        int maxHpBefore = GetRosterMaxHp(unit);
+        ApplyLevelGrowthRoll(unit);
+        unit.currentLevel = Mathf.Min(unit.currentLevel + 1, cap);
+        int maxHpAfter = GetRosterMaxHp(unit);
+
+        if (unit.persistentCurrentHP > 0)
+            unit.persistentCurrentHP = Mathf.Clamp(unit.persistentCurrentHP + Mathf.Max(0, maxHpAfter - maxHpBefore), 1, maxHpAfter);
+
+        return true;
+    }
+
+    private void ApplyLevelGrowthRoll(PersistentRosterUnitData unit)
+    {
+        if (unit == null || unit.unitDefinition == null)
+            return;
+
+        unit.levelGrowthMaxHp += RollInclusive(unit.unitDefinition.hpGrowthPerLevel);
+        unit.levelGrowthDmg += RollInclusive(unit.unitDefinition.dmgGrowthPerLevel);
+    }
+
+    private int RollInclusive(Vector2Int range)
+    {
+        int min = Mathf.Min(range.x, range.y);
+        int max = Mathf.Max(range.x, range.y);
+        return UnityEngine.Random.Range(min, max + 1);
+    }
+
+    private void ClampExpAtLevelCap(PersistentRosterUnitData unit, int cap)
+    {
+        if (unit == null)
+            return;
+
+        if (unit.currentLevel >= Mathf.Max(1, cap))
+        {
+            int maxStoredExp = LegionFormula.GetExpToNextLevel(unit.currentLevel);
+            unit.currentExp = Mathf.Clamp(unit.currentExp, 0, maxStoredExp);
+        }
+        else
+        {
+            unit.currentExp = Mathf.Max(0, unit.currentExp);
+        }
+    }
+
+    private int GetRosterMaxHp(PersistentRosterUnitData unit)
+    {
+        if (unit == null)
+            return 1;
+
+        int baseHp = unit.unitDefinition != null ? unit.unitDefinition.maxHP : 1;
+        int varianceHp = unit.statVariance != null ? unit.statVariance.maxHpDelta : 0;
+        int growthHp = Mathf.Max(0, unit.levelGrowthMaxHp);
+        float promo = LegionFormula.GetPromotionMultiplier(unit.promotionRank, promotionBonusPercentPerRank);
+        return Mathf.Max(1, Mathf.RoundToInt((baseHp + varianceHp + growthHp) * promo));
     }
 
     public int GetPromotionShardCount()
@@ -347,6 +557,9 @@ public class PersistentProfileController : MonoBehaviour
     {
         requiredShards = 0;
         if (unit == null)
+            return false;
+
+        if (IsDeadUnit(unit))
             return false;
 
         unit.EnsureDefaults();
@@ -558,7 +771,7 @@ public class PersistentProfileController : MonoBehaviour
                     continue;
 
                 PersistentRosterUnitData rosterUnit = FindRosterUnitInternal(instanceId);
-                if (rosterUnit == null)
+                if (rosterUnit == null || IsDeadUnit(rosterUnit))
                     continue;
 
                 if (FindPartyMemberIndexByInstanceId(rebuilt, rosterUnit.instanceId) >= 0)
@@ -638,6 +851,9 @@ public class PersistentProfileController : MonoBehaviour
                 rosterUnit.unitViewDefinition = member.unitViewDefinition;
                 rosterUnit.currentLevel = Mathf.Max(1, member.currentLevel);
                 rosterUnit.originalLevel = Mathf.Max(1, member.originalLevel);
+                rosterUnit.currentExp = Mathf.Max(0, member.currentExp);
+                rosterUnit.levelGrowthMaxHp = Mathf.Max(0, member.levelGrowthMaxHp);
+                rosterUnit.levelGrowthDmg = Mathf.Max(0, member.levelGrowthDmg);
                 member.promotionRank = LegionFormula.ClampLegionRank(member.promotionRank);
                 rosterUnit.promotionRank = LegionFormula.ClampLegionRank(member.promotionRank);
                 rosterUnit.statVariance = member.statVariance != null ? member.statVariance.CloneRuntime() : new UnitInstanceStatVariance();
@@ -646,6 +862,31 @@ public class PersistentProfileController : MonoBehaviour
                 rosterUnit.persistentCurrentHP = member.persistentCurrentHP;
                 rosterUnit.EnsureDefaults();
             }
+        }
+    }
+
+    private void SyncRosterToActivePartyRuntime()
+    {
+        if (worldRunManager == null)
+            return;
+
+        BattlePartyRuntimeState runtime = worldRunManager.GetOrCreatePlayerPartyRuntimeState();
+        if (runtime == null || runtime.members == null)
+            return;
+
+        for (int i = 0; i < runtime.members.Count; i++)
+        {
+            PartyMemberData member = runtime.members[i];
+            if (member == null || string.IsNullOrWhiteSpace(member.instanceId))
+                continue;
+
+            PersistentRosterUnitData rosterUnit = FindRosterUnitInternal(member.instanceId);
+            if (rosterUnit == null)
+                continue;
+
+            int slot = member.startSlotIndex;
+            PartyMemberData updated = rosterUnit.CreateRuntimePartyMember(slot, promotionBonusPercentPerRank);
+            runtime.members[i] = updated;
         }
     }
 

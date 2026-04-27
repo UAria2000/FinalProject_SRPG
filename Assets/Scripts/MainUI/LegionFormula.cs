@@ -9,22 +9,23 @@ public static class LegionFormula
         return Mathf.Max(1, Mathf.RoundToInt(30f + 18f * x + 7f * Mathf.Pow(x, 1.35f)));
     }
 
-    public static int GetRemainingSoulCostToNextLevel(PersistentRosterUnitData unit, int mainCharacterLevelCap)
+    public static int GetSoulCostToFillMissingExp(PersistentRosterUnitData unit, int levelCap, float soulPerMissingExp)
     {
         if (unit == null)
             return 0;
 
-        if (unit.currentLevel >= Mathf.Max(1, mainCharacterLevelCap))
+        if (unit.currentLevel >= Mathf.Max(1, levelCap))
             return 0;
 
         int needExp = GetExpToNextLevel(unit.currentLevel);
         int clampedExp = Mathf.Clamp(unit.currentExp, 0, needExp);
-        int baseCost = Mathf.Max(0, needExp - clampedExp);
+        int missingExp = Mathf.Max(0, needExp - clampedExp);
+        return Mathf.CeilToInt(missingExp * Mathf.Max(0f, soulPerMissingExp));
+    }
 
-        if (unit.currentLevel < unit.originalLevel)
-            return Mathf.CeilToInt(baseCost * 0.5f);
-
-        return baseCost;
+    public static int GetRemainingSoulCostToNextLevel(PersistentRosterUnitData unit, int levelCap)
+    {
+        return GetSoulCostToFillMissingExp(unit, levelCap, 1f);
     }
 
     public static int GetTotalSoulCostToReachLevel(int targetLevel)
@@ -34,6 +35,23 @@ public static class LegionFormula
         for (int lv = 1; lv < level; lv++)
             total += GetExpToNextLevel(lv);
         return Mathf.Max(0, total);
+    }
+
+    public static int GetScaledEnemySoulReward(UnitDefinition definition, int enemyLevel, float soulRewardIncreasePercentPerLevel)
+    {
+        if (definition == null)
+            return 0;
+
+        int baseSoul = Mathf.Max(0, definition.baseSoulReward);
+        int level = Mathf.Max(1, enemyLevel);
+        float multiplier = 1f + Mathf.Max(0f, soulRewardIncreasePercentPerLevel) * 0.01f * (level - 1);
+        return Mathf.Max(0, Mathf.RoundToInt(baseSoul * multiplier));
+    }
+
+    public static int GetEnemyExpReward(UnitDefinition definition, int enemyLevel, float soulRewardIncreasePercentPerLevel, float expPercentOfScaledSoulReward)
+    {
+        int scaledSoul = GetScaledEnemySoulReward(definition, enemyLevel, soulRewardIncreasePercentPerLevel);
+        return Mathf.Max(0, Mathf.RoundToInt(scaledSoul * Mathf.Max(0f, expPercentOfScaledSoulReward) * 0.01f));
     }
 
     public const int MinPromotionRank = 1;

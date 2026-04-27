@@ -216,7 +216,7 @@ public class LegionDetailPanelUI : MonoBehaviour
         UnitDefinition def = boundUnit.unitDefinition;
         UnitInstanceStatVariance var = boundUnit.statVariance ?? new UnitInstanceStatVariance();
 
-        SetText(dmgText, FormatStatValue((def?.dmg ?? 0) + var.dmgDelta + bonus.dmg));
+        SetText(dmgText, FormatStatValue((def?.dmg ?? 0) + var.dmgDelta + Mathf.Max(0, boundUnit.levelGrowthDmg) + bonus.dmg));
         SetText(spdText, FormatStatValue((def?.spd ?? 0) + var.spdDelta + bonus.spd));
         SetText(hitText, FormatStatValue(Mathf.RoundToInt((def != null ? def.hit : 0f) * 10f) + var.hitDeltaX10 + bonus.hitX10));
         SetText(acText, FormatStatValue(Mathf.RoundToInt((def != null ? def.ac : 0f) * 10f) + var.acDeltaX10 + bonus.acX10));
@@ -266,7 +266,7 @@ public class LegionDetailPanelUI : MonoBehaviour
         {
             case LegionStatKind.Dmg:
                 baseValue = def != null ? def.dmg : 0;
-                varianceValue = var.dmgDelta;
+                varianceValue = var.dmgDelta + Mathf.Max(0, boundUnit.levelGrowthDmg);
                 equipValue = bonus.dmg;
                 break;
 
@@ -356,7 +356,7 @@ public class LegionDetailPanelUI : MonoBehaviour
     private int GetMaxHp(PersistentRosterUnitData unit, out int baseHp, out int varianceHp, out int equipHp)
     {
         baseHp = unit != null && unit.unitDefinition != null ? unit.unitDefinition.maxHP : 1;
-        varianceHp = unit != null && unit.statVariance != null ? unit.statVariance.maxHpDelta : 0;
+        varianceHp = unit != null && unit.statVariance != null ? unit.statVariance.maxHpDelta + Mathf.Max(0, unit.levelGrowthMaxHp) : Mathf.Max(0, unit != null ? unit.levelGrowthMaxHp : 0);
         LegionEquipmentBonusSummary bonus = profileController != null ? profileController.GetEquipmentBonusSummary(unit) : default;
         equipHp = bonus.maxHp;
 

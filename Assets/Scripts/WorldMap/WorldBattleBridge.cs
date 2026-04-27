@@ -225,8 +225,10 @@ public class WorldBattleBridge : MonoBehaviour
         if (summary != null && runManager != null)
         {
             runManager.AddWorldSoul(summary.soulReward);
+            runManager.AddPartyExperienceToAllMembers(summary.expReward);
             runManager.AddLootToWorldInventory(summary.droppedItems);
             runManager.AddCapturedPrisoners(summary.capturedPrisoners);
+            runManager.RemoveDeadPartyMembersFromActiveParty();
         }
 
         if (battleRewardPopupUI != null && summary != null)
@@ -240,6 +242,9 @@ public class WorldBattleBridge : MonoBehaviour
             yield return screenFader.FadeOut(battleExitFadeOutDuration);
 
         SetWorldBattleRoots(false);
+
+        if (runManager != null)
+            runManager.RemoveDeadPartyMembersFromActiveParty();
 
         if (pendingTile != null && runManager != null)
             runManager.ResolveCombatVictory(pendingTile);
@@ -256,6 +261,9 @@ public class WorldBattleBridge : MonoBehaviour
             yield return screenFader.FadeOut(battleExitFadeOutDuration);
 
         SetWorldBattleRoots(false);
+
+        if (runManager != null)
+            runManager.RemoveDeadPartyMembersFromActiveParty();
 
         if (pendingTile != null && runManager != null)
             runManager.ResolveCombatDefeat(pendingTile, returnToStartTile);

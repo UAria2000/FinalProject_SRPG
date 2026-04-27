@@ -173,14 +173,39 @@ public class RandomEnemyEncounterBootstrapper : MonoBehaviour
         member.unitDefinition = entry.unitDefinition;
         member.unitViewDefinition = entry.unitViewDefinition;
         member.startSlotIndex = Mathf.Clamp(slotIndex, 0, 3);
-        member.currentLevel = 1;
-        member.originalLevel = 1;
+        int level = RollLevel(entry);
+        member.currentLevel = level;
+        member.originalLevel = level;
+        RollLevelGrowthTotals(member, entry.unitDefinition, level);
         member.instanceId = BuildInstanceId(entry.unitDefinition, slotIndex);
         member.instanceDisplayNameOverride = entry.instanceDisplayNameOverride;
         member.fixedEpitaph = entry.fixedEpitaph;
         member.statVariance = RollVariance(entry.unitDefinition.varianceRules);
         member.learnedSkills = CopySkills(entry.learnedSkills);
         return member;
+    }
+
+    private int RollLevel(EnemyEncounterEntry entry)
+    {
+        if (entry == null)
+            return 1;
+
+        int min = Mathf.Max(1, Mathf.Min(entry.minLevel, entry.maxLevel));
+        int max = Mathf.Max(min, Mathf.Max(entry.minLevel, entry.maxLevel));
+        return UnityEngine.Random.Range(min, max + 1);
+    }
+
+    private void RollLevelGrowthTotals(PartyMemberData member, UnitDefinition definition, int level)
+    {
+        if (member == null || definition == null)
+            return;
+
+        int levelUps = Mathf.Max(0, level - 1);
+        for (int i = 0; i < levelUps; i++)
+        {
+            member.levelGrowthMaxHp += RollRange(definition.hpGrowthPerLevel);
+            member.levelGrowthDmg += RollRange(definition.dmgGrowthPerLevel);
+        }
     }
 
     private UnitInstanceStatVariance RollVariance(StatVarianceRules rules)

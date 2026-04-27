@@ -49,7 +49,7 @@ public class BattleUnit
 
     public int PromotionRank { get { return memberData != null ? Mathf.Max(0, memberData.promotionRank) : 0; } }
     public float PromotionBonusPercentPerRank { get { return memberData != null ? Mathf.Max(0f, memberData.promotionBonusPercentPerRank) : 0f; } }
-    public float PromotionMultiplier { get { return 1f + (PromotionRank * PromotionBonusPercentPerRank * 0.01f); } }
+    public float PromotionMultiplier { get { return LegionFormula.GetPromotionMultiplier(PromotionRank, PromotionBonusPercentPerRank); } }
 
     public int CurrentLevel { get { return memberData != null ? memberData.currentLevel : 1; } }
     public int OriginalLevel { get { return memberData != null ? memberData.originalLevel : 1; } }
@@ -96,6 +96,8 @@ public class BattleUnit
 
     public int BaseMaxHP { get { return Definition != null ? Definition.maxHP : 0; } }
     public int BaseDMG { get { return Definition != null ? Definition.dmg : 0; } }
+    public int LevelGrowthMaxHP { get { return memberData != null ? Mathf.Max(0, memberData.levelGrowthMaxHp) : 0; } }
+    public int LevelGrowthDMG { get { return memberData != null ? Mathf.Max(0, memberData.levelGrowthDmg) : 0; } }
     public int BaseSPD { get { return Definition != null ? Definition.spd : 0; } }
     public float BaseHIT { get { return Definition != null ? Definition.hit : 0f; } }
     public float BaseAC { get { return Definition != null ? Definition.ac : 0f; } }
@@ -105,13 +107,13 @@ public class BattleUnit
     public int BaseBleedResist { get { return Definition != null ? Definition.bleedResist : 0; } }
     public int BaseStunResist { get { return Definition != null ? Definition.stunResist : 0; } }
 
-    public int MaxHP { get { return ApplyPromotionToInt(Mathf.Max(1, BaseMaxHP + GetVariance().maxHpDelta)); } }
+    public int MaxHP { get { return ApplyPromotionToInt(Mathf.Max(1, BaseMaxHP + GetVariance().maxHpDelta + LevelGrowthMaxHP)); } }
 
     public int DMG
     {
         get
         {
-            int baseValue = ApplyPromotionToInt(Mathf.Max(0, BaseDMG + GetVariance().dmgDelta));
+            int baseValue = ApplyPromotionToInt(Mathf.Max(0, BaseDMG + GetVariance().dmgDelta + LevelGrowthDMG));
             int totalModifierPercent = GetTimedModifierMagnitude(StatModifierType.DMG) + persistentBattleDmgModifierPercent;
             if (totalModifierPercent == 0)
                 return baseValue;

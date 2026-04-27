@@ -12,6 +12,7 @@ public class WorldRunManager : MonoBehaviour
     [SerializeField] private WorldEventController eventController;
     [SerializeField] private WorldQuestController questController;
     [SerializeField] private SaveCoordinator saveCoordinator;
+    [SerializeField] private PersistentProfileController persistentProfileController;
 
     [Header("Startup")]
     [SerializeField] private bool generateOnStart = true;
@@ -22,6 +23,14 @@ public class WorldRunManager : MonoBehaviour
     [Header("Persistent Currencies")]
     [SerializeField] private int persistentSoul;
     [SerializeField] private int persistentCash;
+
+    [Header("Experience Rewards")]
+    [Tooltip("월드 결산 경험치: 점령 타일 1개당 기본 EXP.")]
+    [Min(0)] [SerializeField] private int settlementExpPerConqueredTile = 20;
+    [Tooltip("월드 결산 경험치: 사라지는 아이템의 환산 소울 대비 EXP 비율.")]
+    [Min(0f)] [SerializeField] private float settlementExpPercentOfConvertedItemSoul = 25f;
+    [Tooltip("월드 결산 경험치: 사라지는 포로의 환산 소울 대비 EXP 비율.")]
+    [Min(0f)] [SerializeField] private float settlementExpPercentOfConvertedPrisonerSoul = 25f;
 
     [Header("World HUD")]
     [SerializeField] private WorldTopHudUI worldTopHudUI;
@@ -70,6 +79,9 @@ public class WorldRunManager : MonoBehaviour
 
         if (saveCoordinator == null)
             saveCoordinator = UnityEngine.Object.FindFirstObjectByType<SaveCoordinator>();
+
+        if (persistentProfileController == null)
+            persistentProfileController = UnityEngine.Object.FindFirstObjectByType<PersistentProfileController>();
     }
 
     private void Start()
@@ -78,6 +90,9 @@ public class WorldRunManager : MonoBehaviour
 
         if (saveCoordinator == null)
             saveCoordinator = UnityEngine.Object.FindFirstObjectByType<SaveCoordinator>();
+
+        if (persistentProfileController == null)
+            persistentProfileController = UnityEngine.Object.FindFirstObjectByType<PersistentProfileController>();
 
         saveCoordinator?.LoadProfileIntoCurrentScene();
 
@@ -313,6 +328,79 @@ public class WorldRunManager : MonoBehaviour
         RequestAutoSaveAll();
     }
 
+    public int AddPartyExperienceToAllMembers(int amount)
+    {
+        if (persistentProfileController == null)
+            persistentProfileController = UnityEngine.Object.FindFirstObjectByType<PersistentProfileController>();
+
+        int granted = persistentProfileController != null
+            ? persistentProfileController.AddExperienceToActivePartyMembers(Mathf.Max(0, amount))
+            : 0;
+
+        if (granted > 0)
+        {
+            RaiseStorageChanged();
+            RequestAutoSaveAll();
+        }
+
+        return granted;
+    }
+
+    public int GrantPartyExperienceReward(int amount) => AddPartyExperienceToAllMembers(amount);
+    public int AddPartyExperienceReward(int amount) => AddPartyExperienceToAllMembers(amount);
+    public int GainPartyExperience(int amount) => AddPartyExperienceToAllMembers(amount);
+    public int AddPartyExp(int amount) => AddPartyExperienceToAllMembers(amount);
+
+    public void SyncProfileFromActivePartyRuntime()
+    {
+        if (persistentProfileController == null)
+            persistentProfileController = UnityEngine.Object.FindFirstObjectByType<PersistentProfileController>();
+
+        persistentProfileController?.SyncFromActivePartyRuntimeAndSave();
+    }
+
+    public int RemoveDeadPartyMembersFromActiveParty()
+    {
+        BattlePartyRuntimeState runtime = GetOrCreatePlayerPartyRuntimeState();
+        if (runtime == null || runtime.members == null)
+            return 0;
+
+        SyncProfileFromActivePartyRuntime();
+
+        int removed = 0;
+        for (int i = runtime.members.Count - 1; i >= 0; i--)
+        {
+            PartyMemberData member = runtime.members[i];
+            if (member != null && member.persistentCurrentHP == 0)
+            {
+                runtime.members.RemoveAt(i);
+                removed++;
+            }
+        }
+
+        if (removed > 0)
+        {
+            NormalizeRuntimePartySlots(runtime.members);
+            RaiseStorageChanged();
+            RequestAutoSaveAll();
+        }
+
+        return removed;
+    }
+
+    private void NormalizeRuntimePartySlots(List<PartyMemberData> members)
+    {
+        if (members == null)
+            return;
+
+        members.Sort((a, b) => a.startSlotIndex.CompareTo(b.startSlotIndex));
+        for (int i = 0; i < members.Count; i++)
+        {
+            if (members[i] != null)
+                members[i].startSlotIndex = i;
+        }
+    }
+
     public void AddCapturedPrisoners(IReadOnlyList<UnitDefinition> units)
     {
         WorldRunTransientState state = GetOrCreateWorldRunState();
@@ -348,6 +436,8 @@ public class WorldRunManager : MonoBehaviour
         summary.sizeBonusPercent = generationSettings != null ? generationSettings.GetSizeBonusPercent() : 0;
         summary.difficultyBonusPercent = generationSettings != null ? generationSettings.GetDifficultyBonusPercent() : 0;
         summary.victoryBonusPercent = wasVictory && generationSettings != null ? generationSettings.worldVictoryBonusPercent : 0;
+        summary.conqueredTileCount = CountConqueredPlayerTiles();
+        summary.conqueredTileExp = Mathf.Max(0, summary.conqueredTileCount * settlementExpPerConqueredTile);
 
         if (state != null)
         {
@@ -384,7 +474,33 @@ public class WorldRunManager : MonoBehaviour
         int additivePercent = summary.sizeBonusPercent + summary.difficultyBonusPercent + summary.victoryBonusPercent;
         int convertedWithBonus = convertedBase + Mathf.RoundToInt(convertedBase * (additivePercent / 100f));
         summary.totalSettlementSoulAward = summary.worldEarnedSoulAlreadyGranted + convertedWithBonus;
+
+        summary.convertedItemExp = Mathf.RoundToInt(summary.convertedItemSoul * Mathf.Max(0f, settlementExpPercentOfConvertedItemSoul) * 0.01f);
+        summary.convertedPrisonerExp = Mathf.RoundToInt(summary.convertedPrisonerSoul * Mathf.Max(0f, settlementExpPercentOfConvertedPrisonerSoul) * 0.01f);
+        int expBase = summary.conqueredTileExp + summary.convertedItemExp + summary.convertedPrisonerExp;
+        int expBonusPercent = summary.difficultyBonusPercent + summary.victoryBonusPercent;
+        summary.totalSettlementExpAward = Mathf.Max(0, expBase + Mathf.RoundToInt(expBase * (expBonusPercent / 100f)));
+
         return summary;
+    }
+
+    private int CountConqueredPlayerTiles()
+    {
+        if (MapData == null || MapData.tiles == null)
+            return 0;
+
+        int count = 0;
+        for (int i = 0; i < MapData.tiles.Count; i++)
+        {
+            WorldTileData tile = MapData.tiles[i];
+            if (tile == null || tile.isPlayerStart)
+                continue;
+
+            if (tile.currentOwner == FactionType.Player)
+                count++;
+        }
+
+        return count;
     }
 
     public void FinalizeWorldSettlement(WorldSettlementSummary summary)
@@ -394,6 +510,11 @@ public class WorldRunManager : MonoBehaviour
 
         int conversionOnly = Mathf.Max(0, summary.totalSettlementSoulAward - summary.worldEarnedSoulAlreadyGranted);
         persistentSoul += conversionOnly;
+
+        if (summary.totalSettlementExpAward > 0)
+            AddPartyExperienceToAllMembers(summary.totalSettlementExpAward);
+
+        RemoveDeadPartyMembersFromActiveParty();
         ResetWorldRunStateForNewWorld();
         RequestAutoSaveAll();
     }
@@ -919,6 +1040,9 @@ public class WorldRunManager : MonoBehaviour
                 continue;
 
             member.currentLevel = Mathf.Max(1, saved.currentLevel);
+            member.currentExp = Mathf.Max(0, saved.currentExp);
+            member.levelGrowthMaxHp = Mathf.Max(0, saved.levelGrowthMaxHp);
+            member.levelGrowthDmg = Mathf.Max(0, saved.levelGrowthDmg);
             member.persistentCurrentHP = Mathf.Max(0, saved.persistentCurrentHP);
             member.startSlotIndex = Mathf.Clamp(saved.startSlotIndex, 0, 3);
         }

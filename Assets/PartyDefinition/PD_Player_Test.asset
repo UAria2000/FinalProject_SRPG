@@ -22,7 +22,10 @@ MonoBehaviour:
     fixedEpitaph: 
     currentLevel: 1
     originalLevel: 1
-    promotionRank: 0
+    currentExp: 0
+    levelGrowthMaxHp: 0
+    levelGrowthDmg: 0
+    promotionRank: 1
     promotionBonusPercentPerRank: 1
     statVariance:
       maxHpDelta: 5
@@ -46,9 +49,12 @@ MonoBehaviour:
     instanceId: main_character
     instanceDisplayNameOverride: "\uC8FC\uC778\uACF5"
     fixedEpitaph: 
-    currentLevel: 1
-    originalLevel: 1
-    promotionRank: 0
+    currentLevel: 10
+    originalLevel: 10
+    currentExp: 0
+    levelGrowthMaxHp: 30
+    levelGrowthDmg: 20
+    promotionRank: 1
     promotionBonusPercentPerRank: 1
     statVariance:
       maxHpDelta: 0
@@ -75,6 +81,9 @@ MonoBehaviour:
     fixedEpitaph: 
     currentLevel: 1
     originalLevel: 1
+    currentExp: 0
+    levelGrowthMaxHp: 0
+    levelGrowthDmg: 0
     promotionRank: 0
     promotionBonusPercentPerRank: 1
     statVariance:

@@ -66,6 +66,7 @@ public class BattleRewardPopupUI : MonoBehaviour
         StringBuilder sb = new StringBuilder();
 
         sb.AppendLine($"획득 소울: {summary.soulReward}");
+        sb.AppendLine($"획득 EXP: {summary.expReward}");
 
         sb.AppendLine();
         sb.AppendLine("처치한 적:");

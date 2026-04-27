@@ -30,6 +30,10 @@ public class EnemyEncounterEntry
     [Tooltip("가중치. 높을수록 더 잘 나온다.")]
     [Min(1)] public int weight = 1;
 
+    [Header("Level")]
+    [Min(1)] public int minLevel = 1;
+    [Min(1)] public int maxLevel = 1;
+
     [Tooltip("평타 외 추가 스킬. 최대 3개 사용 권장.")]
     public List<SkillDefinition> learnedSkills = new List<SkillDefinition>();
 

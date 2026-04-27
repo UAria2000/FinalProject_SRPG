@@ -75,6 +75,14 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
     public bool IsStorageMode() => storageMode;
     public bool IsBarracksMode() => barracksMode;
     public bool IsAnyMainPanelOpen() => storageMode || barracksMode || externalMainPanelOpen;
+    public PersistentRosterUnitData PendingBarracksUnit => pendingBarracksUnit;
+    public bool HasPendingBarracksUnit => pendingBarracksUnit != null;
+    public bool HasDraggedPartyEntry => draggedUnitEntry != null && draggedUnitEntry.Member != null;
+
+    public bool IsDraggingPartyEntry(PartyLoadoutUnitEntryUI entry)
+    {
+        return entry != null && draggedUnitEntry == entry;
+    }
 
     public void SetStorageMode(bool isOpen)
     {
@@ -98,6 +106,8 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
         {
             pendingBarracksUnit = null;
             draggedBarracksUnit = null;
+            draggedUnitEntry = null;
+            UIDragGhostUI.HideGhost();
         }
 
         RefreshAll();
@@ -146,12 +156,18 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
             bool showEquipmentSlots = member != null && (anyMainPanelOpen || isExpandedWorldEntry);
             bool showWorldInfo = member != null && isExpandedWorldEntry && !anyMainPanelOpen;
 
+            bool isPendingBarracksMember = IsSameRosterRuntimeUnit(member, pendingBarracksUnit);
+            bool canReceivePendingBarracksUnit = barracksMode && pendingBarracksUnit != null && !isPendingBarracksMember;
+
             unitEntries[i].Bind(
                 this,
                 member,
                 representedBattleSlotIndex,
                 showEquipmentSlots,
-                showWorldInfo);
+                showWorldInfo,
+                barracksMode,
+                canReceivePendingBarracksUnit,
+                isPendingBarracksMember);
         }
 
         if (sharedConsumableSlotUI != null)
@@ -212,10 +228,11 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
             return 1;
 
         int varianceBonus = member.statVariance != null ? member.statVariance.maxHpDelta : 0;
-        int baseMaxHP = Mathf.Max(1, member.unitDefinition.maxHP + varianceBonus);
+        int growthBonus = Mathf.Max(0, member.levelGrowthMaxHp);
+        int baseMaxHP = Mathf.Max(1, member.unitDefinition.maxHP + varianceBonus + growthBonus);
 
         float promotionPercentPerRank = Mathf.Max(0f, member.promotionBonusPercentPerRank);
-        float promotionMultiplier = 1f + (member.promotionRank * promotionPercentPerRank * 0.01f);
+        float promotionMultiplier = LegionFormula.GetPromotionMultiplier(member.promotionRank, promotionPercentPerRank);
 
         return Mathf.Max(1, Mathf.RoundToInt(baseMaxHP * promotionMultiplier));
     }
@@ -262,7 +279,33 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
 
     public bool TryHandleBarracksUnitClicked(PersistentRosterUnitData unit)
     {
+        // 기존 호출부 호환용: 레기온 카드/막사 카드 클릭은 기본적으로 "파티 후보 선택"으로 처리한다.
+        return SelectBarracksUnitForParty(unit);
+    }
+
+    public bool SelectBarracksUnitForParty(PersistentRosterUnitData unit)
+    {
         if (!barracksMode || persistentProfileController == null || unit == null)
+            return false;
+
+        if (persistentProfileController.IsDeadUnit(unit))
+            return false;
+
+        if (pendingBarracksUnit != null && pendingBarracksUnit.instanceId == unit.instanceId)
+            pendingBarracksUnit = null;
+        else
+            pendingBarracksUnit = unit;
+
+        RefreshAll();
+        return true;
+    }
+
+    public bool TryAutoAssignBarracksUnit(PersistentRosterUnitData unit)
+    {
+        if (!barracksMode || persistentProfileController == null || unit == null)
+            return false;
+
+        if (persistentProfileController.IsDeadUnit(unit))
             return false;
 
         if (persistentProfileController.IsRosterUnitInParty(unit))
@@ -425,15 +468,65 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
 
     public void HandleDraggedPartyEntryDroppedToBarracks()
     {
-        if (!barracksMode || persistentProfileController == null)
-            return;
+        TryRemoveDraggedPartyEntryToBarracks();
+    }
 
-        if (draggedUnitEntry == null || draggedUnitEntry.Member == null)
-            return;
+    public bool TryRemoveDraggedPartyEntryToBarracks()
+    {
+        PartyLoadoutUnitEntryUI sourceEntry = draggedUnitEntry;
 
-        persistentProfileController.TryRemovePartyMemberToRoster(draggedUnitEntry.Member);
-        draggedUnitEntry = null;
+        if (!barracksMode || sourceEntry == null || sourceEntry.Member == null)
+        {
+            UIDragGhostUI.HideGhost();
+            sourceEntry?.RestoreDragRaycastState();
+            if (draggedUnitEntry == sourceEntry)
+                draggedUnitEntry = null;
+            return false;
+        }
+
+        bool removed = TryRemovePartyEntryFromBarracks(sourceEntry);
+
+        sourceEntry.RestoreDragRaycastState();
+        UIDragGhostUI.HideGhost();
+
+        if (draggedUnitEntry == sourceEntry)
+            draggedUnitEntry = null;
+
         RefreshAll();
+        return removed;
+    }
+
+    public bool TryRemovePartyEntryByDoubleClick(PartyLoadoutUnitEntryUI entry)
+    {
+        if (!barracksMode || entry == null || entry.Member == null)
+            return false;
+
+        bool removed = TryRemovePartyEntryFromBarracks(entry);
+        if (removed)
+        {
+            if (draggedUnitEntry == entry)
+                draggedUnitEntry = null;
+            UIDragGhostUI.HideGhost();
+            entry.RestoreDragRaycastState();
+        }
+        return removed;
+    }
+
+    public bool TryRemovePartyEntryFromBarracks(PartyLoadoutUnitEntryUI entry)
+    {
+        if (!barracksMode || persistentProfileController == null || entry == null || entry.Member == null)
+            return false;
+
+        string removedInstanceId = entry.Member.instanceId;
+        bool removed = persistentProfileController.TryRemovePartyMemberToRoster(entry.Member);
+        if (!removed)
+            return false;
+
+        if (pendingBarracksUnit != null && !string.IsNullOrWhiteSpace(removedInstanceId) && pendingBarracksUnit.instanceId == removedInstanceId)
+            pendingBarracksUnit = null;
+
+        RefreshAll();
+        return true;
     }
 
     public void BeginStorageItemDrag(ItemDefinition item)
@@ -507,21 +600,36 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
                 pendingBarracksUnit = null;
 
             draggedBarracksUnit = null;
+            UIDragGhostUI.HideGhost();
             RefreshAll();
             return;
         }
 
-        if (worldRunManager == null)
+        if (draggedUnitEntry == null || draggedUnitEntry == targetEntry || draggedUnitEntry.Member == null)
             return;
 
-        if (draggedUnitEntry == null || targetEntry.Member == null)
+        // 빈 슬롯으로 드래그하면 단순 스왑이 아니라 해당 위치로 파티 순서를 이동한다.
+        if (targetEntry.Member == null && persistentProfileController != null)
+        {
+            PersistentRosterUnitData movingUnit = persistentProfileController.FindRosterUnit(draggedUnitEntry.Member.instanceId);
+            if (movingUnit != null)
+            {
+                persistentProfileController.TryAssignRosterUnitToPartySlot(movingUnit, targetEntry.RepresentedBattleSlotIndex);
+                draggedUnitEntry.RestoreDragRaycastState();
+                draggedUnitEntry = null;
+                UIDragGhostUI.HideGhost();
+                RefreshAll();
+            }
             return;
+        }
 
-        if (draggedUnitEntry == targetEntry || draggedUnitEntry.Member == null)
+        if (worldRunManager == null || targetEntry.Member == null)
             return;
 
         worldRunManager.TrySwapPartyOrder(draggedUnitEntry.Member, targetEntry.Member);
+        draggedUnitEntry.RestoreDragRaycastState();
         draggedUnitEntry = null;
+        UIDragGhostUI.HideGhost();
         RefreshAll();
     }
 
@@ -558,6 +666,14 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
 
         sharedConsumableTooltipUI.Hide();
     }
+    private bool IsSameRosterRuntimeUnit(PartyMemberData member, PersistentRosterUnitData unit)
+    {
+        if (member == null || unit == null)
+            return false;
+
+        return !string.IsNullOrWhiteSpace(member.instanceId) && member.instanceId == unit.instanceId;
+    }
+
     private void ClearPendingSelection()
     {
         pendingInventoryItem = null;

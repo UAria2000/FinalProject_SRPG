@@ -13,6 +13,18 @@ public class PartyLoadoutUnitEntryUI : MonoBehaviour, IDropHandler, IPointerClic
     [SerializeField] private PartyEquipmentSlotUI leftEquipmentSlot;
     [SerializeField] private PartyEquipmentSlotUI rightEquipmentSlot;
 
+    [Header("Input / State Roots")]
+    [Tooltip("슬롯 전체 클릭을 받는 투명 버튼. 비워두면 이 오브젝트의 IPointerClickHandler가 동작한다.")]
+    [SerializeField] private Button entryClickButton;
+    [SerializeField] private GameObject emptyRoot;
+    [SerializeField] private GameObject filledRoot;
+    [SerializeField] private GameObject pendingTargetRoot;
+    [SerializeField] private GameObject pendingSourceRoot;
+
+    [Header("Click Settings")]
+    [Tooltip("군단 창/편성 모드에서 하단 파티 유닛을 이 시간 안에 두 번 클릭하면 편성에서 제거한다.")]
+    [SerializeField] private float doubleClickThreshold = 0.35f;
+
     [Header("World View")]
     [SerializeField] private GameObject worldDetailsRoot;
     [SerializeField] private TMP_Text worldLevelText;
@@ -24,6 +36,7 @@ public class PartyLoadoutUnitEntryUI : MonoBehaviour, IDropHandler, IPointerClic
     private BottomPartySummaryPanelUI owner;
     private CanvasGroup canvasGroup;
     private Button portraitRootButton;
+    private float lastLeftClickTime = -999f;
 
     public PartyMemberData Member { get; private set; }
     public int RepresentedBattleSlotIndex { get; private set; }
@@ -42,6 +55,23 @@ public class PartyLoadoutUnitEntryUI : MonoBehaviour, IDropHandler, IPointerClic
             portraitRootButton.onClick.RemoveListener(HandlePortraitButtonClicked);
             portraitRootButton.onClick.AddListener(HandlePortraitButtonClicked);
         }
+
+        if (entryClickButton != null)
+        {
+            // 슬롯 전체를 덮는 투명 Button은 클릭뿐 아니라 드래그/드롭도 받아야 한다.
+            // Button.onClick만 쓰면 투명 버튼이 드래그를 먹고 편성/제거 드롭이 불안정해진다.
+            entryClickButton.onClick.RemoveAllListeners();
+
+            PartyLoadoutEntryInputProxyUI proxy = entryClickButton.GetComponent<PartyLoadoutEntryInputProxyUI>();
+            if (proxy == null)
+                proxy = entryClickButton.gameObject.AddComponent<PartyLoadoutEntryInputProxyUI>();
+            proxy.Bind(this);
+        }
+    }
+
+    private void OnDisable()
+    {
+        RestoreDragRaycastState();
     }
 
     public void Bind(
@@ -49,13 +79,33 @@ public class PartyLoadoutUnitEntryUI : MonoBehaviour, IDropHandler, IPointerClic
         PartyMemberData member,
         int representedBattleSlotIndex,
         bool showEquipmentSlots,
-        bool showWorldInfo)
+        bool showWorldInfo,
+        bool barracksMode = false,
+        bool canReceivePendingBarracksUnit = false,
+        bool isPendingBarracksMember = false)
     {
         owner = panelOwner;
         Member = member;
         RepresentedBattleSlotIndex = Mathf.Clamp(representedBattleSlotIndex, 0, 3);
 
+        RestoreDragRaycastState();
+
         bool hasMember = member != null;
+
+        if (emptyRoot != null)
+            emptyRoot.SetActive(!hasMember);
+
+        if (filledRoot != null)
+            filledRoot.SetActive(hasMember);
+
+        if (pendingTargetRoot != null)
+            pendingTargetRoot.SetActive(barracksMode && canReceivePendingBarracksUnit);
+
+        if (pendingSourceRoot != null)
+            pendingSourceRoot.SetActive(barracksMode && isPendingBarracksMember);
+
+        if (entryClickButton != null)
+            entryClickButton.interactable = owner != null;
 
         if (portraitImage != null)
         {
@@ -107,20 +157,54 @@ public class PartyLoadoutUnitEntryUI : MonoBehaviour, IDropHandler, IPointerClic
 
     private void HandlePortraitButtonClicked()
     {
-        owner?.HandleUnitEntryClicked(this);
+        HandleLeftClick();
     }
 
     public void OnPointerClick(PointerEventData eventData)
     {
-        if (eventData.button != PointerEventData.InputButton.Left)
+        if (entryClickButton != null)
             return;
+
+        HandleEntryClickFromInput(eventData);
+    }
+
+    public void HandleEntryClickFromInput(PointerEventData eventData)
+    {
+        if (eventData != null && eventData.button != PointerEventData.InputButton.Left)
+            return;
+
+        HandleLeftClick();
+    }
+
+    private void HandleLeftClick()
+    {
+        float now = Time.unscaledTime;
+        bool isDoubleClick = now - lastLeftClickTime <= Mathf.Max(0.05f, doubleClickThreshold);
+        lastLeftClickTime = now;
+
+        if (isDoubleClick && owner != null && owner.TryRemovePartyEntryByDoubleClick(this))
+        {
+            lastLeftClickTime = -999f;
+            return;
+        }
 
         owner?.HandleUnitEntryClicked(this);
     }
 
     public void OnDrop(PointerEventData eventData)
     {
+        HandleEntryDropFromInput(eventData);
+    }
+
+    public void HandleEntryDropFromInput(PointerEventData eventData)
+    {
         owner?.HandleUnitEntryDroppedOn(this);
+    }
+
+    public void RestoreDragRaycastState()
+    {
+        if (canvasGroup != null)
+            canvasGroup.blocksRaycasts = true;
     }
 
     public void BeginPortraitDrag(PointerEventData eventData)
@@ -131,7 +215,9 @@ public class PartyLoadoutUnitEntryUI : MonoBehaviour, IDropHandler, IPointerClic
         if (Member == null || owner == null)
             return;
 
-        canvasGroup.blocksRaycasts = false;
+        if (canvasGroup != null)
+            canvasGroup.blocksRaycasts = false;
+
         owner.BeginUnitEntryDrag(this);
 
         if (portraitImage != null && portraitImage.sprite != null)
@@ -140,7 +226,7 @@ public class PartyLoadoutUnitEntryUI : MonoBehaviour, IDropHandler, IPointerClic
 
     public void EndPortraitDrag(PointerEventData eventData)
     {
-        canvasGroup.blocksRaycasts = true;
+        RestoreDragRaycastState();
         UIDragGhostUI.HideGhost();
         owner?.EndUnitEntryDrag(this);
     }

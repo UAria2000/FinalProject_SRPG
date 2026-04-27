@@ -20,6 +20,13 @@ public class PartyMemberData
     [Header("Level")]
     public int currentLevel = 1;
     public int originalLevel = 1;
+    public int currentExp = 0;
+
+    [Header("Level Growth Total")]
+    [Tooltip("레벨업으로 누적 증가한 최대 HP. UnitDefinition 기본값/개체값과 별도로 더해진다.")]
+    public int levelGrowthMaxHp = 0;
+    [Tooltip("레벨업으로 누적 증가한 DMG. UnitDefinition 기본값/개체값과 별도로 더해진다.")]
+    public int levelGrowthDmg = 0;
 
     [Header("Promotion")]
     [Range(1, 9)] public int promotionRank = 1;
@@ -47,8 +54,11 @@ public class PartyMemberData
         clone.instanceId = instanceId;
         clone.instanceDisplayNameOverride = instanceDisplayNameOverride;
         clone.fixedEpitaph = fixedEpitaph;
-        clone.currentLevel = currentLevel;
-        clone.originalLevel = originalLevel;
+        clone.currentLevel = Mathf.Max(1, currentLevel);
+        clone.originalLevel = Mathf.Max(1, originalLevel);
+        clone.currentExp = Mathf.Max(0, currentExp);
+        clone.levelGrowthMaxHp = Mathf.Max(0, levelGrowthMaxHp);
+        clone.levelGrowthDmg = Mathf.Max(0, levelGrowthDmg);
         clone.promotionRank = Mathf.Clamp(promotionRank <= 0 ? 1 : promotionRank, 1, 9);
         clone.promotionBonusPercentPerRank = promotionBonusPercentPerRank;
         clone.statVariance = statVariance != null ? statVariance.CloneRuntime() : new UnitInstanceStatVariance();
@@ -75,7 +85,9 @@ public class PartyMemberData
         }
 
         int varianceHp = statVariance != null ? statVariance.maxHpDelta : 0;
-        int maxHp = Mathf.Max(1, unitDefinition.maxHP + varianceHp);
+        int growthHp = Mathf.Max(0, levelGrowthMaxHp);
+        float promo = LegionFormula.GetPromotionMultiplier(promotionRank, promotionBonusPercentPerRank);
+        int maxHp = Mathf.Max(1, Mathf.RoundToInt((unitDefinition.maxHP + varianceHp + growthHp) * promo));
         persistentCurrentHP = maxHp;
     }
 }
