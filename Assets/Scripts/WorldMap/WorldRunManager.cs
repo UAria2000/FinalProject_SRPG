@@ -351,6 +351,136 @@ public class WorldRunManager : MonoBehaviour
     public int GainPartyExperience(int amount) => AddPartyExperienceToAllMembers(amount);
     public int AddPartyExp(int amount) => AddPartyExperienceToAllMembers(amount);
 
+    public WorldRestResult PreviewRestForActiveParty(
+        WorldRestHealMode healMode,
+        float percentOfMaxHp,
+        int flatHealAmount,
+        bool canReviveDeadUnits)
+    {
+        return BuildRestResultForActiveParty(
+            healMode,
+            percentOfMaxHp,
+            flatHealAmount,
+            canReviveDeadUnits,
+            apply: false);
+    }
+
+    public WorldRestResult ApplyRestToActiveParty(
+        WorldRestHealMode healMode,
+        float percentOfMaxHp,
+        int flatHealAmount,
+        bool canReviveDeadUnits)
+    {
+        WorldRestResult result = BuildRestResultForActiveParty(
+            healMode,
+            percentOfMaxHp,
+            flatHealAmount,
+            canReviveDeadUnits,
+            apply: true);
+
+        if (result != null)
+        {
+            SyncProfileFromActivePartyRuntime();
+            RaiseStorageChanged();
+            RaiseWorldStateChanged();
+            RequestAutoSaveAll();
+        }
+
+        return result;
+    }
+
+    private WorldRestResult BuildRestResultForActiveParty(
+        WorldRestHealMode healMode,
+        float percentOfMaxHp,
+        int flatHealAmount,
+        bool canReviveDeadUnits,
+        bool apply)
+    {
+        WorldRestResult result = new WorldRestResult();
+        BattlePartyRuntimeState runtime = GetOrCreatePlayerPartyRuntimeState();
+        if (runtime == null || runtime.members == null)
+            return result;
+
+        List<PartyMemberData> ordered = new List<PartyMemberData>();
+        for (int i = 0; i < runtime.members.Count; i++)
+        {
+            PartyMemberData member = runtime.members[i];
+            if (member != null)
+                ordered.Add(member);
+        }
+
+        ordered.Sort((a, b) => a.startSlotIndex.CompareTo(b.startSlotIndex));
+
+        for (int i = 0; i < ordered.Count; i++)
+        {
+            PartyMemberData member = ordered[i];
+            int maxHp = member.GetMaxHP();
+            int before = member.GetPersistentCurrentHPOrFull();
+            bool wasDead = before <= 0;
+            bool skipped = wasDead && !canReviveDeadUnits;
+            int after = before;
+            int healedAmount = 0;
+
+            if (!skipped)
+            {
+                if (healMode == WorldRestHealMode.FullHeal)
+                {
+                    after = maxHp;
+                }
+                else
+                {
+                    int heal = CalculateRestHealAmount(healMode, maxHp, percentOfMaxHp, flatHealAmount);
+                    after = Mathf.Clamp(before + heal, 0, maxHp);
+                }
+
+                healedAmount = Mathf.Max(0, after - before);
+
+                if (apply)
+                    member.persistentCurrentHP = after;
+            }
+
+            result.AddMember(new WorldRestMemberResult
+            {
+                displayName = member.GetDisplayName(),
+                beforeHP = before,
+                afterHP = after,
+                maxHP = maxHp,
+                healedAmount = healedAmount,
+                wasDead = wasDead,
+                skipped = skipped,
+            });
+        }
+
+        return result;
+    }
+
+    private int CalculateRestHealAmount(
+        WorldRestHealMode healMode,
+        int maxHp,
+        float percentOfMaxHp,
+        int flatHealAmount)
+    {
+        int safeMaxHp = Mathf.Max(0, maxHp);
+        float safePercent = Mathf.Max(0f, percentOfMaxHp);
+        int safeFlat = Mathf.Max(0, flatHealAmount);
+
+        switch (healMode)
+        {
+            case WorldRestHealMode.FullHeal:
+                return safeMaxHp;
+
+            case WorldRestHealMode.FlatAmount:
+                return safeFlat;
+
+            case WorldRestHealMode.FlatAndPercentOfMaxHp:
+                return safeFlat + Mathf.RoundToInt(safeMaxHp * safePercent * 0.01f);
+
+            case WorldRestHealMode.PercentOfMaxHp:
+            default:
+                return Mathf.RoundToInt(safeMaxHp * safePercent * 0.01f);
+        }
+    }
+
     public void SyncProfileFromActivePartyRuntime()
     {
         if (persistentProfileController == null)
@@ -412,6 +542,55 @@ public class WorldRunManager : MonoBehaviour
 
         RaiseStorageChanged();
         RequestAutoSaveAll();
+    }
+
+    public bool TryAddItemToStorage(ItemDefinition item, int amount)
+    {
+        return AddStorageItem(item, amount);
+    }
+
+    public bool AddItemToStorage(ItemDefinition item, int amount)
+    {
+        return AddStorageItem(item, amount);
+    }
+
+    public bool GrantStorageItem(ItemDefinition item, int amount)
+    {
+        return AddStorageItem(item, amount);
+    }
+
+    public bool AddStorageItem(ItemDefinition item, int amount)
+    {
+        if (item == null || amount <= 0)
+            return false;
+
+        WorldRunTransientState state = GetOrCreateWorldRunState();
+        if (state == null)
+            return false;
+
+        state.AddItem(item, Mathf.Max(1, amount));
+        RaiseStorageChanged();
+        RequestAutoSaveAll();
+        return true;
+    }
+
+    public bool GrantTreasureRewards(WorldTreasureResult treasure)
+    {
+        if (treasure == null || treasure.rewards == null || treasure.rewards.Count == 0)
+            return false;
+
+        bool grantedAny = false;
+        for (int i = 0; i < treasure.rewards.Count; i++)
+        {
+            WorldTreasureRewardItemEntry reward = treasure.rewards[i];
+            if (reward == null || reward.item == null || reward.amount <= 0)
+                continue;
+
+            if (AddStorageItem(reward.item, Mathf.Max(1, reward.amount)))
+                grantedAny = true;
+        }
+
+        return grantedAny;
     }
 
     public void AddLootToWorldInventory(IReadOnlyList<ItemDefinition> items)

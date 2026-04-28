@@ -76,6 +76,26 @@ public class PartyMemberData
         return unitDefinition != null ? unitDefinition.unitName : "Unit";
     }
 
+    public int GetMaxHP()
+    {
+        if (unitDefinition == null)
+            return 1;
+
+        int varianceHp = statVariance != null ? statVariance.maxHpDelta : 0;
+        int growthHp = Mathf.Max(0, levelGrowthMaxHp);
+        float promo = LegionFormula.GetPromotionMultiplier(promotionRank, promotionBonusPercentPerRank);
+        return Mathf.Max(1, Mathf.RoundToInt((unitDefinition.maxHP + varianceHp + growthHp) * promo));
+    }
+
+    public int GetPersistentCurrentHPOrFull()
+    {
+        int maxHp = GetMaxHP();
+        if (persistentCurrentHP < 0)
+            return maxHp;
+
+        return Mathf.Clamp(persistentCurrentHP, 0, maxHp);
+    }
+
     public void ResetPersistentHPToFull()
     {
         if (unitDefinition == null)
@@ -84,11 +104,7 @@ public class PartyMemberData
             return;
         }
 
-        int varianceHp = statVariance != null ? statVariance.maxHpDelta : 0;
-        int growthHp = Mathf.Max(0, levelGrowthMaxHp);
-        float promo = LegionFormula.GetPromotionMultiplier(promotionRank, promotionBonusPercentPerRank);
-        int maxHp = Mathf.Max(1, Mathf.RoundToInt((unitDefinition.maxHP + varianceHp + growthHp) * promo));
-        persistentCurrentHP = maxHp;
+        persistentCurrentHP = GetMaxHP();
     }
 }
 
@@ -96,5 +112,5 @@ public class PartyMemberData
 public class ItemDropDefinition
 {
     public ItemDefinition item;
-    [Range(0f,100f)] public float dropChancePercent = 20f;
+    [Range(0f, 100f)] public float dropChancePercent = 20f;
 }

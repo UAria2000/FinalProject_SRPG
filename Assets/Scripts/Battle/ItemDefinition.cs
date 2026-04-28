@@ -8,6 +8,13 @@ public enum MainUIItemCategory
     Other,
 }
 
+public enum ItemTier
+{
+    Tier1 = 1,
+    Tier2 = 2,
+    Tier3 = 3,
+}
+
 [CreateAssetMenu(menuName = "Battle/Item Definition")]
 public class ItemDefinition : ScriptableObject
 {
@@ -20,6 +27,9 @@ public class ItemDefinition : ScriptableObject
     [Header("Targeting")]
     public SkillTargetTeam targetTeam = SkillTargetTeam.Ally;
     public TargetScope targetScope = TargetScope.Single;
+
+    [Header("Tier")]
+    public ItemTier itemTier = ItemTier.Tier1;
 
     [Header("Usage")]
     public bool usableInBattle = true;
