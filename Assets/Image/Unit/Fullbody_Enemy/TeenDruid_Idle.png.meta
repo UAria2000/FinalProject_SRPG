@@ -1,13 +1,10 @@
 fileFormatVersion: 2
-guid: 514c7791ca4c9144b9e93d8c9256aa62
+guid: 84351e67a10b21f4bade24023f1c6c41
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 5349526437177275852
-    second: HUD BottomDark_0
-  - first:
-      213: 952232842461384541
-    second: HUD BottomDark_1
+      213: 1476201946372258962
+    second: TeenDruid_Idle_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -116,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: HUD BottomDark_0
+      name: TeenDruid_Idle_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 818
-        width: 2560
-        height: 622
+        x: 459
+        y: 34
+        width: 1241
+        height: 1808
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -131,30 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: cc5338c93f55d3a40800000000000000
-      internalID: 5349526437177275852
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: HUD BottomDark_1
-      rect:
-        serializedVersion: 2
-        x: 0
-        y: 0
-        width: 2560
-        height: 647
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: d5f0f5e99b2073d00800000000000000
-      internalID: 952232842461384541
+      spriteID: 29c324659d58c7410800000000000000
+      internalID: 1476201946372258962
       vertices: []
       indices: 
       edges: []
@@ -173,8 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      HUD BottomDark_0: 5349526437177275852
-      HUD BottomDark_1: 952232842461384541
+      TeenDruid_Idle_0: 1476201946372258962
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

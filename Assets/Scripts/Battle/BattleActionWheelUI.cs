@@ -403,6 +403,19 @@ public class BattleActionWheelUI : MonoBehaviour
         RenderCurrentState();
     }
 
+    private void SwitchToTopLevelDepth(BattleActionWheelDepth depth)
+    {
+        if (!canAcceptAction)
+            return;
+
+        ClearDepthToRoot();
+
+        if (depth != BattleActionWheelDepth.Root)
+            depthStack.Push(depth);
+
+        RenderCurrentState();
+    }
+
     private void PopDepthOrRoot()
     {
         if (IsTargetSelectionMode())
@@ -1007,7 +1020,7 @@ public class BattleActionWheelUI : MonoBehaviour
 
         bool interactable = isOpen && canAcceptAction && !IsTargetSelectionMode();
         manaButtonUI.SetVisible(isOpen);
-        manaButtonUI.Apply(currentManaValue, maxManaValue, interactable, () => PushDepth(BattleActionWheelDepth.Mana));
+        manaButtonUI.Apply(currentManaValue, maxManaValue, interactable, () => SwitchToTopLevelDepth(BattleActionWheelDepth.Mana));
     }
 
     private void SetVisible(bool visible)
@@ -1174,9 +1187,10 @@ public class BattleActionWheelUI : MonoBehaviour
             return;
         }
 
-        if (CurrentDepth != BattleActionWheelDepth.Root && depthStack.Count > 1)
+        if (CurrentDepth != BattleActionWheelDepth.Root)
         {
-            PopDepthOrRoot();
+            ClearDepthToRoot();
+            RenderCurrentState();
             return;
         }
 

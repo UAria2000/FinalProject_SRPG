@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: c40116d96889c2f4fa273bd1e6a20f6b
+guid: 9316c84b340c064479da916a1ec361dc
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -4874329707770935324
-    second: BladeDancer_Idle_0
+      213: 546259994031018680
+    second: Torso_ShadowDancer_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -46,7 +46,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: BladeDancer_Idle_0
+      name: Torso_ShadowDancer_0
       rect:
         serializedVersion: 2
-        x: 250
-        y: 0
-        width: 1601
-        height: 2006
+        x: 18
+        y: 19
+        width: 296
+        height: 423
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 4e70e22c4f6ea5cb0800000000000000
-      internalID: -4874329707770935324
+      spriteID: 8b2d9330294b49700800000000000000
+      internalID: 546259994031018680
       vertices: []
       indices: 
       edges: []
@@ -138,7 +138,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 5e97eb03825dee720800000000000000
+    spriteID: 
     internalID: 0
     vertices: []
     indices: 
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      BladeDancer_Idle_0: -4874329707770935324
+      Torso_ShadowDancer_0: 546259994031018680
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

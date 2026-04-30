@@ -17,6 +17,30 @@ public class BattleActionController : MonoBehaviour
         logController = log;
     }
 
+    private BattleStageCameraController StageCameraController
+    {
+        get
+        {
+            return battleManager != null && battleManager.PresentationController != null
+                ? battleManager.PresentationController.StageCameraController
+                : null;
+        }
+    }
+
+    private void FocusAction(BattleUnit actor, BattleUnit target)
+    {
+        BattleStageCameraController stageCamera = StageCameraController;
+        if (stageCamera == null)
+            return;
+
+        if (actor != null && target != null)
+            stageCamera.FocusUnitsSmooth(actor, target);
+        else if (actor != null)
+            stageCamera.FocusUnitSmooth(actor);
+        else if (target != null)
+            stageCamera.FocusUnitSmooth(target);
+    }
+
     public IEnumerator ExecuteSkill(BattleUnit actor, SkillDefinition skill, BattleUnit clickedTarget)
     {
         if (actor == null || skill == null)
@@ -45,6 +69,8 @@ public class BattleActionController : MonoBehaviour
             battleManager.OnActionExecutionFinished(false);
             yield break;
         }
+
+        FocusAction(actor, clickedTarget != null ? clickedTarget : targets[0]);
 
         battleManager.SetTurnState(TurnState.ExecutingAction);
 
@@ -199,6 +225,7 @@ public class BattleActionController : MonoBehaviour
         }
 
         battleManager.SetTurnState(TurnState.ExecutingAction);
+        FocusAction(actor, target);
 
         BattleFormation ownFormation = actor.Team == TeamType.Ally
             ? battleManager.AllyFormation
@@ -254,6 +281,8 @@ public class BattleActionController : MonoBehaviour
             yield break;
         }
 
+        FocusAction(actor, clickedTarget != null ? clickedTarget : targets[0]);
+
         battleManager.SetTurnState(TurnState.ExecutingAction);
 
         for (int i = 0; i < targets.Count; i++)
@@ -290,6 +319,7 @@ public class BattleActionController : MonoBehaviour
         }
 
         battleManager.SetTurnState(TurnState.ExecutingAction);
+        FocusAction(actor, target);
 
         if (!battleManager.TryConsumeCaptureAttempt(target))
         {
@@ -342,6 +372,7 @@ public class BattleActionController : MonoBehaviour
         }
 
         battleManager.SetTurnState(TurnState.ExecutingAction);
+        FocusAction(actor, null);
 
         BattleFormation ownFormation = actor.Team == TeamType.Ally
             ? battleManager.AllyFormation

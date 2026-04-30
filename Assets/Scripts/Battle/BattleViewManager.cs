@@ -175,7 +175,7 @@ public class BattleViewManager : MonoBehaviour
         GameObject effect = Instantiate(prefab, viewRoot);
         effect.transform.position = worldPosition;
 
-        // ÀÚµ¿ ÆÄ±« (È¤Àº ParticleSystemÀÇ Stop Action ¼³Á¤¿¡ µû¶ó Ã³¸® °¡´É)
+        // ï¿½Úµï¿½ ï¿½Ä±ï¿½ (È¤ï¿½ï¿½ ParticleSystemï¿½ï¿½ Stop Action ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ Ã³ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½)
         Destroy(effect, duration);
     }
 

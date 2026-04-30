@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: c40116d96889c2f4fa273bd1e6a20f6b
+guid: f4ccbe24076ebdf48b8f4363bd5f5549
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -4874329707770935324
-    second: BladeDancer_Idle_0
+      213: 7239396846095672437
+    second: Deer_Idle_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: BladeDancer_Idle_0
+      name: Deer_Idle_0
       rect:
         serializedVersion: 2
-        x: 250
+        x: 186
         y: 0
-        width: 1601
-        height: 2006
+        width: 1632
+        height: 2100
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 4e70e22c4f6ea5cb0800000000000000
-      internalID: -4874329707770935324
+      spriteID: 574ad975311877460800000000000000
+      internalID: 7239396846095672437
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      BladeDancer_Idle_0: -4874329707770935324
+      Deer_Idle_0: 7239396846095672437
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

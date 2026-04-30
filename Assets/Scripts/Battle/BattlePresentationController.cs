@@ -7,13 +7,17 @@ public class BattlePresentationController : MonoBehaviour
     private BattleManager battleManager;
     private BattleUIController uiController;
     private BattleViewManager viewManager;
+    [Header("Stage Camera")]
+    [SerializeField] private BattleStageCameraController stageCameraController;
     private GameObject popupLogPanel;
     private BottomContextType bottomContextType = BottomContextType.Inventory;
 
-    // ¾Æ±º ÅÏ ½ÃÀÛ ½Ã Á¤º¸ ÆÐ³Î ÀÚµ¿ Ç¥½Ã¸¦ À§ÇÑ ÃßÀû°ª
+    // ï¿½Æ±ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ð³ï¿½ ï¿½Úµï¿½ Ç¥ï¿½Ã¸ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     private BattleUnit lastAutoShownActingAlly;
+    private BattleUnit lastCameraFocusedActingUnit;
 
     public BottomContextType BottomContextType => bottomContextType;
+    public BattleStageCameraController StageCameraController => stageCameraController;
 
     public void Initialize(BattleManager manager, BattleUIController ui, GameObject popupPanel)
     {
@@ -21,6 +25,13 @@ public class BattlePresentationController : MonoBehaviour
         uiController = ui;
         popupLogPanel = popupPanel;
         viewManager = battleManager != null ? battleManager.ViewManager : null;
+
+        if (stageCameraController == null)
+            stageCameraController = GetComponent<BattleStageCameraController>();
+        if (stageCameraController == null)
+            stageCameraController = FindFirstObjectByType<BattleStageCameraController>();
+        if (stageCameraController != null)
+            stageCameraController.Initialize(viewManager);
 
         if (uiController != null)
             uiController.SetPresentationController(this);
@@ -32,6 +43,7 @@ public class BattlePresentationController : MonoBehaviour
     {
         bottomContextType = BottomContextType.Inventory;
         lastAutoShownActingAlly = null;
+        lastCameraFocusedActingUnit = null;
 
         if (popupLogPanel != null)
             popupLogPanel.SetActive(false);
@@ -67,7 +79,7 @@ public class BattlePresentationController : MonoBehaviour
             battleManager.CurrentState == TurnState.PlayerInput &&
             actingAlly != null;
 
-        // ¾Æ±º ÅÏÀÌ »õ·Î ½ÃÀÛµÆÀ» ¶§¸¸ ÀÚµ¿À¸·Î ÇØ´ç ¾Æ±º Á¤º¸¸¦ ¶ç¿ò
+        // ï¿½Æ±ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ûµï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Úµï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ø´ï¿½ ï¿½Æ±ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
         if (canPlayerAct)
         {
             if (actingAlly != lastAutoShownActingAlly)
@@ -78,8 +90,19 @@ public class BattlePresentationController : MonoBehaviour
         }
         else
         {
-            // ´ÙÀ½ ¾Æ±º ÅÏ¿¡¼­ ´Ù½Ã ÀÚµ¿ Ç¥½Ã°¡ µÇµµ·Ï ¸®¼Â
+            // ï¿½ï¿½ï¿½ï¿½ ï¿½Æ±ï¿½ ï¿½Ï¿ï¿½ï¿½ï¿½ ï¿½Ù½ï¿½ ï¿½Úµï¿½ Ç¥ï¿½Ã°ï¿½ ï¿½Çµï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
             lastAutoShownActingAlly = null;
+        }
+
+        BattleUnit focusUnit = battleManager.CurrentActingUnit;
+        if (focusUnit != null && focusUnit != lastCameraFocusedActingUnit && battleManager.IsUnitInBattle(focusUnit))
+        {
+            stageCameraController?.FocusUnitSmooth(focusUnit);
+            lastCameraFocusedActingUnit = focusUnit;
+        }
+        else if (focusUnit == null)
+        {
+            lastCameraFocusedActingUnit = null;
         }
 
         BattleUnit selectedAlly =
@@ -155,7 +178,9 @@ public class BattlePresentationController : MonoBehaviour
             battleManager.SelectedEnemyInfoUnit = unit;
         }
 
-        // »ó´Ü ÅÏ ¼ø¼­ Æ÷Æ®·¹ÀÕ Å¬¸¯ / ÇÊµå À¯´Ö Å¬¸¯ ½Ã Áï½Ã ÆÐ³Î °»½Å
+        // ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Æ®ï¿½ï¿½ï¿½ï¿½ Å¬ï¿½ï¿½ / ï¿½Êµï¿½ ï¿½ï¿½ï¿½ï¿½ Å¬ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ð³ï¿½ ï¿½ï¿½ï¿½ï¿½
+        stageCameraController?.FocusUnitInstant(unit);
+
         RefreshAllUI();
     }
 
@@ -164,7 +189,7 @@ public class BattlePresentationController : MonoBehaviour
         if (battleManager == null)
             return;
 
-        // ´ë»ó ¼±ÅÃ ÁßÀÌ¾ú´Ù¸é ¸ÕÀú Ãë¼Ò
+        // ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ì¾ï¿½ï¿½Ù¸ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
         if (battleManager.InputMode != BattleInputMode.WaitingForAction &&
             battleManager.CurrentState == TurnState.PlayerInput &&
             battleManager.InputController != null)
