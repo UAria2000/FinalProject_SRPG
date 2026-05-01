@@ -46,7 +46,7 @@ public static class BattleCalculator
         float effectiveHit = attacker.HIT * (accuracyPercent * 0.01f);
         float acStat = target.AC;
 
-        float totalHitChance = CalculateTotalHitChance(effectiveHit, acStat);
+        float totalHitChance = ApplyBlindFinalHitPenalty(CalculateTotalHitChance(effectiveHit, acStat), attacker);
         float failChance = 100f - totalHitChance;
 
         float missRatio = CalculateMissRatio(effectiveHit, acStat);
@@ -117,7 +117,7 @@ public static class BattleCalculator
             data.showDamageRange = true;
 
             float effectiveHit = attacker.HIT * (skill.accuracyCoefficientPercent * 0.01f);
-            float totalHitChance = CalculateTotalHitChance(effectiveHit, target.AC);
+            float totalHitChance = ApplyBlindFinalHitPenalty(CalculateTotalHitChance(effectiveHit, target.AC), attacker);
             float critChance = skill.allowCrit ? totalHitChance * (Mathf.Clamp(attacker.CRI, 0f, 100f) / 100f) : 0f;
             float normalHitChance = Mathf.Max(0f, totalHitChance - critChance);
 
@@ -242,14 +242,56 @@ public static class BattleCalculator
         if (block == null)
             return 0;
 
-        float chance = Mathf.Clamp(block.successChancePercent, 0f, 100f);
-        if (target != null && block.affectedByResistance)
+        int baseChance = CalculateBaseEffectSuccessChance(block);
+        if (target == null || !block.affectedByResistance)
+            return baseChance;
+
+        int resistPassChance = CalculateResistancePassChance(block, target);
+        return Mathf.RoundToInt(baseChance * (resistPassChance * 0.01f));
+    }
+
+    public static int CalculateBaseEffectSuccessChance(BattleEffectBlock block)
+    {
+        if (block == null)
+            return 0;
+
+        return Mathf.Clamp(Mathf.RoundToInt(block.successChancePercent), 0, 100);
+    }
+
+    public static int CalculateResistancePassChance(BattleEffectBlock block, BattleUnit target)
+    {
+        if (block == null || target == null || !block.affectedByResistance)
+            return 100;
+
+        int resist = target.GetResistance(block.statusType);
+        return Mathf.Clamp(100 - resist, 0, 100);
+    }
+
+    public static bool RollEffectSuccess(BattleEffectBlock block, BattleUnit target, out bool baseChancePassed, out bool resistancePassed, out int finalChancePercent)
+    {
+        baseChancePassed = false;
+        resistancePassed = true;
+        finalChancePercent = CalculateEffectSuccessChance(block, target);
+
+        int baseChance = CalculateBaseEffectSuccessChance(block);
+        baseChancePassed = Random.Range(0f, 100f) < baseChance;
+        if (!baseChancePassed)
+            return false;
+
+        if (block != null && target != null && block.affectedByResistance)
         {
-            int resist = target.GetResistance(block.statusType);
-            chance *= Mathf.Clamp01((100f - resist) / 100f);
+            int resistPassChance = CalculateResistancePassChance(block, target);
+            resistancePassed = Random.Range(0f, 100f) < resistPassChance;
+            return resistancePassed;
         }
 
-        return Mathf.RoundToInt(chance);
+        return true;
+    }
+
+    public static float ApplyBlindFinalHitPenalty(float totalHitChance, BattleUnit attacker)
+    {
+        int penalty = attacker != null ? attacker.BlindFinalHitPenaltyPercent : 0;
+        return Mathf.Clamp(totalHitChance - penalty, MinHitChance, MaxHitChance);
     }
 
     public static float CalculateTotalHitChance(float hit, float ac)
@@ -322,7 +364,7 @@ public static class BattleCalculator
 
             StatusChancePreviewData preview = new StatusChancePreviewData();
             preview.icon = block.displayIcon;
-            preview.statusType = block.statusType;
+            preview.statusType = BattleStatusUtility.Normalize(block.statusType);
             preview.successPercent = CalculateEffectSuccessChance(block, target);
             data.statusChances.Add(preview);
         }

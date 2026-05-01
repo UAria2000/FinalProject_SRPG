@@ -515,9 +515,8 @@ public class EnemyAIController : MonoBehaviour
             if (block.statusType == StatusEffectType.None)
                 continue;
 
-            // Poison / Bleed ´Â ½ºÅÃÇüÀÌ¹Ç·Î ÀÌ¹Ì °É·Á ÀÖ¾îµµ ÀçÀû¿ë °¡Ä¡°¡ ÀÖÀ½
-            if (block.statusType == StatusEffectType.Poison ||
-                block.statusType == StatusEffectType.Bleed)
+            // ìŠ¤íƒí˜• ìƒíƒœì´ìƒì€ ì´ë¯¸ ê±¸ë ¤ ìˆì–´ë„ ì¶”ê°€ ì ìš© ê°€ì¹˜ê°€ ìˆë‹¤.
+            if (BattleStatusUtility.IsStackingAilment(block.statusType))
                 continue;
 
             if (target.HasStatus(block.statusType))

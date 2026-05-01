@@ -202,8 +202,9 @@ public class BattlePassiveController : MonoBehaviour
 
         int resist = attacker.BleedResist;
         int finalChance = Mathf.RoundToInt(baseChance * Mathf.Clamp01((100f - resist) / 100f));
-
-        bool success = Random.Range(0f, 100f) < finalChance;
+        bool basePassed = Random.Range(0f, 100f) < Mathf.Clamp(baseChance, 0f, 100f);
+        bool resistPassed = !basePassed ? false : Random.Range(0f, 100f) < Mathf.Clamp(100 - resist, 0, 100);
+        bool success = basePassed && resistPassed;
         string skillName = GetPassiveSkillName(passiveSkill);
 
         if (!success)

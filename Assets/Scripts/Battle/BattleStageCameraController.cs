@@ -21,6 +21,13 @@ public class BattleStageCameraController : MonoBehaviour
         Both = 2,
     }
 
+    public enum BattleStageDragMouseButton
+    {
+        Left = 0,
+        Middle = 1,
+        Right = 2,
+    }
+
     [Header("Mode")]
     [SerializeField] private BattleStagePanMode panMode = BattleStagePanMode.RectTransformStage;
     [SerializeField] private bool edgeScrollEnabled = true;
@@ -63,6 +70,20 @@ public class BattleStageCameraController : MonoBehaviour
     [Tooltip("UI raycast hits under these roots are ignored when deciding whether UI blocks edge-scroll. Put the battle stage/background root here if it is also UI.")]
     [SerializeField] private RectTransform[] pointerUIBlockExclusionRoots;
 
+    [Header("Empty Area Drag Pan")]
+    [Tooltip("Drag the empty battle stage/background to pan the 24:9 stage. The drag will not start on blocking UI.")]
+    [SerializeField] private bool emptyAreaDragPanEnabled = true;
+    [SerializeField] private BattleStageDragMouseButton dragPanMouseButton = BattleStageDragMouseButton.Left;
+    [Tooltip("Optional. If assigned, dragging starts only when the top eligible UI raycast hit is this RectTransform or one of its children. Assign a transparent full-stage BackgroundDragSurface placed behind unit views for strict empty-area dragging.")]
+    [SerializeField] private RectTransform emptyStageDragSurfaceRoot;
+    [Tooltip("Optional roots that should always block stage dragging even if they are under the stage root. Use this for unit click overlays, target markers, or stage UI that should not start a camera drag.")]
+    [SerializeField] private RectTransform[] dragPanBlockRoots;
+    [SerializeField] private bool requirePointerInsideViewportForDrag = true;
+    [Tooltip("How many reference pixels the pointer must move before the drag becomes active.")]
+    [Min(0f)] [SerializeField] private float dragStartThresholdReferencePixels = 6f;
+    [Tooltip("1 means the stage follows the pointer exactly in reference pixels. Higher values drag faster.")]
+    [Min(0.01f)] [SerializeField] private float dragPanSensitivity = 1f;
+
     [Header("Smoothing")]
     [Tooltip("SmoothDamp time for normal focus and edge-scroll movement.")]
     [Min(0.01f)] [SerializeField] private float smoothTime = 0.18f;
@@ -85,6 +106,11 @@ public class BattleStageCameraController : MonoBehaviour
     private Vector2 stageInitialAnchoredPosition;
     private bool initialized;
     private float activeSmoothTime;
+
+    private bool dragPointerHeld;
+    private bool draggingStage;
+    private Vector2 dragStartPointerPosition;
+    private float dragStartNormalizedPan;
 
     public float NormalizedPan => currentNormalizedPan;
     public bool IsAtLeftEdge => currentNormalizedPan <= 0.001f;
@@ -109,7 +135,10 @@ public class BattleStageCameraController : MonoBehaviour
     {
         CaptureInitialStateIfNeeded();
 
-        if (edgeScrollEnabled)
+        if (emptyAreaDragPanEnabled)
+            UpdateEmptyAreaDragPan();
+
+        if (edgeScrollEnabled && !draggingStage && !dragPointerHeld)
             UpdateEdgeScrollTarget();
 
         UpdateSmoothPan();
@@ -255,6 +284,258 @@ public class BattleStageCameraController : MonoBehaviour
         initialized = true;
         ApplyCurrentPan();
     }
+
+    private void UpdateEmptyAreaDragPan()
+    {
+        Vector2 pointerPosition;
+        if (!TryGetPointerPosition(out pointerPosition))
+        {
+            ResetDragPanState();
+            return;
+        }
+
+        if (WasDragButtonPressedThisFrame())
+        {
+            if (CanStartEmptyAreaDrag(pointerPosition))
+            {
+                dragPointerHeld = true;
+                draggingStage = false;
+                dragStartPointerPosition = pointerPosition;
+                dragStartNormalizedPan = targetNormalizedPan;
+                normalizedPanVelocity = 0f;
+            }
+        }
+
+        if (!dragPointerHeld)
+            return;
+
+        if (WasDragButtonReleasedThisFrame() || !IsDragButtonPressed())
+        {
+            ResetDragPanState();
+            return;
+        }
+
+        Vector2 delta = pointerPosition - dragStartPointerPosition;
+        float screenToReferenceScale = GetScreenToReferenceScale();
+        float deltaReferenceX = delta.x * screenToReferenceScale;
+        float threshold = Mathf.Max(0f, dragStartThresholdReferencePixels);
+
+        if (!draggingStage && Mathf.Abs(deltaReferenceX) < threshold)
+            return;
+
+        draggingStage = true;
+
+        float maxDistance = MaxStagePanDistance;
+        if (maxDistance <= 0.001f)
+            return;
+
+        // Dragging the stage to the right reveals the left side, so normalized pan decreases.
+        float next = dragStartNormalizedPan - (deltaReferenceX * dragPanSensitivity / maxDistance);
+        targetNormalizedPan = Mathf.Clamp01(next);
+        currentNormalizedPan = targetNormalizedPan;
+        normalizedPanVelocity = 0f;
+        ApplyCurrentPan();
+    }
+
+    private void ResetDragPanState()
+    {
+        dragPointerHeld = false;
+        draggingStage = false;
+    }
+
+    private bool CanStartEmptyAreaDrag(Vector2 pointerPosition)
+    {
+        if (requirePointerInsideViewportForDrag && !IsPointerInsideViewport(pointerPosition))
+            return false;
+
+        if (IsPointerOverAnyRoot(pointerPosition, dragPanBlockRoots))
+            return false;
+
+        if (blockEdgeScrollWhenPointerOverUI && IsPointerOverBlockingUI(pointerPosition))
+            return false;
+
+        if (emptyStageDragSurfaceRoot == null)
+            return true;
+
+        return IsTopEligibleRaycastUnderRoot(pointerPosition, emptyStageDragSurfaceRoot);
+    }
+
+    private bool IsPointerInsideViewport(Vector2 pointerPosition)
+    {
+        if (viewportRoot == null)
+            return pointerPosition.x >= 0f && pointerPosition.x <= Screen.width && pointerPosition.y >= 0f && pointerPosition.y <= Screen.height;
+
+        Camera eventCamera = GetEventCameraForRect(viewportRoot);
+        return RectTransformUtility.RectangleContainsScreenPoint(viewportRoot, pointerPosition, eventCamera);
+    }
+
+    private Camera GetEventCameraForRect(RectTransform rect)
+    {
+        if (rect == null)
+            return null;
+
+        Canvas canvas = rect.GetComponentInParent<Canvas>();
+        if (canvas == null || canvas.renderMode == RenderMode.ScreenSpaceOverlay)
+            return null;
+
+        return canvas.worldCamera != null ? canvas.worldCamera : stageCamera;
+    }
+
+    private float GetScreenToReferenceScale()
+    {
+        if (Screen.width <= 0)
+            return 1f;
+
+        return visibleReferenceWidth / Screen.width;
+    }
+
+    private bool IsPointerOverAnyRoot(Vector2 pointerPosition, RectTransform[] roots)
+    {
+        if (roots == null || roots.Length <= 0)
+            return false;
+
+        EnsureRaycastResults(pointerPosition);
+        for (int i = 0; i < raycastResults.Count; i++)
+        {
+            RectTransform hitRect = raycastResults[i].gameObject != null
+                ? raycastResults[i].gameObject.GetComponent<RectTransform>()
+                : null;
+
+            if (IsUnderAnyRoot(hitRect, roots))
+                return true;
+        }
+
+        return false;
+    }
+
+    private bool IsTopEligibleRaycastUnderRoot(Vector2 pointerPosition, RectTransform requiredRoot)
+    {
+        if (requiredRoot == null)
+            return true;
+
+        EnsureRaycastResults(pointerPosition);
+        for (int i = 0; i < raycastResults.Count; i++)
+        {
+            GameObject hitObject = raycastResults[i].gameObject;
+            if (hitObject == null || !hitObject.activeInHierarchy)
+                continue;
+
+            RectTransform hitRect = hitObject.GetComponent<RectTransform>();
+            if (hitRect == null)
+                continue;
+
+            if (IsUnderAnyRoot(hitRect, dragPanBlockRoots))
+                return false;
+
+            if (blockEdgeScrollWhenPointerOverUI && !IsUnderAnyExclusionRoot(hitRect))
+                return false;
+
+            return hitRect == requiredRoot || hitRect.IsChildOf(requiredRoot);
+        }
+
+        return false;
+    }
+
+    private void EnsureRaycastResults(Vector2 pointerPosition)
+    {
+        EventSystem eventSystem = EventSystem.current;
+        if (eventSystem == null)
+        {
+            raycastResults.Clear();
+            return;
+        }
+
+        PointerEventData eventData = new PointerEventData(eventSystem);
+        eventData.position = pointerPosition;
+
+        raycastResults.Clear();
+        eventSystem.RaycastAll(eventData, raycastResults);
+    }
+
+    private bool IsDragButtonPressed()
+    {
+#if ENABLE_INPUT_SYSTEM
+        if (Mouse.current == null)
+            return false;
+
+        switch (dragPanMouseButton)
+        {
+            case BattleStageDragMouseButton.Middle:
+                return Mouse.current.middleButton.isPressed;
+            case BattleStageDragMouseButton.Right:
+                return Mouse.current.rightButton.isPressed;
+            case BattleStageDragMouseButton.Left:
+            default:
+                return Mouse.current.leftButton.isPressed;
+        }
+#elif ENABLE_LEGACY_INPUT_MANAGER
+        return UnityEngine.Input.GetMouseButton(GetLegacyMouseButtonIndex(dragPanMouseButton));
+#else
+        return false;
+#endif
+    }
+
+    private bool WasDragButtonPressedThisFrame()
+    {
+#if ENABLE_INPUT_SYSTEM
+        if (Mouse.current == null)
+            return false;
+
+        switch (dragPanMouseButton)
+        {
+            case BattleStageDragMouseButton.Middle:
+                return Mouse.current.middleButton.wasPressedThisFrame;
+            case BattleStageDragMouseButton.Right:
+                return Mouse.current.rightButton.wasPressedThisFrame;
+            case BattleStageDragMouseButton.Left:
+            default:
+                return Mouse.current.leftButton.wasPressedThisFrame;
+        }
+#elif ENABLE_LEGACY_INPUT_MANAGER
+        return UnityEngine.Input.GetMouseButtonDown(GetLegacyMouseButtonIndex(dragPanMouseButton));
+#else
+        return false;
+#endif
+    }
+
+    private bool WasDragButtonReleasedThisFrame()
+    {
+#if ENABLE_INPUT_SYSTEM
+        if (Mouse.current == null)
+            return false;
+
+        switch (dragPanMouseButton)
+        {
+            case BattleStageDragMouseButton.Middle:
+                return Mouse.current.middleButton.wasReleasedThisFrame;
+            case BattleStageDragMouseButton.Right:
+                return Mouse.current.rightButton.wasReleasedThisFrame;
+            case BattleStageDragMouseButton.Left:
+            default:
+                return Mouse.current.leftButton.wasReleasedThisFrame;
+        }
+#elif ENABLE_LEGACY_INPUT_MANAGER
+        return UnityEngine.Input.GetMouseButtonUp(GetLegacyMouseButtonIndex(dragPanMouseButton));
+#else
+        return false;
+#endif
+    }
+
+#if ENABLE_LEGACY_INPUT_MANAGER
+    private int GetLegacyMouseButtonIndex(BattleStageDragMouseButton button)
+    {
+        switch (button)
+        {
+            case BattleStageDragMouseButton.Middle:
+                return 2;
+            case BattleStageDragMouseButton.Right:
+                return 1;
+            case BattleStageDragMouseButton.Left:
+            default:
+                return 0;
+        }
+    }
+#endif
 
     private void UpdateEdgeScrollTarget()
     {
@@ -417,15 +698,7 @@ public class BattleStageCameraController : MonoBehaviour
 
     private bool IsPointerOverBlockingUI(Vector2 pointerPosition)
     {
-        EventSystem eventSystem = EventSystem.current;
-        if (eventSystem == null)
-            return false;
-
-        PointerEventData eventData = new PointerEventData(eventSystem);
-        eventData.position = pointerPosition;
-
-        raycastResults.Clear();
-        eventSystem.RaycastAll(eventData, raycastResults);
+        EnsureRaycastResults(pointerPosition);
 
         for (int i = 0; i < raycastResults.Count; i++)
         {
@@ -445,12 +718,17 @@ public class BattleStageCameraController : MonoBehaviour
 
     private bool IsUnderAnyExclusionRoot(RectTransform rect)
     {
-        if (rect == null || pointerUIBlockExclusionRoots == null)
+        return IsUnderAnyRoot(rect, pointerUIBlockExclusionRoots);
+    }
+
+    private bool IsUnderAnyRoot(RectTransform rect, RectTransform[] roots)
+    {
+        if (rect == null || roots == null)
             return false;
 
-        for (int i = 0; i < pointerUIBlockExclusionRoots.Length; i++)
+        for (int i = 0; i < roots.Length; i++)
         {
-            RectTransform root = pointerUIBlockExclusionRoots[i];
+            RectTransform root = roots[i];
             if (root == null)
                 continue;
 
@@ -478,6 +756,11 @@ public class BattleStageCameraController : MonoBehaviour
         turnStartFocusSmoothTime = 0.22f;
         actionFocusSmoothTime = 0.16f;
         initialNormalizedPan = 0.5f;
+        emptyAreaDragPanEnabled = true;
+        dragPanMouseButton = BattleStageDragMouseButton.Left;
+        requirePointerInsideViewportForDrag = true;
+        dragStartThresholdReferencePixels = 6f;
+        dragPanSensitivity = 1f;
     }
 #endif
 }

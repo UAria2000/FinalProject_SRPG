@@ -15,6 +15,10 @@ public class BattleUIController : MonoBehaviour
     [SerializeField] private BattleTurnOrderStripUI turnOrderStripUI;
     [SerializeField] private BattleBackgroundClickCatcherUI backgroundClickCatcherUI;
 
+    [Header("Bottom Portrait Slots")]
+    [SerializeField] private BattleBottomPortraitBarUI allyBottomPortraitBarUI;
+    [SerializeField] private BattleBottomPortraitBarUI enemyBottomPortraitBarUI;
+
     [Header("Tooltips")]
     [SerializeField] private SkillTooltipUI skillTooltipUI;
     [SerializeField] private EnemySkillTooltipUI enemySkillTooltipUI;
@@ -87,6 +91,12 @@ public class BattleUIController : MonoBehaviour
         if (actionWheelUI != null)
             actionWheelUI.Initialize(manager);
 
+        if (allyBottomPortraitBarUI != null)
+            allyBottomPortraitBarUI.Initialize(manager);
+        if (enemyBottomPortraitBarUI != null)
+            enemyBottomPortraitBarUI.Initialize(manager);
+
+        RefreshBottomPortraitBars(manager);
 
         ApplyButtonNavigationNone(moveButton);
         ApplyButtonNavigationNone(captureButton);
@@ -262,6 +272,14 @@ public class BattleUIController : MonoBehaviour
     {
         if (turnOrderStripUI != null)
             turnOrderStripUI.Refresh(order, currentCursor);
+    }
+
+    public void RefreshBottomPortraitBars(BattleManager manager)
+    {
+        if (allyBottomPortraitBarUI != null)
+            allyBottomPortraitBarUI.Refresh(manager);
+        if (enemyBottomPortraitBarUI != null)
+            enemyBottomPortraitBarUI.Refresh(manager);
     }
 
     public void HandleBlankFieldLeftClick()

@@ -7,12 +7,23 @@ public class BattlePresentationController : MonoBehaviour
     private BattleManager battleManager;
     private BattleUIController uiController;
     private BattleViewManager viewManager;
+
     [Header("Stage Camera")]
     [SerializeField] private BattleStageCameraController stageCameraController;
+
+    [Header("Blank Battlefield Click")]
+    [Tooltip("빈 전장 영역을 좌클릭했을 때 아군/적군 정보 패널과 적 상세 팝업을 닫을지 여부입니다. 끄면 외부 클릭으로 UI가 닫히지 않습니다.")]
+    [SerializeField] private bool closeInfoPanelsOnBlankBattlefieldLeftClick = false;
+
+    [Tooltip("빈 전장 영역을 좌클릭했을 때 현재 스킬/이동/아이템/포획 대상 선택을 취소할지 여부입니다. 우클릭 취소 구조라면 끄는 것을 추천합니다.")]
+    [SerializeField] private bool cancelPendingActionOnBlankBattlefieldLeftClick = false;
+
+    [Tooltip("빈 전장 영역 좌클릭 시 Unity UI의 현재 선택 상태만 해제합니다. 정보 패널은 닫지 않습니다.")]
+    [SerializeField] private bool clearEventSystemSelectionOnBlankBattlefieldLeftClick = true;
+
     private GameObject popupLogPanel;
     private BottomContextType bottomContextType = BottomContextType.Inventory;
 
-    // �Ʊ� �� ���� �� ���� �г� �ڵ� ǥ�ø� ���� ������
     private BattleUnit lastAutoShownActingAlly;
     private BattleUnit lastCameraFocusedActingUnit;
 
@@ -79,7 +90,6 @@ public class BattlePresentationController : MonoBehaviour
             battleManager.CurrentState == TurnState.PlayerInput &&
             actingAlly != null;
 
-        // �Ʊ� ���� ���� ���۵��� ���� �ڵ����� �ش� �Ʊ� ������ ���
         if (canPlayerAct)
         {
             if (actingAlly != lastAutoShownActingAlly)
@@ -90,7 +100,6 @@ public class BattlePresentationController : MonoBehaviour
         }
         else
         {
-            // ���� �Ʊ� �Ͽ��� �ٽ� �ڵ� ǥ�ð� �ǵ��� ����
             lastAutoShownActingAlly = null;
         }
 
@@ -125,6 +134,7 @@ public class BattlePresentationController : MonoBehaviour
         uiController.RefreshTurnOrderStrip(
             battleManager.CurrentRoundTurnOrder,
             battleManager.CurrentRoundTurnCursor);
+        uiController.RefreshBottomPortraitBars(battleManager);
         uiController.SetBottomContext(bottomContextType);
 
         if (viewManager != null)
@@ -178,9 +188,58 @@ public class BattlePresentationController : MonoBehaviour
             battleManager.SelectedEnemyInfoUnit = unit;
         }
 
-        // ��� �� ���� ��Ʈ���� Ŭ�� / �ʵ� ���� Ŭ�� �� ��� �г� ����
         stageCameraController?.FocusUnitInstant(unit);
+        ClearUISelection();
+        RefreshAllUI();
+    }
 
+    public void ToggleUnitInfoFromBottomPortrait(BattleUnit unit)
+    {
+        if (battleManager == null || unit == null || !battleManager.IsUnitInBattle(unit))
+            return;
+
+        if (unit.Team == TeamType.Ally)
+        {
+            battleManager.SelectedAllyInfoUnit = battleManager.SelectedAllyInfoUnit == unit ? null : unit;
+        }
+        else
+        {
+            if (battleManager.SelectedEnemyInfoUnit == unit)
+            {
+                battleManager.SelectedEnemyInfoUnit = null;
+                if (uiController != null && uiController.IsEnemyDetailPopupOpen())
+                    uiController.HideEnemyDetailPopup();
+            }
+            else
+            {
+                if (uiController != null && uiController.IsEnemyDetailPopupOpen())
+                    uiController.HideEnemyDetailPopup();
+                battleManager.SelectedEnemyInfoUnit = unit;
+            }
+        }
+
+        stageCameraController?.FocusUnitInstant(unit);
+        ClearUISelection();
+        RefreshAllUI();
+    }
+
+    public void ClearInfoSelectionForTeam(TeamType team)
+    {
+        if (battleManager == null)
+            return;
+
+        if (team == TeamType.Ally)
+        {
+            battleManager.SelectedAllyInfoUnit = null;
+        }
+        else
+        {
+            battleManager.SelectedEnemyInfoUnit = null;
+            if (uiController != null && uiController.IsEnemyDetailPopupOpen())
+                uiController.HideEnemyDetailPopup();
+        }
+
+        ClearUISelection();
         RefreshAllUI();
     }
 
@@ -189,24 +248,35 @@ public class BattlePresentationController : MonoBehaviour
         if (battleManager == null)
             return;
 
-        // ��� ���� ���̾��ٸ� ���� ���
-        if (battleManager.InputMode != BattleInputMode.WaitingForAction &&
+        bool changed = false;
+
+        if (cancelPendingActionOnBlankBattlefieldLeftClick &&
+            battleManager.InputMode != BattleInputMode.WaitingForAction &&
             battleManager.CurrentState == TurnState.PlayerInput &&
             battleManager.InputController != null)
         {
             battleManager.InputController.CancelCurrentInput();
+            changed = true;
         }
 
-        battleManager.ClearInfoSelections();
-
-        if (uiController != null)
+        if (closeInfoPanelsOnBlankBattlefieldLeftClick)
         {
-            uiController.HideEnemyDetailPopup();
-            uiController.HandleBlankFieldLeftClick();
+            battleManager.ClearInfoSelections();
+
+            if (uiController != null)
+            {
+                uiController.HideEnemyDetailPopup();
+                uiController.HandleBlankFieldLeftClick();
+            }
+
+            changed = true;
         }
 
-        ClearUISelection();
-        RefreshAllUI();
+        if (clearEventSystemSelectionOnBlankBattlefieldLeftClick)
+            ClearUISelection();
+
+        if (changed)
+            RefreshAllUI();
     }
 
     public void OnInventoryTogglePressed()

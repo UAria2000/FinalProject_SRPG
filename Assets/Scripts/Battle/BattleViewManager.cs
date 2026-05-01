@@ -30,11 +30,7 @@ public class BattleViewManager : MonoBehaviour
         view.Initialize(unit, GetSlotLabel(unit.Team, unit.SlotIndex));
         view.SetPositionInstant(GetAnchorPosition(unit.Team, unit.SlotIndex));
 
-        BattleClickable clickable = view.GetComponent<BattleClickable>();
-        if (clickable == null)
-            clickable = view.gameObject.AddComponent<BattleClickable>();
-
-        clickable.Initialize(view, inputController);
+        view.ConfigureClickHandling(inputController);
 
         unitViews[unit] = view;
     }
@@ -194,11 +190,10 @@ public class BattleViewManager : MonoBehaviour
             bool isCurrent = manager.CurrentActingUnit == unit;
             bool isInfoSelected = manager.SelectedAllyInfoUnit == unit || manager.SelectedEnemyInfoUnit == unit;
             bool isFinished = manager.HasUnitFinishedTurnThisRound(unit);
-            bool isUpcoming = manager.IsUnitUpcomingThisRound(unit);
 
-            view.SetActionOwnerRing(isCurrent);
-            view.SetInfoSelectedRing(isInfoSelected);
-            view.SetRoundStateOverlay(isUpcoming, isFinished);
+            // Upcoming/finished gray overlays are deprecated.
+            // A unit that already ended its turn this round uses its dead battle sprite until the next round starts.
+            view.RefreshBattleVisualState(isCurrent, isInfoSelected, isFinished);
         }
     }
 

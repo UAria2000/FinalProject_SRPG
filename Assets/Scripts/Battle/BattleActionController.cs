@@ -17,30 +17,6 @@ public class BattleActionController : MonoBehaviour
         logController = log;
     }
 
-    private BattleStageCameraController StageCameraController
-    {
-        get
-        {
-            return battleManager != null && battleManager.PresentationController != null
-                ? battleManager.PresentationController.StageCameraController
-                : null;
-        }
-    }
-
-    private void FocusAction(BattleUnit actor, BattleUnit target)
-    {
-        BattleStageCameraController stageCamera = StageCameraController;
-        if (stageCamera == null)
-            return;
-
-        if (actor != null && target != null)
-            stageCamera.FocusUnitsSmooth(actor, target);
-        else if (actor != null)
-            stageCamera.FocusUnitSmooth(actor);
-        else if (target != null)
-            stageCamera.FocusUnitSmooth(target);
-    }
-
     public IEnumerator ExecuteSkill(BattleUnit actor, SkillDefinition skill, BattleUnit clickedTarget)
     {
         if (actor == null || skill == null)
@@ -69,8 +45,6 @@ public class BattleActionController : MonoBehaviour
             battleManager.OnActionExecutionFinished(false);
             yield break;
         }
-
-        FocusAction(actor, clickedTarget != null ? clickedTarget : targets[0]);
 
         battleManager.SetTurnState(TurnState.ExecutingAction);
 
@@ -225,7 +199,6 @@ public class BattleActionController : MonoBehaviour
         }
 
         battleManager.SetTurnState(TurnState.ExecutingAction);
-        FocusAction(actor, target);
 
         BattleFormation ownFormation = actor.Team == TeamType.Ally
             ? battleManager.AllyFormation
@@ -281,8 +254,6 @@ public class BattleActionController : MonoBehaviour
             yield break;
         }
 
-        FocusAction(actor, clickedTarget != null ? clickedTarget : targets[0]);
-
         battleManager.SetTurnState(TurnState.ExecutingAction);
 
         for (int i = 0; i < targets.Count; i++)
@@ -319,7 +290,6 @@ public class BattleActionController : MonoBehaviour
         }
 
         battleManager.SetTurnState(TurnState.ExecutingAction);
-        FocusAction(actor, target);
 
         if (!battleManager.TryConsumeCaptureAttempt(target))
         {
@@ -372,7 +342,6 @@ public class BattleActionController : MonoBehaviour
         }
 
         battleManager.SetTurnState(TurnState.ExecutingAction);
-        FocusAction(actor, null);
 
         BattleFormation ownFormation = actor.Team == TeamType.Ally
             ? battleManager.AllyFormation
@@ -775,6 +744,34 @@ public class BattleActionController : MonoBehaviour
         return back;
     }
 
+    private bool TryPassEffectRoll(BattleUnit actor, BattleUnit target, string sourceName, BattleEffectBlock block)
+    {
+        bool basePassed;
+        bool resistancePassed;
+        int finalChance;
+        bool success = BattleCalculator.RollEffectSuccess(block, target, out basePassed, out resistancePassed, out finalChance);
+        if (success)
+            return true;
+
+        string effectName = GetEffectDisplayName(block);
+        if (basePassed && !resistancePassed)
+            effectName += " 저항";
+
+        logController.AppendBattleLog(logController.BuildEffectFailureLog(actor, target, sourceName, effectName));
+        return false;
+    }
+
+    private string GetEffectDisplayName(BattleEffectBlock block)
+    {
+        if (block == null)
+            return "효과";
+
+        if (block.kind == BattleEffectKind.ApplyStatus || block.kind == BattleEffectKind.RemoveStatus)
+            return GetStatusDisplayName(block.statusType);
+
+        return block.kind.ToString();
+    }
+
     private void ApplyItemEffects(BattleUnit actor, BattleUnit target, ItemDefinition item)
     {
         if (item == null || item.effects == null)
@@ -784,14 +781,8 @@ public class BattleActionController : MonoBehaviour
         {
             BattleEffectBlock block = item.effects[i];
             if (block == null) continue;
-
-            int finalChance = BattleCalculator.CalculateEffectSuccessChance(block, target);
-            bool success = Random.Range(0f, 100f) < finalChance;
-            if (!success)
-            {
-                logController.AppendBattleLog(logController.BuildEffectFailureLog(actor, target, item.itemName, block.kind.ToString()));
+            if (!TryPassEffectRoll(actor, target, item.itemName, block))
                 continue;
-            }
 
             ApplyBlock(actor, target, item.itemName, block);
         }
@@ -803,14 +794,8 @@ public class BattleActionController : MonoBehaviour
         {
             BattleEffectBlock block = effects[i];
             if (block == null) continue;
-
-            int finalChance = BattleCalculator.CalculateEffectSuccessChance(block, target);
-            bool success = Random.Range(0f, 100f) < finalChance;
-            if (!success)
-            {
-                logController.AppendBattleLog(logController.BuildEffectFailureLog(actor, target, sourceName, block.kind.ToString()));
+            if (!TryPassEffectRoll(actor, target, sourceName, block))
                 continue;
-            }
 
             ApplyBlock(actor, target, sourceName, block);
         }
@@ -823,14 +808,8 @@ public class BattleActionController : MonoBehaviour
             BattleEffectBlock block = effects[i];
             if (block == null) continue;
             if (onlyNonDamage && block.kind == BattleEffectKind.Damage) continue;
-
-            int finalChance = BattleCalculator.CalculateEffectSuccessChance(block, target);
-            bool success = Random.Range(0f, 100f) < finalChance;
-            if (!success)
-            {
-                logController.AppendBattleLog(logController.BuildEffectFailureLog(actor, target, sourceName, block.kind.ToString()));
+            if (!TryPassEffectRoll(actor, target, sourceName, block))
                 continue;
-            }
 
             ApplyBlock(actor, target, sourceName, block);
         }
@@ -850,15 +829,8 @@ public class BattleActionController : MonoBehaviour
             if (block.kind == BattleEffectKind.ApplyStatus &&
                 block.statusType == StatusEffectType.Bleed)
             {
-                int finalChance = BattleCalculator.CalculateEffectSuccessChance(block, target);
-                bool success = Random.Range(0f, 100f) < finalChance;
-
-                if (!success)
-                {
-                    logController.AppendBattleLog(
-                        logController.BuildEffectFailureLog(actor, target, skill.skillName, GetStatusDisplayName(StatusEffectType.Bleed)));
+                if (!TryPassEffectRoll(actor, target, skill.skillName, block))
                     continue;
-                }
 
                 target.ApplyStatus(StatusEffectType.Bleed, block.durationTurns);
                 logController.AppendBattleLog(
@@ -961,17 +933,7 @@ public class BattleActionController : MonoBehaviour
 
     private string GetStatusDisplayName(StatusEffectType statusType)
     {
-        switch (statusType)
-        {
-            case StatusEffectType.Poison: return "중독";
-            case StatusEffectType.Bleed: return "출혈";
-            case StatusEffectType.Stun: return "기절";
-            case StatusEffectType.Taunt: return "도발";
-            case StatusEffectType.CounterStance: return "반격 태세";
-            case StatusEffectType.DuelArena: return "결투";
-            case StatusEffectType.Stealth: return "은신";
-            default: return statusType.ToString();
-        }
+        return BattleStatusUtility.GetDisplayName(statusType);
     }
 
     private void ApplyTimedModifierBlock(BattleUnit actor, BattleUnit target, string sourceName, BattleEffectBlock block)

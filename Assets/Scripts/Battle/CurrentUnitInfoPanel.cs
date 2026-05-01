@@ -17,8 +17,11 @@ public class CurrentUnitInfoPanel : MonoBehaviour
     [SerializeField] private TMP_Text criValueText;
     [SerializeField] private TMP_Text crdValueText;
     [SerializeField] private TMP_Text poisonResistValueText;
+    [SerializeField] private TMP_Text burnResistValueText;
     [SerializeField] private TMP_Text bleedResistValueText;
     [SerializeField] private TMP_Text stunResistValueText;
+    [SerializeField] private TMP_Text frostResistValueText;
+    [SerializeField] private TMP_Text blindResistValueText;
     [SerializeField] private TMP_Text epitaphText;
 
     public void Show(BattleUnit unit)
@@ -49,9 +52,12 @@ public class CurrentUnitInfoPanel : MonoBehaviour
         if (acValueText != null) acValueText.text = BattleStatFormatter.FormatScaledX10ValueWithDelta(unit.AC, variance.acDeltaX10);
         if (criValueText != null) criValueText.text = BattleStatFormatter.FormatIntValueWithDelta(unit.CRI, variance.criDelta);
         if (crdValueText != null) crdValueText.text = BattleStatFormatter.FormatIntValueWithDelta(unit.CRD, variance.crdDelta);
-        if (poisonResistValueText != null) poisonResistValueText.text = BattleStatFormatter.FormatPercent(unit.PoisonResist);
+        if (poisonResistValueText != null) poisonResistValueText.text = BattleStatFormatter.FormatPercent(unit.BurnResist);
+        if (burnResistValueText != null) burnResistValueText.text = BattleStatFormatter.FormatPercent(unit.BurnResist);
         if (bleedResistValueText != null) bleedResistValueText.text = BattleStatFormatter.FormatPercent(unit.BleedResist);
         if (stunResistValueText != null) stunResistValueText.text = BattleStatFormatter.FormatPercent(unit.StunResist);
+        if (frostResistValueText != null) frostResistValueText.text = BattleStatFormatter.FormatPercent(unit.FrostResist);
+        if (blindResistValueText != null) blindResistValueText.text = BattleStatFormatter.FormatPercent(unit.BlindResist);
         if (epitaphText != null) epitaphText.text = string.IsNullOrEmpty(unit.Epitaph) ? "-" : unit.Epitaph;
     }
 

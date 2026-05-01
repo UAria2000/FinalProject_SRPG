@@ -126,15 +126,23 @@ public enum BattleEffectKind
 
 public enum StatusEffectType
 {
-    None,
-    Poison,
-    Bleed,
-    Stun,
-    Taunt,
-    CounterStance,
-    DuelArena,
-    Stealth
+    None = 0,
+
+    Burn = 1,
+    Poison = 1,
+    Bleed = 2,
+    Stun = 3,
+
+    // Backward-compatible special states. These are not resistance-based ailments.
+    Taunt = 4,
+    CounterStance = 5,
+    DuelArena = 6,
+    Stealth = 7,
+
+    Frost = 8,
+    Blind = 9
 }
+
 
 public enum StatModifierType
 {

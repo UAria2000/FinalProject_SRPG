@@ -212,9 +212,9 @@ public class BattleLogController : MonoBehaviour
         return "메인 캐릭터가 사망했습니다. 월드 정복 실패";
     }
 
-    public string BuildTurnStartPoisonLog(BattleUnit unit, int damage)
+    public string BuildTurnStartBurnLog(BattleUnit unit, int damage)
     {
-        return string.Format("{0} 중독 피해 {1}", unit.Name, damage);
+        return string.Format("{0} 화상 피해 {1}", unit.Name, damage);
     }
 
     public string BuildTurnStartBleedLog(BattleUnit unit, int damage)
@@ -267,16 +267,6 @@ public class BattleLogController : MonoBehaviour
 
     private string GetStatusDisplayName(StatusEffectType statusType)
     {
-        switch (statusType)
-        {
-            case StatusEffectType.Poison: return "중독";
-            case StatusEffectType.Bleed: return "출혈";
-            case StatusEffectType.Stun: return "기절";
-            case StatusEffectType.Taunt: return "도발";
-            case StatusEffectType.CounterStance: return "반격 태세";
-            case StatusEffectType.DuelArena: return "결투";
-            case StatusEffectType.Stealth: return "은신";
-            default: return statusType.ToString();
-        }
+        return BattleStatusUtility.GetDisplayName(statusType);
     }
 }

@@ -126,8 +126,11 @@ public class UnitInstanceStatVariance
     public int crdDelta;
 
     public int poisonResistDelta;
+    public int burnResistDelta;
     public int bleedResistDelta;
     public int stunResistDelta;
+    public int frostResistDelta;
+    public int blindResistDelta;
 
     public UnitInstanceStatVariance CloneRuntime()
     {
@@ -141,8 +144,11 @@ public class UnitInstanceStatVariance
             criDelta = criDelta,
             crdDelta = crdDelta,
             poisonResistDelta = poisonResistDelta,
+            burnResistDelta = burnResistDelta,
             bleedResistDelta = bleedResistDelta,
-            stunResistDelta = stunResistDelta
+            stunResistDelta = stunResistDelta,
+            frostResistDelta = frostResistDelta,
+            blindResistDelta = blindResistDelta
         };
     }
 }
@@ -158,8 +164,11 @@ public class StatVarianceRules
     public Vector2Int criRange = Vector2Int.zero;
     public Vector2Int crdRange = Vector2Int.zero;
     public Vector2Int poisonResistRange = Vector2Int.zero;
+    public Vector2Int burnResistRange = Vector2Int.zero;
     public Vector2Int bleedResistRange = Vector2Int.zero;
     public Vector2Int stunResistRange = Vector2Int.zero;
+    public Vector2Int frostResistRange = Vector2Int.zero;
+    public Vector2Int blindResistRange = Vector2Int.zero;
 }
 
 [Serializable]

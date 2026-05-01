@@ -288,6 +288,7 @@ public class BattleFlowController : MonoBehaviour
                     battleManager.CurrentTurnSkippedByStatus)
                 {
                     EvaluateEndOfTurnGimmicks(unit);
+                    turnManager.ResortRemainingTurnsByCurrentSpeed();
 
                     CheckBattleResult();
                     battleManager.RefreshAllUI();
@@ -331,6 +332,7 @@ public class BattleFlowController : MonoBehaviour
                     break;
 
                 EvaluateEndOfTurnGimmicks(unit);
+                turnManager.ResortRemainingTurnsByCurrentSpeed();
 
                 CheckBattleResult();
                 battleManager.RefreshAllUI();
@@ -363,10 +365,6 @@ public class BattleFlowController : MonoBehaviour
             yield break;
 
         BattleTurnStartStatusResult result = unit.ResolveTurnStartStatuses();
-
-        if (result.poisonDamage > 0)
-            logController.AppendBattleLog(logController.BuildTurnStartPoisonLog(unit, result.poisonDamage));
-
         if (result.bleedDamage > 0)
             logController.AppendBattleLog(logController.BuildTurnStartBleedLog(unit, result.bleedDamage));
 

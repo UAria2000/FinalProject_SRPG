@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: UV_DarkElf
   m_EditorClassIdentifier: Assembly-CSharp::UnitViewDefinition
   slotFaceSprite: {fileID: 21300000, guid: dfaa9222bf8e81a44884674190f825d4, type: 3}
-  bustPortraitSprite: {fileID: 21300000, guid: 8dbef2162bd4a7a4a85761d34a49b116, type: 3}
+  bustPortraitSprite: {fileID: 21300000, guid: 9316c84b340c064479da916a1ec361dc, type: 3}
   deadSlotFaceSprite: {fileID: 21300000, guid: 99461f69de12b85489e256c5462f4fef, type: 3}
-  deadBustPortraitSprite: {fileID: 0}
+  deadBustPortraitSprite: {fileID: 21300000, guid: 99461f69de12b85489e256c5462f4fef, type: 3}
   battleSprite: {fileID: 21300000, guid: 8dbef2162bd4a7a4a85761d34a49b116, type: 3}
   deadBattleSprite: {fileID: 21300000, guid: eadc82109ff8f9743a9a22c82ecaa2cb, type: 3}
-  viewPrefab: {fileID: 5061461418041598090, guid: edca2cd44571b8f4c80b0dfce99d6e95, type: 3}
+  viewPrefab: {fileID: 7130859592086966948, guid: edca2cd44571b8f4c80b0dfce99d6e95, type: 3}

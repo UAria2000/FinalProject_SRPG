@@ -37,9 +37,13 @@ public class UnitDefinition : ScriptableObject
     public int crd = 150;
 
     [Header("Resist")]
+    [Tooltip("구버전 중독 저항. 이제 화상 저항으로 이관되어 사용됩니다.")]
     public int poisonResist = 0;
+    public int burnResist = 0;
     public int bleedResist = 0;
     public int stunResist = 0;
+    public int frostResist = 0;
+    public int blindResist = 0;
 
     [Header("Battle")]
     public SkillDefinition basicAttack;

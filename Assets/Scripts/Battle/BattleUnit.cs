@@ -103,9 +103,11 @@ public class BattleUnit
     public float BaseAC { get { return Definition != null ? Definition.ac : 0f; } }
     public int BaseCRI { get { return Definition != null ? Definition.cri : 0; } }
     public int BaseCRD { get { return Definition != null ? Definition.crd : 0; } }
-    public int BasePoisonResist { get { return Definition != null ? Definition.poisonResist : 0; } }
+    public int BaseBurnResist { get { return Definition != null ? (Definition.burnResist != 0 ? Definition.burnResist : Definition.poisonResist) : 0; } }
     public int BaseBleedResist { get { return Definition != null ? Definition.bleedResist : 0; } }
     public int BaseStunResist { get { return Definition != null ? Definition.stunResist : 0; } }
+    public int BaseFrostResist { get { return Definition != null ? Definition.frostResist : 0; } }
+    public int BaseBlindResist { get { return Definition != null ? Definition.blindResist : 0; } }
 
     public int MaxHP { get { return ApplyPromotionToInt(Mathf.Max(1, BaseMaxHP + GetVariance().maxHpDelta + LevelGrowthMaxHP)); } }
 
@@ -127,7 +129,7 @@ public class BattleUnit
         get
         {
             int baseValue = ApplyPromotionToInt(Mathf.Max(0, BaseSPD + GetVariance().spdDelta));
-            return ApplyPercentTimedModifierToInt(baseValue, StatModifierType.SPD);
+            return ApplyPercentTimedModifierToInt(baseValue, StatModifierType.SPD, -FrostStatPenaltyPercent);
         }
     }
 
@@ -145,7 +147,7 @@ public class BattleUnit
         get
         {
             float baseValue = ApplyPromotionToFloat(Mathf.Max(0f, BaseAC + GetVariance().acDeltaX10));
-            return ApplyPercentTimedModifierToFloat(baseValue, StatModifierType.AC);
+            return ApplyPercentTimedModifierToFloat(baseValue, StatModifierType.AC, -FrostStatPenaltyPercent);
         }
     }
 
@@ -167,9 +169,19 @@ public class BattleUnit
         }
     }
 
-    public int PoisonResist { get { return ApplyPromotionToInt(Mathf.Max(0, BasePoisonResist + GetVariance().poisonResistDelta)); } }
+    public int PoisonResist { get { return BurnResist; } }
+    public int BurnResist { get { int delta = GetVariance().burnResistDelta != 0 ? GetVariance().burnResistDelta : GetVariance().poisonResistDelta; return ApplyPromotionToInt(Mathf.Max(0, BaseBurnResist + delta)); } }
     public int BleedResist { get { return ApplyPromotionToInt(Mathf.Max(0, BaseBleedResist + GetVariance().bleedResistDelta)); } }
     public int StunResist { get { return ApplyPromotionToInt(Mathf.Max(0, BaseStunResist + GetVariance().stunResistDelta)); } }
+    public int FrostResist { get { return ApplyPromotionToInt(Mathf.Max(0, BaseFrostResist + GetVariance().frostResistDelta)); } }
+    public int BlindResist { get { return ApplyPromotionToInt(Mathf.Max(0, BaseBlindResist + GetVariance().blindResistDelta)); } }
+
+    public int BurnStackCount { get { return GetStatusStackCount(StatusEffectType.Burn); } }
+    public int BleedStackCount { get { return GetStatusStackCount(StatusEffectType.Bleed); } }
+    public int FrostStackCount { get { return GetStatusStackCount(StatusEffectType.Frost); } }
+    public int BurnIncomingDamageTakenPercent { get { return Mathf.Max(0, BurnStackCount * BattleStatusUtility.BurnIncomingDamageTakenPercentPerStack); } }
+    public int FrostStatPenaltyPercent { get { return Mathf.Max(0, FrostStackCount * BattleStatusUtility.FrostAcSpdPenaltyPercentPerStack); } }
+    public int BlindFinalHitPenaltyPercent { get { return HasStatus(StatusEffectType.Blind) ? BattleStatusUtility.BlindFinalHitChancePenaltyPercent : 0; } }
 
     private int endTurnGuardPercent;
     public int EndTurnGuardPercent { get { return endTurnGuardPercent > 0 ? endTurnGuardPercent : 0; } }
@@ -421,6 +433,14 @@ public class BattleUnit
         return hpDamage;
     }
 
+    public int ApplyDirectHpDamage(int amount)
+    {
+        amount = Mathf.Max(0, amount);
+        int before = CurrentHP;
+        CurrentHP = Mathf.Max(0, CurrentHP - amount);
+        return before - CurrentHP;
+    }
+
     public int ApplyIncomingAttackDamageReduction(int amount)
     {
         amount = Mathf.Max(0, amount);
@@ -431,7 +451,7 @@ public class BattleUnit
             amount = Mathf.Max(0, Mathf.RoundToInt(amount * guardMultiplier));
         }
 
-        int takenModifierPercent = GetTimedModifierMagnitude(StatModifierType.IncomingDamageTakenPercent);
+        int takenModifierPercent = GetTimedModifierMagnitude(StatModifierType.IncomingDamageTakenPercent) + BurnIncomingDamageTakenPercent;
         if (takenModifierPercent != 0)
         {
             float multiplier = 1f + (takenModifierPercent / 100f);
@@ -500,7 +520,12 @@ public class BattleUnit
 
     private int ApplyPercentTimedModifierToInt(int baseValue, StatModifierType statType)
     {
-        int modifierPercent = GetTimedModifierMagnitude(statType);
+        return ApplyPercentTimedModifierToInt(baseValue, statType, 0);
+    }
+
+    private int ApplyPercentTimedModifierToInt(int baseValue, StatModifierType statType, int extraModifierPercent)
+    {
+        int modifierPercent = GetTimedModifierMagnitude(statType) + extraModifierPercent;
         if (modifierPercent == 0)
             return baseValue;
 
@@ -509,7 +534,12 @@ public class BattleUnit
 
     private float ApplyPercentTimedModifierToFloat(float baseValue, StatModifierType statType)
     {
-        int modifierPercent = GetTimedModifierMagnitude(statType);
+        return ApplyPercentTimedModifierToFloat(baseValue, statType, 0);
+    }
+
+    private float ApplyPercentTimedModifierToFloat(float baseValue, StatModifierType statType, int extraModifierPercent)
+    {
+        int modifierPercent = GetTimedModifierMagnitude(statType) + extraModifierPercent;
         if (modifierPercent == 0)
             return baseValue;
 
@@ -593,25 +623,32 @@ public class BattleUnit
 
     private BattleStatusInstance FindStatusInstance(StatusEffectType statusType)
     {
+        statusType = BattleStatusUtility.Normalize(statusType);
         for (int i = 0; i < statuses.Count; i++)
         {
-            if (statuses[i].statusType == statusType)
+            if (BattleStatusUtility.Normalize(statuses[i].statusType) == statusType)
                 return statuses[i];
         }
 
         return null;
     }
 
+    public IReadOnlyList<BattleStatusInstance> Statuses
+    {
+        get { return statuses; }
+    }
+
     public int GetStatusStackCount(StatusEffectType statusType)
     {
+        statusType = BattleStatusUtility.Normalize(statusType);
         BattleStatusInstance instance = FindStatusInstance(statusType);
         if (instance == null)
             return 0;
 
-        if (statusType == StatusEffectType.Poison || statusType == StatusEffectType.Bleed)
+        if (BattleStatusUtility.IsStackingAilment(statusType))
             return Mathf.Max(0, instance.remainingTurns);
 
-        return 1;
+        return instance.remainingTurns > 0 ? 1 : 0;
     }
 
     public BattleTurnStartStatusResult ResolveTurnStartStatuses()
@@ -621,21 +658,12 @@ public class BattleUnit
             return result;
 
         int hpAtTurnStart = CurrentHP;
-
-        int poisonStacks = GetStatusStackCount(StatusEffectType.Poison);
-        if (poisonStacks > 0)
-        {
-            int poisonDamagePerStack = Mathf.Max(1, Mathf.FloorToInt(MaxHP * 0.03f));
-            int totalPoisonDamage = poisonDamagePerStack * poisonStacks;
-            result.poisonDamage = ApplyDamage(totalPoisonDamage);
-        }
-
         int bleedStacks = GetStatusStackCount(StatusEffectType.Bleed);
-        if (!IsDead && bleedStacks > 0)
+        if (bleedStacks > 0)
         {
-            int bleedDamagePerStack = Mathf.Max(1, Mathf.FloorToInt(hpAtTurnStart * 0.05f));
+            int bleedDamagePerStack = Mathf.Max(1, Mathf.CeilToInt(hpAtTurnStart * 0.05f));
             int totalBleedDamage = bleedDamagePerStack * bleedStacks;
-            result.bleedDamage = ApplyDamage(totalBleedDamage);
+            result.bleedDamage = ApplyDirectHpDamage(totalBleedDamage);
         }
 
         if (!IsDead && HasStatus(StatusEffectType.Stun))
@@ -643,15 +671,16 @@ public class BattleUnit
 
         for (int i = statuses.Count - 1; i >= 0; i--)
         {
+            StatusEffectType normalizedType = BattleStatusUtility.Normalize(statuses[i].statusType);
+            statuses[i].statusType = normalizedType;
             statuses[i].remainingTurns--;
 
             if (statuses[i].remainingTurns <= 0)
             {
-                StatusEffectType expiredType = statuses[i].statusType;
-                result.expiredStatuses.Add(expiredType);
+                result.expiredStatuses.Add(normalizedType);
                 statuses.RemoveAt(i);
 
-                if (expiredType == StatusEffectType.DuelArena)
+                if (normalizedType == StatusEffectType.DuelArena)
                     duelLockedTarget = null;
             }
         }
@@ -661,31 +690,39 @@ public class BattleUnit
 
     public void ApplyStatus(StatusEffectType statusType, int duration)
     {
+        statusType = BattleStatusUtility.Normalize(statusType);
         if (statusType == StatusEffectType.None || duration <= 0)
             return;
 
         BattleStatusInstance existing = FindStatusInstance(statusType);
         if (existing != null)
         {
-            if (statusType == StatusEffectType.Poison || statusType == StatusEffectType.Bleed)
-                existing.remainingTurns += duration;
+            existing.statusType = statusType;
+            if (BattleStatusUtility.IsStackingAilment(statusType))
+                existing.remainingTurns = BattleStatusUtility.ClampStack(existing.remainingTurns + duration);
             else
-                existing.remainingTurns = Mathf.Max(existing.remainingTurns, duration);
+            {
+                int effectiveDuration = statusType == StatusEffectType.Blind ? duration + 1 : duration;
+                existing.remainingTurns = Mathf.Max(existing.remainingTurns, effectiveDuration);
+            }
 
             return;
         }
 
         BattleStatusInstance instance = new BattleStatusInstance();
         instance.statusType = statusType;
-        instance.remainingTurns = duration;
+        instance.remainingTurns = BattleStatusUtility.IsStackingAilment(statusType)
+            ? BattleStatusUtility.ClampStack(duration)
+            : Mathf.Max(1, statusType == StatusEffectType.Blind ? duration + 1 : duration);
         statuses.Add(instance);
     }
 
     public void RemoveStatus(StatusEffectType statusType)
     {
+        statusType = BattleStatusUtility.Normalize(statusType);
         for (int i = statuses.Count - 1; i >= 0; i--)
         {
-            if (statuses[i].statusType == statusType)
+            if (BattleStatusUtility.Normalize(statuses[i].statusType) == statusType)
                 statuses.RemoveAt(i);
         }
 
@@ -695,9 +732,10 @@ public class BattleUnit
 
     public bool HasStatus(StatusEffectType statusType)
     {
+        statusType = BattleStatusUtility.Normalize(statusType);
         for (int i = 0; i < statuses.Count; i++)
         {
-            if (statuses[i].statusType == statusType)
+            if (BattleStatusUtility.Normalize(statuses[i].statusType) == statusType && statuses[i].remainingTurns > 0)
                 return true;
         }
 
@@ -706,14 +744,7 @@ public class BattleUnit
 
     public int GetResistance(StatusEffectType statusType)
     {
-        switch (statusType)
-        {
-            case StatusEffectType.Poison: return PoisonResist;
-            case StatusEffectType.Bleed: return BleedResist;
-            case StatusEffectType.Stun: return StunResist;
-        }
-
-        return 0;
+        return BattleStatusUtility.GetResistance(this, statusType);
     }
 
     private string GetSkillKey(SkillDefinition skill)
@@ -727,7 +758,6 @@ public class BattleUnit
 
 public class BattleTurnStartStatusResult
 {
-    public int poisonDamage;
     public int bleedDamage;
     public bool wasStunned;
     public readonly List<StatusEffectType> expiredStatuses = new List<StatusEffectType>();
