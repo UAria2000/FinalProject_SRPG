@@ -41929,7 +41929,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 0.9411765}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -46841,16 +46841,16 @@ MonoBehaviour:
   hideWheelRootGameObject: 0
   disableOtherActionButtonsDuringTargetSelection: 1
   rightClickContextAction: 1
-  rightDragScaleEnabled: 0
+  rightDragScaleEnabled: 1
   middleClickMovesWheel: 1
   middleDragMovesWheel: 1
   pointerDragThreshold: 30
   scaleSteps:
+  - 0.5
+  - 0.7
+  - 0.9
   - 1
-  - 1.25
-  - 1.5
-  - 1.75
-  - 2
+  - 1.2
   defaultScaleIndex: 1
   currentManaValue: 120
   maxManaValue: 120
