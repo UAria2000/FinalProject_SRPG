@@ -289,6 +289,7 @@ public class BattleFlowController : MonoBehaviour
                 {
                     EvaluateEndOfTurnGimmicks(unit);
                     turnManager.ResortRemainingTurnsByCurrentSpeed();
+                    battleManager.ReplaceUpcomingTurnOrderFromRemainingQueue(turnManager.GetOrderedUnitsSnapshot());
 
                     CheckBattleResult();
                     battleManager.RefreshAllUI();
@@ -333,6 +334,7 @@ public class BattleFlowController : MonoBehaviour
 
                 EvaluateEndOfTurnGimmicks(unit);
                 turnManager.ResortRemainingTurnsByCurrentSpeed();
+                battleManager.ReplaceUpcomingTurnOrderFromRemainingQueue(turnManager.GetOrderedUnitsSnapshot());
 
                 CheckBattleResult();
                 battleManager.RefreshAllUI();

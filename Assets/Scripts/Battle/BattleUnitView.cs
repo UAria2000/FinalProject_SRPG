@@ -29,14 +29,19 @@ public class BattleUnitView : MonoBehaviour
     [SerializeField] private GameObject activeRingRoot;
     [SerializeField] private GameObject infoSelectedRingRoot;
 
+    [Header("Turn Finished Visual")]
+    [Tooltip("한 라운드 안에서 이미 턴을 종료한 유닛의 전신 이미지 투명도입니다. 0.8 = 80% 표시.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float finishedTurnBodyAlpha = 0.8f;
+
     [Header("Deprecated - Not Used")]
     [Tooltip("폐기 예정. 더 이상 턴 예정/완료 표시로 사용하지 않습니다.")]
     [SerializeField] private Image upcomingGrayOverlayImage;
-    [Tooltip("폐기 예정. 더 이상 턴 완료 표시로 사용하지 않습니다. 턴 완료 표시는 dead battle sprite로 대체됩니다.")]
+    [Tooltip("폐기 예정. 더 이상 턴 완료 표시로 사용하지 않습니다. 턴 완료 표시는 전신 이미지 투명도로 처리합니다.")]
     [SerializeField] private Image finishedGrayOverlayImage;
 
     private RectTransform rectTransform;
-    private bool currentlyUsingFinishedSprite;
+    private bool currentlyUsingFinishedVisual;
 
     public BattleUnit Unit { get; private set; }
     public RectTransform HoverAnchor => hoverAnchor != null ? hoverAnchor : rectTransform;
@@ -50,7 +55,7 @@ public class BattleUnitView : MonoBehaviour
     public void Initialize(BattleUnit unit, string label)
     {
         Unit = unit;
-        currentlyUsingFinishedSprite = false;
+        currentlyUsingFinishedVisual = false;
 
         if (labelText != null)
             labelText.text = label;
@@ -210,7 +215,7 @@ public class BattleUnitView : MonoBehaviour
 
     /// <summary>
     /// 기존 코드 호환용. Upcoming/Finished 회색 오버레이는 더 이상 사용하지 않고,
-    /// finished 값이 true일 때 dead battle sprite로 교체한다.
+    /// finished 값이 true일 때 전신 이미지를 20% 알파로 표시한다.
     /// </summary>
     public void SetRoundStateOverlay(bool upcoming, bool finished)
     {
@@ -220,11 +225,15 @@ public class BattleUnitView : MonoBehaviour
 
     public void SetFinishedTurnVisual(bool finished)
     {
-        if (currentlyUsingFinishedSprite == finished && unitBodyImage != null && unitBodyImage.sprite != null)
+        if (currentlyUsingFinishedVisual == finished && unitBodyImage != null && unitBodyImage.sprite != null)
+        {
+            ApplyBodyAlpha(finished);
             return;
+        }
 
-        currentlyUsingFinishedSprite = finished;
-        ApplyBodySprite(finished || (Unit != null && Unit.IsDead));
+        currentlyUsingFinishedVisual = finished;
+        ApplyBodySprite(Unit != null && Unit.IsDead);
+        ApplyBodyAlpha(finished);
     }
 
     private void ApplyBodySprite(bool useDeadBattleSprite)
@@ -239,9 +248,19 @@ public class BattleUnitView : MonoBehaviour
             sprite = Unit.BattleSprite;
 
         unitBodyImage.sprite = sprite;
-        unitBodyImage.color = sprite != null ? Color.white : new Color(1f, 1f, 1f, 0f);
+        ApplyBodyAlpha(currentlyUsingFinishedVisual);
         unitBodyImage.preserveAspect = true;
         unitBodyImage.raycastTarget = false;
+    }
+
+    private void ApplyBodyAlpha(bool finished)
+    {
+        if (unitBodyImage == null)
+            return;
+
+        Color color = Color.white;
+        color.a = unitBodyImage.sprite == null ? 0f : (finished ? Mathf.Clamp01(finishedTurnBodyAlpha) : 1f);
+        unitBodyImage.color = color;
     }
 
     private void DisableDeprecatedOverlays()

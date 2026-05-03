@@ -774,6 +774,7 @@ MonoBehaviour:
   disableChildGraphicRaycastsExceptClickableArea: 1
   activeRingRoot: {fileID: 752951535222056054}
   infoSelectedRingRoot: {fileID: 1079251847127486476}
+  finishedTurnBodyAlpha: 0.8
   upcomingGrayOverlayImage: {fileID: 0}
   finishedGrayOverlayImage: {fileID: 0}
 --- !u!1 &8968532968539434593

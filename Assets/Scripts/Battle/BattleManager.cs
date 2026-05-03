@@ -712,13 +712,72 @@ public class BattleManager : MonoBehaviour
     {
         currentRoundTurnOrder.Clear();
         if (units != null)
-            currentRoundTurnOrder.AddRange(units);
+        {
+            for (int i = 0; i < units.Count; i++)
+            {
+                BattleUnit unit = units[i];
+                if (unit != null && !unit.IsDead && !currentRoundTurnOrder.Contains(unit))
+                    currentRoundTurnOrder.Add(unit);
+            }
+        }
         CurrentRoundTurnCursor = -1;
     }
 
     public void SetCurrentRoundTurnCursor(int cursor)
     {
         CurrentRoundTurnCursor = cursor;
+        RemoveDeadUnitsFromCurrentRoundTurnOrder();
+    }
+
+    /// <summary>
+    /// Replaces only the upcoming portion of the current round order with a freshly sorted remaining queue.
+    /// This is used when SPD changes mid-round, e.g. Frost, so the top-left turn strip updates immediately
+    /// while finished/current units keep their visual state.
+    /// </summary>
+    public void ReplaceUpcomingTurnOrderFromRemainingQueue(List<BattleUnit> remainingQueueSnapshot)
+    {
+        RemoveDeadUnitsFromCurrentRoundTurnOrder();
+
+        List<BattleUnit> rebuilt = new List<BattleUnit>();
+        int keepInclusive = Mathf.Clamp(CurrentRoundTurnCursor, -1, currentRoundTurnOrder.Count - 1);
+
+        for (int i = 0; i <= keepInclusive; i++)
+        {
+            BattleUnit unit = currentRoundTurnOrder[i];
+            if (unit != null && !unit.IsDead && !rebuilt.Contains(unit))
+                rebuilt.Add(unit);
+        }
+
+        if (remainingQueueSnapshot != null)
+        {
+            for (int i = 0; i < remainingQueueSnapshot.Count; i++)
+            {
+                BattleUnit unit = remainingQueueSnapshot[i];
+                if (unit != null && !unit.IsDead && !rebuilt.Contains(unit))
+                    rebuilt.Add(unit);
+            }
+        }
+
+        currentRoundTurnOrder.Clear();
+        currentRoundTurnOrder.AddRange(rebuilt);
+        CurrentRoundTurnCursor = Mathf.Clamp(CurrentRoundTurnCursor, -1, currentRoundTurnOrder.Count - 1);
+    }
+
+    public void RemoveDeadUnitsFromCurrentRoundTurnOrder()
+    {
+        for (int i = currentRoundTurnOrder.Count - 1; i >= 0; i--)
+        {
+            BattleUnit unit = currentRoundTurnOrder[i];
+            if (unit == null || unit.IsDead)
+            {
+                if (i <= CurrentRoundTurnCursor)
+                    CurrentRoundTurnCursor--;
+
+                currentRoundTurnOrder.RemoveAt(i);
+            }
+        }
+
+        CurrentRoundTurnCursor = Mathf.Clamp(CurrentRoundTurnCursor, -1, currentRoundTurnOrder.Count - 1);
     }
 
     public bool HasUnitFinishedTurnThisRound(BattleUnit unit)

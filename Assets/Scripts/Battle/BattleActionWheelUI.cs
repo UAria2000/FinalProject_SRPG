@@ -106,8 +106,10 @@ public class BattleActionWheelUI : MonoBehaviour
     [SerializeField] private bool disableOtherActionButtonsDuringTargetSelection = true;
 
     [Header("Input")]
+    [Tooltip("열린 액션휠에서 우클릭으로 취소/기본 패널 복귀/닫기를 수행합니다. 닫힌 상태에서는 열지 않습니다.")]
     [SerializeField] private bool rightClickContextAction = true;
     [SerializeField] private bool rightDragScaleEnabled = false;
+    [Tooltip("휠클릭. 닫힌 상태에서는 액션휠을 해당 위치에 열고, 열린 상태에서는 해당 위치로 이동합니다.")]
     [SerializeField] private bool middleClickMovesWheel = true;
     [SerializeField] private bool middleDragMovesWheel = true;
     [SerializeField] private float pointerDragThreshold = 30f;
@@ -377,6 +379,21 @@ public class BattleActionWheelUI : MonoBehaviour
         if (resetPositionToPointer)
             MoveWheelToScreenPosition(GetPointerScreenPosition());
 
+        RenderCurrentState();
+    }
+
+    private void OpenRootAtScreenPosition(Vector2 screenPosition)
+    {
+        if (!CanOpenForCurrentActor())
+            return;
+
+        if (!IsTargetSelectionMode())
+            EnsureRootDepth();
+        else
+            SyncDepthForTargetSelectionMode();
+
+        SetVisible(true);
+        MoveWheelToScreenPosition(screenPosition);
         RenderCurrentState();
     }
 
@@ -1165,7 +1182,16 @@ public class BattleActionWheelUI : MonoBehaviour
         else if (pressedPointerButton == PointerButtonKind.Middle)
         {
             if (!pointerDragged && middleClickMovesWheel)
-                MoveWheelToScreenPosition(releaseScreenPosition);
+            {
+                if (isOpen)
+                {
+                    MoveWheelToScreenPosition(releaseScreenPosition);
+                }
+                else
+                {
+                    OpenRootAtScreenPosition(releaseScreenPosition);
+                }
+            }
         }
 
         pointerPressed = false;
@@ -1183,7 +1209,8 @@ public class BattleActionWheelUI : MonoBehaviour
 
         if (!isOpen)
         {
-            OpenRoot(false);
+            // 닫힌 상태에서 우클릭으로 액션휠을 여는 기능은 사용하지 않는다.
+            // 닫힌 액션휠은 휠클릭으로만 열고, 그 위치에 생성된다.
             return;
         }
 

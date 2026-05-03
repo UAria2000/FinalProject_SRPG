@@ -139,8 +139,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BattleTurnOrderPortraitUI
   portraitImage: {fileID: 5050126134446106665}
-  dimOverlayImage: {fileID: 0}
+  backgroundImage: {fileID: 5700587425182500869}
+  frameImage: {fileID: 3048274610517245043}
   orderText: {fileID: 0}
+  allyBackgroundSprite: {fileID: 21300000, guid: cdb2124d459796040b4a44e5f87ce932, type: 3}
+  enemyBackgroundSprite: {fileID: 21300000, guid: 75fec2770cc62dd4896c5242e42d12c5, type: 3}
+  allyBackgroundRoot: {fileID: 402673462419497249}
+  enemyBackgroundRoot: {fileID: 402673462419497249}
+  currentTurnFrameImage: {fileID: 1086235830837597098}
+  currentTurnFrameRoot: {fileID: 6760131401908748649}
+  dimOverlayImage: {fileID: 8791535268854856976}
+  dimOverlayRoot: {fileID: 4251188492812223380}
+  finishedDimColor: {r: 0, g: 0, b: 0, a: 0.62}
+  enforceLayoutElementSize: 1
+  preferredSlotSize: {x: 116, y: 136}
 --- !u!114 &6358185036404792449
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -253,7 +265,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &4969873349123259531
 RectTransform:
   m_ObjectHideFlags: 0
@@ -261,7 +273,7 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4251188492812223380}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -301,7 +313,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: 21300000, guid: 1b909137d5bb0cc448fd463c182f61c8, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
