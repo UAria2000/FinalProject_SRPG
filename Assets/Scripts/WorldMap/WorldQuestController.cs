@@ -467,6 +467,28 @@ public class WorldQuestController : MonoBehaviour
         }
     }
 
+    public bool MarkRewardClaimedAfterDirectLoadout(WorldQuestState quest, int rewardIndex)
+    {
+        if (quest == null || !quest.isCompleted)
+            return false;
+        if (!quest.CanClaimItemAt(rewardIndex))
+            return false;
+        if (quest.definition == null || quest.definition.itemRewards == null || rewardIndex < 0 || rewardIndex >= quest.definition.itemRewards.Count)
+            return false;
+
+        WorldQuestRewardItemEntry reward = quest.definition.itemRewards[rewardIndex];
+        if (reward == null || reward.item == null)
+            return false;
+
+        quest.MarkItemClaimed(rewardIndex);
+
+        if (questPopupUI != null && quest == currentPopupQuest && currentPopupMode == WorldQuestPopupMode.Completed)
+            questPopupUI.ShowCompleted(quest);
+
+        RefreshQuestListUI();
+        return true;
+    }
+
     public void ClaimAllRewardsForCurrentQuest()
     {
         if (currentPopupQuest == null || !currentPopupQuest.isCompleted)

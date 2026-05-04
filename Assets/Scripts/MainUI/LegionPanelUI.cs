@@ -324,13 +324,17 @@ public class LegionPanelUI : MainUIPanelBase, IDropHandler
         bottomPartySummaryPanelUI.BeginBarracksUnitDrag(card.BoundUnit);
     }
 
-    public void EndUnitCardPartyDrag(LegionUnitCardUI card)
+    public void EndUnitCardPartyDrag(LegionUnitCardUI card, bool refreshAfter = true)
     {
         if (card == null || card.BoundUnit == null || bottomPartySummaryPanelUI == null)
             return;
 
         bottomPartySummaryPanelUI.EndBarracksUnitDrag(card.BoundUnit);
-        RefreshAll();
+
+        // OnDisable/패널 닫힘 경로에서는 Unity가 이미 SetActive(false)를 처리 중이므로
+        // 이때 RefreshAll()->Bind()->SetActive()를 다시 호출하면 재진입 예외가 발생한다.
+        if (refreshAfter && isActiveAndEnabled && gameObject.activeInHierarchy)
+            RefreshAll();
     }
 
     public void OnDrop(PointerEventData eventData)

@@ -14,6 +14,7 @@ public class PrisonerRuntimeData
 {
     public string prisonerInstanceId;
     public UnitDefinition sourceUnit;
+    public ItemDefinition sourcePrisonerItem;
     public string prisonerNameOverride;
     public int capturedLevel = 1;
     public bool isExchangeable;
@@ -27,11 +28,17 @@ public class PrisonerRuntimeData
         if (!string.IsNullOrWhiteSpace(prisonerNameOverride))
             return prisonerNameOverride;
 
+        if (sourcePrisonerItem != null && !string.IsNullOrWhiteSpace(sourcePrisonerItem.itemName))
+            return sourcePrisonerItem.itemName;
+
         return sourceUnit != null ? sourceUnit.unitName : "Unknown Prisoner";
     }
 
     public Sprite GetPortrait()
     {
+        if (sourcePrisonerItem != null && sourcePrisonerItem.useItemIconAsPrisonerPortrait && sourcePrisonerItem.icon != null)
+            return sourcePrisonerItem.icon;
+
         if (sourceUnit != null && sourceUnit.captureRewardItem != null && sourceUnit.captureRewardItem.icon != null)
             return sourceUnit.captureRewardItem.icon;
 
@@ -96,6 +103,19 @@ public class PrisonerRuntimeData
             return;
 
         currentValue = targetValue;
+    }
+
+    public static PrisonerRuntimeData CreateFromPrisonerItem(ItemDefinition prisonerItem, int capturedLevel, long sequence, UnitDefinition fallbackUnit = null)
+    {
+        UnitDefinition sourceUnit = prisonerItem != null && prisonerItem.prisonerSourceUnitDefinition != null
+            ? prisonerItem.prisonerSourceUnitDefinition
+            : fallbackUnit;
+
+        PrisonerRuntimeData data = CreateFromCapturedUnit(sourceUnit, capturedLevel, sequence);
+        data.sourcePrisonerItem = prisonerItem;
+        if (prisonerItem != null && !string.IsNullOrWhiteSpace(prisonerItem.itemName))
+            data.prisonerNameOverride = prisonerItem.itemName;
+        return data;
     }
 
     public static PrisonerRuntimeData CreateFromCapturedUnit(UnitDefinition unit, int capturedLevel, long sequence)

@@ -144,8 +144,8 @@ MonoBehaviour:
   orderText: {fileID: 0}
   allyBackgroundSprite: {fileID: 21300000, guid: cdb2124d459796040b4a44e5f87ce932, type: 3}
   enemyBackgroundSprite: {fileID: 21300000, guid: 75fec2770cc62dd4896c5242e42d12c5, type: 3}
-  allyBackgroundRoot: {fileID: 402673462419497249}
-  enemyBackgroundRoot: {fileID: 402673462419497249}
+  allyBackgroundRoot: {fileID: 0}
+  enemyBackgroundRoot: {fileID: 0}
   currentTurnFrameImage: {fileID: 1086235830837597098}
   currentTurnFrameRoot: {fileID: 6760131401908748649}
   dimOverlayImage: {fileID: 8791535268854856976}

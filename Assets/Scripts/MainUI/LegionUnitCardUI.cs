@@ -61,6 +61,7 @@ public class LegionUnitCardUI : MonoBehaviour, IPointerClickHandler, IBeginDragH
     private bool isCurrentSelected;
     private bool isSelectedForDecompose;
     private bool isDecomposeMode;
+    private bool isPartyDragInProgress;
 
     public PersistentRosterUnitData BoundUnit => boundUnit;
 
@@ -90,8 +91,16 @@ public class LegionUnitCardUI : MonoBehaviour, IPointerClickHandler, IBeginDragH
         if (canvasGroup != null)
             canvasGroup.blocksRaycasts = true;
 
-        UIDragGhostUI.HideGhost();
-        owner?.EndUnitCardPartyDrag(this);
+        // 패널이 닫히거나 페이지 갱신 중 카드가 비활성화될 때 OnDisable이 호출된다.
+        // 이 경로에서 RefreshAll()까지 다시 호출하면 Unity가 자식 GameObject를
+        // 비활성화하는 도중 Bind()->SetActive()가 재진입해서
+        // "GameObject is already being activated or deactivated" 예외가 난다.
+        if (isPartyDragInProgress)
+        {
+            isPartyDragInProgress = false;
+            UIDragGhostUI.HideGhost();
+            owner?.EndUnitCardPartyDrag(this, false);
+        }
     }
 
     public void Bind(
@@ -176,6 +185,7 @@ public class LegionUnitCardUI : MonoBehaviour, IPointerClickHandler, IBeginDragH
         if (canvasGroup != null)
             canvasGroup.blocksRaycasts = false;
 
+        isPartyDragInProgress = true;
         owner.BeginUnitCardPartyDrag(this);
 
         Sprite ghostSprite = fullbodyImage != null ? fullbodyImage.sprite : null;
@@ -193,8 +203,12 @@ public class LegionUnitCardUI : MonoBehaviour, IPointerClickHandler, IBeginDragH
         if (canvasGroup != null)
             canvasGroup.blocksRaycasts = true;
 
+        if (!isPartyDragInProgress)
+            return;
+
+        isPartyDragInProgress = false;
         UIDragGhostUI.HideGhost();
-        owner?.EndUnitCardPartyDrag(this);
+        owner?.EndUnitCardPartyDrag(this, true);
     }
 
     private void HandleCardClicked()

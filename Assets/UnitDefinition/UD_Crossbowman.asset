@@ -15,16 +15,25 @@ MonoBehaviour:
   unitId: crossbowman
   unitName: "\uC11D\uAD81\uBCD1"
   rangeType: 2
+  isNftUnit: 0
+  showInLegion: 0
+  legionSortPriority: 0
+  legionCategoryLabel: 
   maxHP: 75
   dmg: 45
   spd: 50
+  hpGrowthPerLevel: {x: 2, y: 4}
+  dmgGrowthPerLevel: {x: 1, y: 3}
   hit: 70
   ac: 40
   cri: 20
   crd: 150
   poisonResist: 5
+  burnResist: 0
   bleedResist: 5
   stunResist: 5
+  frostResist: 0
+  blindResist: 0
   basicAttack: {fileID: 11400000, guid: d1b9ecc09e2bc5946a13f1703fb60474, type: 2}
   varianceRules:
     maxHpRange: {x: -5, y: 5}
@@ -35,5 +44,14 @@ MonoBehaviour:
     criRange: {x: -10, y: 10}
     crdRange: {x: -10, y: 10}
     poisonResistRange: {x: -5, y: 5}
+    burnResistRange: {x: 0, y: 0}
     bleedResistRange: {x: -5, y: 5}
     stunResistRange: {x: -5, y: 5}
+    frostResistRange: {x: 0, y: 0}
+    blindResistRange: {x: 0, y: 0}
+  isMainPlayerCharacter: 0
+  baseSoulReward: 700
+  canBeDecomposed: 0
+  decomposeShardReward: 1
+  canBeCaptured: 0
+  captureRewardItem: {fileID: 0}

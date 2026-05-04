@@ -161,10 +161,12 @@ public class WorldEventController : MonoBehaviour
         string title = settings != null ? settings.GetEventDisplayName(tile.eventType) : tile.eventType.ToString();
         string body = BuildTreasureEventBody(tile, treasure);
 
-        eventPopupUI.Open(
+        eventPopupUI.OpenTreasure(
             title,
             body,
             string.IsNullOrWhiteSpace(treasureConfirmText) ? defaultConfirmText : treasureConfirmText,
+            treasure,
+            runManager,
             () => ConfirmTreasureEvent(tile),
             () => popupOpen = false);
 
@@ -175,9 +177,8 @@ public class WorldEventController : MonoBehaviour
     {
         popupOpen = false;
 
-        WorldTreasureResult treasure = GetOrCreateTreasureForTile(tile);
-        if (runManager != null && treasure != null && treasure.HasAnyReward)
-            runManager.GrantTreasureRewards(treasure);
+        // 보물 보상은 WorldEventPopupUI의 슬롯 상호작용에서 지급된다.
+        // 슬롯을 연결하지 않은 구형 UI에서는 WorldEventPopupUI가 확인 시 자동 지급한다.
 
         if (tile != null)
             pendingTreasureByTileId.Remove(tile.tileId);

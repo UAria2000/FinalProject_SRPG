@@ -227,7 +227,14 @@ public class WorldBattleBridge : MonoBehaviour
             runManager.AddWorldSoul(summary.soulReward);
             runManager.AddPartyExperienceToAllMembers(summary.expReward);
             runManager.AddLootToWorldInventory(summary.droppedItems);
-            runManager.AddCapturedPrisoners(summary.capturedPrisoners);
+
+            if (summary.capturedPrisonerRewards != null && summary.capturedPrisonerRewards.Count > 0)
+                runManager.AddCapturedPrisonerRewards(summary.capturedPrisonerRewards);
+            else if (summary.capturedPrisonerItems != null && summary.capturedPrisonerItems.Count > 0)
+                runManager.AddCapturedPrisonerItems(summary.capturedPrisonerItems);
+            else
+                runManager.AddCapturedPrisoners(summary.capturedPrisoners);
+
             runManager.RemoveDeadPartyMembersFromActiveParty();
         }
 

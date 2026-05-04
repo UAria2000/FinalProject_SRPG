@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b0ec0aa42fa160a46a6330d7ff30c770, type: 3}
   m_Name: SK_StealthAttack
   m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
-  skillId: sstealth_attack
+  skillId: stealth_attack
   skillName: "\uADF8\uB9BC\uC790 \uC228\uAE30"
   description: "\uB300\uC0C1\uC5D0\uAC8C \uD53C\uD574\uB97C \uC785\uD788\uACE0 \uBAB8\uC744
     \uC228\uAE34\uB2E4"
@@ -74,3 +74,5 @@ MonoBehaviour:
     durationTurns: 0
     displayIcon: {fileID: 0}
   disableAfterUseInBattle: 0
+  castEffectPrefab: {fileID: 0}
+  hitEffectPrefab: {fileID: 0}

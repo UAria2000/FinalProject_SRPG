@@ -3,7 +3,12 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class WorldQuestPopupRewardSlotUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+public class WorldQuestPopupRewardSlotUI : MonoBehaviour,
+    IPointerEnterHandler,
+    IPointerExitHandler,
+    IBeginDragHandler,
+    IDragHandler,
+    IEndDragHandler
 {
     [Header("References")]
     [SerializeField] private Button slotButton;
@@ -11,6 +16,7 @@ public class WorldQuestPopupRewardSlotUI : MonoBehaviour, IPointerEnterHandler, 
     [SerializeField] private TMP_Text amountText;
     [SerializeField] private GameObject lockedRoot;
     [SerializeField] private GameObject emptyRoot;
+    [SerializeField] private GameObject selectedRoot;
 
     private WorldQuestPopupUI owner;
     private WorldQuestState quest;
@@ -35,13 +41,14 @@ public class WorldQuestPopupRewardSlotUI : MonoBehaviour, IPointerEnterHandler, 
         ItemDefinition item,
         int amount,
         bool showLocked,
-        bool canClick)
+        bool canClick,
+        bool selected)
     {
         owner = popupOwner;
         quest = boundQuest;
         rewardIndex = index;
         boundItem = item;
-        boundAmount = amount;
+        boundAmount = Mathf.Max(0, amount);
         clickable = canClick && item != null;
 
         bool hasItem = item != null;
@@ -52,12 +59,16 @@ public class WorldQuestPopupRewardSlotUI : MonoBehaviour, IPointerEnterHandler, 
         if (lockedRoot != null)
             lockedRoot.SetActive(hasItem && showLocked);
 
+        if (selectedRoot != null)
+            selectedRoot.SetActive(hasItem && selected);
+
         if (iconImage != null)
         {
             iconImage.gameObject.SetActive(hasItem);
             iconImage.sprite = hasItem ? item.icon : null;
             iconImage.color = hasItem ? Color.white : new Color(1f, 1f, 1f, 0f);
             iconImage.preserveAspect = true;
+            iconImage.raycastTarget = false;
         }
 
         if (amountText != null)
@@ -73,6 +84,31 @@ public class WorldQuestPopupRewardSlotUI : MonoBehaviour, IPointerEnterHandler, 
             return;
 
         owner.HandleRewardSlotClicked(quest, rewardIndex);
+    }
+
+    public void OnBeginDrag(PointerEventData eventData)
+    {
+        if (eventData.button != PointerEventData.InputButton.Left)
+            return;
+
+        if (!clickable || owner == null || quest == null || boundItem == null)
+            return;
+
+        if (!owner.HandleRewardSlotDragBegin(quest, rewardIndex))
+            return;
+
+        if (iconImage != null && iconImage.sprite != null)
+            UIDragGhostUI.Show(iconImage.sprite, transform as RectTransform);
+    }
+
+    public void OnDrag(PointerEventData eventData)
+    {
+    }
+
+    public void OnEndDrag(PointerEventData eventData)
+    {
+        UIDragGhostUI.HideGhost();
+        owner?.HandleRewardSlotDragEnd(quest, rewardIndex);
     }
 
     public void OnPointerEnter(PointerEventData eventData)

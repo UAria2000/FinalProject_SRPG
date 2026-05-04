@@ -13,12 +13,19 @@ MonoBehaviour:
   m_Name: Item_SisterCaptured
   m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
   itemId: item_sister_captured
-  itemName: "\uBD99\uC7A1\uD78C \uC218\uB140"
+  itemName: "\uBD99\uC7A1\uD78C \uC5EC\uC0AC\uC81C"
   description: 
-  icon: {fileID: 21300000, guid: 901598b4f96e4c24395669f14ba1937f, type: 3}
+  icon: {fileID: 21300000, guid: 8fb680aef7ea5514aae74ddbd8559327, type: 3}
   targetTeam: 1
   targetScope: 0
+  itemTier: 1
   usableInBattle: 0
+  baseSoulValue: 0
   consumeOnUse: 0
   consumeTurnOnUse: 0
+  mainUICategory: 2
+  canAssignToSharedConsumableSlot: 0
+  isPrisonerItem: 1
+  prisonerSourceUnitDefinition: {fileID: 0}
+  useItemIconAsPrisonerPortrait: 1
   effects: []

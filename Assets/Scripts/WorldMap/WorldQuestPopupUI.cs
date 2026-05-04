@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -44,6 +45,7 @@ public class WorldQuestPopupUI : MonoBehaviour
 
     [Header("Tooltip")]
     [SerializeField] private StorageItemTooltipUI itemTooltipUI;
+    [SerializeField] private BottomPartySummaryPanelUI bottomPartySummaryPanelUI;
 
     private WorldQuestController owner;
     private WorldQuestState currentQuest;
@@ -93,6 +95,9 @@ public class WorldQuestPopupUI : MonoBehaviour
             outsideCloseButton.onClick.AddListener(HandleOutsideClicked);
         }
 
+        if (bottomPartySummaryPanelUI == null)
+            bottomPartySummaryPanelUI = UnityEngine.Object.FindFirstObjectByType<BottomPartySummaryPanelUI>();
+
         Hide();
     }
 
@@ -111,6 +116,9 @@ public class WorldQuestPopupUI : MonoBehaviour
         if (root != null)
             root.SetActive(true);
 
+        if (bottomPartySummaryPanelUI != null)
+            bottomPartySummaryPanelUI.SetExternalMainPanelOpen(true);
+
         RefreshCommonTexts(quest);
         RefreshImmediateRewards(quest);
         RefreshRewardSlots(quest, false);
@@ -127,6 +135,9 @@ public class WorldQuestPopupUI : MonoBehaviour
         if (root != null)
             root.SetActive(true);
 
+        if (bottomPartySummaryPanelUI != null)
+            bottomPartySummaryPanelUI.SetExternalMainPanelOpen(true);
+
         RefreshCommonTexts(quest);
         RefreshImmediateRewards(quest);
         RefreshRewardSlots(quest, false);
@@ -142,6 +153,9 @@ public class WorldQuestPopupUI : MonoBehaviour
 
         if (root != null)
             root.SetActive(true);
+
+        if (bottomPartySummaryPanelUI != null)
+            bottomPartySummaryPanelUI.SetExternalMainPanelOpen(true);
 
         RefreshCommonTexts(quest);
         RefreshImmediateRewards(quest);
@@ -180,12 +194,67 @@ public class WorldQuestPopupUI : MonoBehaviour
         if (root != null)
             root.SetActive(false);
 
+        if (bottomPartySummaryPanelUI != null)
+        {
+            bottomPartySummaryPanelUI.CancelExternalLoadoutItemSource(this);
+            bottomPartySummaryPanelUI.SetExternalMainPanelOpen(false);
+        }
+
         HandleRewardSlotHoverExit();
     }
 
     public void HandleRewardSlotClicked(WorldQuestState quest, int rewardIndex)
     {
+        if (!TryGetClaimableReward(quest, rewardIndex, out WorldQuestRewardItemEntry reward))
+            return;
+
+        if (bottomPartySummaryPanelUI != null && bottomPartySummaryPanelUI.CanUseAsDirectLoadoutItem(reward.item))
+        {
+            bool handled = bottomPartySummaryPanelUI.TrySelectExternalLoadoutItem(
+                this,
+                rewardIndex,
+                reward.item,
+                Mathf.Max(1, reward.amount),
+                () => owner != null && owner.MarkRewardClaimedAfterDirectLoadout(quest, rewardIndex));
+
+            if (handled)
+            {
+                RefreshCurrent();
+                return;
+            }
+        }
+
         owner?.ClaimRewardAt(quest, rewardIndex);
+    }
+
+    public bool HandleRewardSlotDragBegin(WorldQuestState quest, int rewardIndex)
+    {
+        if (!TryGetClaimableReward(quest, rewardIndex, out WorldQuestRewardItemEntry reward))
+            return false;
+
+        if (bottomPartySummaryPanelUI == null || !bottomPartySummaryPanelUI.CanUseAsDirectLoadoutItem(reward.item))
+            return false;
+
+        bool started = bottomPartySummaryPanelUI.TryBeginExternalLoadoutItemDrag(
+            this,
+            rewardIndex,
+            reward.item,
+            Mathf.Max(1, reward.amount),
+            () => owner != null && owner.MarkRewardClaimedAfterDirectLoadout(quest, rewardIndex));
+
+        if (started)
+            RefreshCurrent();
+
+        return started;
+    }
+
+    public void HandleRewardSlotDragEnd(WorldQuestState quest, int rewardIndex)
+    {
+        if (bottomPartySummaryPanelUI == null)
+            return;
+
+        bottomPartySummaryPanelUI.EndExternalLoadoutItemDrag(this, rewardIndex);
+        RefreshCurrent();
     }
 
     public void HandleRewardSlotHoverEnter(ItemDefinition item)
@@ -202,6 +271,23 @@ public class WorldQuestPopupUI : MonoBehaviour
             return;
 
         itemTooltipUI.Hide();
+    }
+
+    private bool TryGetClaimableReward(WorldQuestState quest, int rewardIndex, out WorldQuestRewardItemEntry reward)
+    {
+        reward = null;
+
+        if (quest == null || !quest.isCompleted)
+            return false;
+
+        if (!quest.CanClaimItemAt(rewardIndex))
+            return false;
+
+        if (quest.definition == null || quest.definition.itemRewards == null || rewardIndex < 0 || rewardIndex >= quest.definition.itemRewards.Count)
+            return false;
+
+        reward = quest.definition.itemRewards[rewardIndex];
+        return reward != null && reward.item != null;
     }
 
     private void RefreshCommonTexts(WorldQuestState quest)
@@ -285,7 +371,8 @@ public class WorldQuestPopupUI : MonoBehaviour
                 }
             }
 
-            slot.Bind(this, quest, i, item, amount, showLocked, canClick);
+            bool selected = bottomPartySummaryPanelUI != null && bottomPartySummaryPanelUI.IsExternalLoadoutItemPending(this, i);
+            slot.Bind(this, quest, i, item, amount, showLocked, canClick, selected);
         }
     }
 

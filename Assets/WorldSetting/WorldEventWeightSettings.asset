@@ -12,16 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e9084183f6217344495e186fe331942b, type: 3}
   m_Name: WorldEventWeightSettings
   m_EditorClassIdentifier: Assembly-CSharp::WorldEventWeightSettings
-  entries:
-  - eventType: 1
-    weight: 50
-  - eventType: 2
-    weight: 2
-  - eventType: 3
-    weight: 10
-  - eventType: 4
-    weight: 5
-  - eventType: 5
-    weight: 5
-  - eventType: 7
-    weight: 2
+  battleWeight: 47
+  restWeight: 15
+  treasureWeight: 15
+  merchantWeight: 0
+  questWeight: 15
+  eliteWeight: 8

@@ -9,6 +9,7 @@ public class BattleUnit
     private readonly List<BattleTimedModifierInstance> timedModifiers = new List<BattleTimedModifierInstance>();
     private readonly HashSet<string> armedConditionalSkillKeys = new HashSet<string>();
     private readonly HashSet<string> disabledSkillKeys = new HashSet<string>();
+    private readonly List<ItemDefinition> equippedItems = new List<ItemDefinition>();
 
     private SkillDefinition pendingPassiveSkill;
     private BattleUnit duelLockedTarget;
@@ -19,6 +20,7 @@ public class BattleUnit
         memberData = data;
         Team = team;
         SlotIndex = data != null ? data.startSlotIndex : 0;
+        CacheEquippedItems();
 
         if (memberData != null && memberData.persistentCurrentHP >= 0)
             CurrentHP = Mathf.Clamp(memberData.persistentCurrentHP, 0, MaxHP);
@@ -27,6 +29,7 @@ public class BattleUnit
 
         CurrentShield = 0;
         endTurnGuardPercent = 0;
+        ApplyEquipmentBattleStartEffects();
     }
 
     public TeamType Team { get; private set; }
@@ -109,13 +112,13 @@ public class BattleUnit
     public int BaseFrostResist { get { return Definition != null ? Definition.frostResist : 0; } }
     public int BaseBlindResist { get { return Definition != null ? Definition.blindResist : 0; } }
 
-    public int MaxHP { get { return ApplyPromotionToInt(Mathf.Max(1, BaseMaxHP + GetVariance().maxHpDelta + LevelGrowthMaxHP)); } }
+    public int MaxHP { get { return ApplyPromotionToInt(Mathf.Max(1, BaseMaxHP + GetVariance().maxHpDelta + LevelGrowthMaxHP + EquipmentMaxHpBonus)); } }
 
     public int DMG
     {
         get
         {
-            int baseValue = ApplyPromotionToInt(Mathf.Max(0, BaseDMG + GetVariance().dmgDelta + LevelGrowthDMG));
+            int baseValue = ApplyPromotionToInt(Mathf.Max(0, BaseDMG + GetVariance().dmgDelta + LevelGrowthDMG + EquipmentDmgBonus));
             int totalModifierPercent = GetTimedModifierMagnitude(StatModifierType.DMG) + persistentBattleDmgModifierPercent;
             if (totalModifierPercent == 0)
                 return baseValue;
@@ -128,7 +131,7 @@ public class BattleUnit
     {
         get
         {
-            int baseValue = ApplyPromotionToInt(Mathf.Max(0, BaseSPD + GetVariance().spdDelta));
+            int baseValue = ApplyPromotionToInt(Mathf.Max(0, BaseSPD + GetVariance().spdDelta + EquipmentSpdBonus));
             return ApplyPercentTimedModifierToInt(baseValue, StatModifierType.SPD, -FrostStatPenaltyPercent);
         }
     }
@@ -137,7 +140,7 @@ public class BattleUnit
     {
         get
         {
-            float baseValue = ApplyPromotionToFloat(Mathf.Max(0f, BaseHIT + GetVariance().hitDeltaX10));
+            float baseValue = ApplyPromotionToFloat(Mathf.Max(0f, BaseHIT + GetVariance().hitDeltaX10 + (EquipmentHitBonusX10 * 0.1f)));
             return ApplyPercentTimedModifierToFloat(baseValue, StatModifierType.HIT);
         }
     }
@@ -146,7 +149,7 @@ public class BattleUnit
     {
         get
         {
-            float baseValue = ApplyPromotionToFloat(Mathf.Max(0f, BaseAC + GetVariance().acDeltaX10));
+            float baseValue = ApplyPromotionToFloat(Mathf.Max(0f, BaseAC + GetVariance().acDeltaX10 + (EquipmentAcBonusX10 * 0.1f)));
             return ApplyPercentTimedModifierToFloat(baseValue, StatModifierType.AC, -FrostStatPenaltyPercent);
         }
     }
@@ -155,7 +158,7 @@ public class BattleUnit
     {
         get
         {
-            int baseValue = ApplyPromotionToInt(Mathf.Max(0, BaseCRI + GetVariance().criDelta));
+            int baseValue = ApplyPromotionToInt(Mathf.Max(0, BaseCRI + GetVariance().criDelta + EquipmentCriBonus));
             return ApplyPercentTimedModifierToInt(baseValue, StatModifierType.CRI);
         }
     }
@@ -164,17 +167,17 @@ public class BattleUnit
     {
         get
         {
-            int baseValue = ApplyPromotionToInt(Mathf.Max(0, BaseCRD + GetVariance().crdDelta));
+            int baseValue = ApplyPromotionToInt(Mathf.Max(0, BaseCRD + GetVariance().crdDelta + EquipmentCrdBonus));
             return ApplyPercentTimedModifierToInt(baseValue, StatModifierType.CRD);
         }
     }
 
     public int PoisonResist { get { return BurnResist; } }
-    public int BurnResist { get { int delta = GetVariance().burnResistDelta != 0 ? GetVariance().burnResistDelta : GetVariance().poisonResistDelta; return ApplyPromotionToInt(Mathf.Max(0, BaseBurnResist + delta)); } }
-    public int BleedResist { get { return ApplyPromotionToInt(Mathf.Max(0, BaseBleedResist + GetVariance().bleedResistDelta)); } }
-    public int StunResist { get { return ApplyPromotionToInt(Mathf.Max(0, BaseStunResist + GetVariance().stunResistDelta)); } }
-    public int FrostResist { get { return ApplyPromotionToInt(Mathf.Max(0, BaseFrostResist + GetVariance().frostResistDelta)); } }
-    public int BlindResist { get { return ApplyPromotionToInt(Mathf.Max(0, BaseBlindResist + GetVariance().blindResistDelta)); } }
+    public int BurnResist { get { int delta = GetVariance().burnResistDelta != 0 ? GetVariance().burnResistDelta : GetVariance().poisonResistDelta; return ApplyPromotionToInt(Mathf.Max(0, BaseBurnResist + delta)) + EquipmentAllResistBonus + EquipmentBurnResistBonus; } }
+    public int BleedResist { get { return ApplyPromotionToInt(Mathf.Max(0, BaseBleedResist + GetVariance().bleedResistDelta)) + EquipmentAllResistBonus + EquipmentBleedResistBonus; } }
+    public int StunResist { get { return ApplyPromotionToInt(Mathf.Max(0, BaseStunResist + GetVariance().stunResistDelta)) + EquipmentAllResistBonus + EquipmentStunResistBonus; } }
+    public int FrostResist { get { return ApplyPromotionToInt(Mathf.Max(0, BaseFrostResist + GetVariance().frostResistDelta)) + EquipmentAllResistBonus + EquipmentFrostResistBonus; } }
+    public int BlindResist { get { return ApplyPromotionToInt(Mathf.Max(0, BaseBlindResist + GetVariance().blindResistDelta)) + EquipmentAllResistBonus + EquipmentBlindResistBonus; } }
 
     public int BurnStackCount { get { return GetStatusStackCount(StatusEffectType.Burn); } }
     public int BleedStackCount { get { return GetStatusStackCount(StatusEffectType.Bleed); } }
@@ -186,6 +189,147 @@ public class BattleUnit
     private int endTurnGuardPercent;
     public int EndTurnGuardPercent { get { return endTurnGuardPercent > 0 ? endTurnGuardPercent : 0; } }
     public bool HasEndTurnGuard { get { return endTurnGuardPercent > 0; } }
+
+
+    private int EquipmentMaxHpBonus { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.MaxHP); } }
+    private int EquipmentDmgBonus { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.DMG); } }
+    private int EquipmentSpdBonus { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.SPD); } }
+    private int EquipmentHitBonusX10 { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.HITX10); } }
+    private int EquipmentAcBonusX10 { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.ACX10); } }
+    private int EquipmentCriBonus { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.CRI); } }
+    private int EquipmentCrdBonus { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.CRD); } }
+    private int EquipmentAllResistBonus { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.AllResist); } }
+    private int EquipmentBurnResistBonus { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.BurnResist); } }
+    private int EquipmentBleedResistBonus { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.BleedResist); } }
+    private int EquipmentStunResistBonus { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.StunResist); } }
+    private int EquipmentFrostResistBonus { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.FrostResist); } }
+    private int EquipmentBlindResistBonus { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.BlindResist); } }
+
+    private enum EquipmentIntBonusKind
+    {
+        MaxHP,
+        DMG,
+        SPD,
+        HITX10,
+        ACX10,
+        CRI,
+        CRD,
+        AllResist,
+        BurnResist,
+        BleedResist,
+        StunResist,
+        FrostResist,
+        BlindResist,
+    }
+
+    private void CacheEquippedItems()
+    {
+        equippedItems.Clear();
+
+        if (memberData == null || Team != TeamType.Ally)
+            return;
+
+        WorldRunManager runManager = Object.FindFirstObjectByType<WorldRunManager>();
+        if (runManager == null)
+            return;
+
+        AddEquippedItemIfValid(runManager.GetAssignedEquipmentItem(memberData, 0));
+        AddEquippedItemIfValid(runManager.GetAssignedEquipmentItem(memberData, 1));
+    }
+
+    private void AddEquippedItemIfValid(ItemDefinition item)
+    {
+        if (item == null)
+            return;
+
+        if (item.mainUICategory != MainUIItemCategory.Equipment)
+            return;
+
+        if (!equippedItems.Contains(item))
+            equippedItems.Add(item);
+    }
+
+    private int SumEquipmentIntBonus(EquipmentIntBonusKind kind)
+    {
+        int total = 0;
+        for (int i = 0; i < equippedItems.Count; i++)
+        {
+            ItemDefinition item = equippedItems[i];
+            if (item == null)
+                continue;
+
+            switch (kind)
+            {
+                case EquipmentIntBonusKind.MaxHP:
+                    total += item.equipmentMaxHpBonus;
+                    break;
+                case EquipmentIntBonusKind.DMG:
+                    total += item.equipmentDmgBonus;
+                    break;
+                case EquipmentIntBonusKind.SPD:
+                    total += item.equipmentSpdBonus;
+                    break;
+                case EquipmentIntBonusKind.HITX10:
+                    total += item.equipmentHitBonusX10;
+                    break;
+                case EquipmentIntBonusKind.ACX10:
+                    total += item.equipmentAcBonusX10;
+                    break;
+                case EquipmentIntBonusKind.CRI:
+                    total += item.equipmentCriBonus;
+                    break;
+                case EquipmentIntBonusKind.CRD:
+                    total += item.equipmentCrdBonus;
+                    break;
+                case EquipmentIntBonusKind.AllResist:
+                    total += item.equipmentAllResistBonus;
+                    break;
+                case EquipmentIntBonusKind.BurnResist:
+                    total += item.equipmentBurnResistBonus;
+                    break;
+                case EquipmentIntBonusKind.BleedResist:
+                    total += item.equipmentBleedResistBonus;
+                    break;
+                case EquipmentIntBonusKind.StunResist:
+                    total += item.equipmentStunResistBonus;
+                    break;
+                case EquipmentIntBonusKind.FrostResist:
+                    total += item.equipmentFrostResistBonus;
+                    break;
+                case EquipmentIntBonusKind.BlindResist:
+                    total += item.equipmentBlindResistBonus;
+                    break;
+            }
+        }
+
+        return total;
+    }
+
+    private float GetEquipmentStartShieldPercentOfMaxHP()
+    {
+        float total = 0f;
+        for (int i = 0; i < equippedItems.Count; i++)
+        {
+            ItemDefinition item = equippedItems[i];
+            if (item == null)
+                continue;
+
+            total += Mathf.Max(0f, item.equipmentStartShieldPercentOfMaxHP);
+        }
+
+        return total;
+    }
+
+    private void ApplyEquipmentBattleStartEffects()
+    {
+        float shieldPercent = GetEquipmentStartShieldPercentOfMaxHP();
+        if (shieldPercent <= 0f)
+            return;
+
+        int shieldAmount = Mathf.CeilToInt(MaxHP * shieldPercent * 0.01f);
+        if (shieldAmount > 0)
+            AddShield(shieldAmount);
+    }
 
     private int ApplyPromotionToInt(int value)
     {

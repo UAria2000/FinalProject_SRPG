@@ -100,9 +100,30 @@ public class BattleRewardPopupUI : MonoBehaviour
 
         sb.AppendLine();
         sb.AppendLine("포획한 포로:");
-        if (summary.capturedPrisoners == null || summary.capturedPrisoners.Count == 0)
+        bool hasCapturedReward = summary.capturedPrisonerRewards != null && summary.capturedPrisonerRewards.Count > 0;
+        bool hasCapturedItems = summary.capturedPrisonerItems != null && summary.capturedPrisonerItems.Count > 0;
+        bool hasLegacyCaptured = summary.capturedPrisoners != null && summary.capturedPrisoners.Count > 0;
+
+        if (!hasCapturedReward && !hasCapturedItems && !hasLegacyCaptured)
         {
             sb.AppendLine("- 없음");
+        }
+        else if (hasCapturedReward)
+        {
+            for (int i = 0; i < summary.capturedPrisonerRewards.Count; i++)
+            {
+                CapturedPrisonerRewardEntry reward = summary.capturedPrisonerRewards[i];
+                sb.AppendLine($"- {(reward != null ? reward.GetDisplayName() : "Unknown")}");
+            }
+        }
+        else if (hasCapturedItems)
+        {
+            for (int i = 0; i < summary.capturedPrisonerItems.Count; i++)
+            {
+                ItemDefinition item = summary.capturedPrisonerItems[i];
+                string name = item != null && !string.IsNullOrWhiteSpace(item.itemName) ? item.itemName : (item != null ? item.name : "Unknown");
+                sb.AppendLine($"- {name}");
+            }
         }
         else
         {

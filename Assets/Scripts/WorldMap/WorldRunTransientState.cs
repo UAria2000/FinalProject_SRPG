@@ -48,6 +48,14 @@ public class WorldRunTransientState
         prisoners.Add(PrisonerRuntimeData.CreateFromCapturedUnit(unit, capturedLevel, nextPrisonerSequence++));
     }
 
+    public void AddPrisonerFromItem(ItemDefinition prisonerItem, int capturedLevel = 1, UnitDefinition fallbackUnit = null)
+    {
+        if (prisonerItem == null && fallbackUnit == null)
+            return;
+
+        prisoners.Add(PrisonerRuntimeData.CreateFromPrisonerItem(prisonerItem, capturedLevel, nextPrisonerSequence++, fallbackUnit));
+    }
+
     public void AddSoulEarnedInWorld(int amount)
     {
         worldEarnedSoulAlreadyGranted += Math.Max(0, amount);

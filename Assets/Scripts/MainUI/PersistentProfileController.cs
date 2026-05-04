@@ -974,7 +974,34 @@ public class PersistentProfileController : MonoBehaviour
 
     private void ApplyItemBonusToSummary(ItemDefinition item, ref LegionEquipmentBonusSummary summary)
     {
-        if (item == null || item.effects == null)
+        if (item == null)
+            return;
+
+        // 신규 장비 보너스 필드. 장비 아이템은 이 값들을 우선 사용한다.
+        summary.maxHp += item.equipmentMaxHpBonus;
+        summary.dmg += item.equipmentDmgBonus;
+        summary.spd += item.equipmentSpdBonus;
+        summary.hitX10 += item.equipmentHitBonusX10;
+        summary.acX10 += item.equipmentAcBonusX10;
+        summary.cri += item.equipmentCriBonus;
+        summary.crd += item.equipmentCrdBonus;
+
+        int allResist = item.equipmentAllResistBonus;
+        int burn = allResist + item.equipmentBurnResistBonus;
+        int bleed = allResist + item.equipmentBleedResistBonus;
+        int stun = allResist + item.equipmentStunResistBonus;
+        int frost = allResist + item.equipmentFrostResistBonus;
+        int blind = allResist + item.equipmentBlindResistBonus;
+
+        summary.burnRes += burn;
+        summary.poisonRes += burn; // 구버전 화상/중독 저항 표시 호환
+        summary.bleedRes += bleed;
+        summary.stunRes += stun;
+        summary.frostRes += frost;
+        summary.blindRes += blind;
+
+        // 구버전 아이템 데이터 호환: effects의 Buff/Debuff statModifierType도 계속 요약에 반영한다.
+        if (item.effects == null)
             return;
 
         for (int i = 0; i < item.effects.Count; i++)

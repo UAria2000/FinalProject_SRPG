@@ -15,16 +15,25 @@ MonoBehaviour:
   unitId: sister
   unitName: "\uC218\uB140"
   rangeType: 2
+  isNftUnit: 0
+  showInLegion: 0
+  legionSortPriority: 0
+  legionCategoryLabel: 
   maxHP: 80
   dmg: 25
   spd: 100
+  hpGrowthPerLevel: {x: 2, y: 4}
+  dmgGrowthPerLevel: {x: 1, y: 3}
   hit: 60
   ac: 60
   cri: 10
   crd: 150
   poisonResist: 15
+  burnResist: 0
   bleedResist: 15
   stunResist: 15
+  frostResist: 0
+  blindResist: 0
   basicAttack: {fileID: 11400000, guid: 5d43f058900b56949b5aa06896459383, type: 2}
   varianceRules:
     maxHpRange: {x: -10, y: 10}
@@ -35,8 +44,14 @@ MonoBehaviour:
     criRange: {x: -5, y: 5}
     crdRange: {x: -5, y: 5}
     poisonResistRange: {x: -10, y: 10}
+    burnResistRange: {x: 0, y: 0}
     bleedResistRange: {x: -10, y: 10}
     stunResistRange: {x: -10, y: 10}
+    frostResistRange: {x: 0, y: 0}
+    blindResistRange: {x: 0, y: 0}
   isMainPlayerCharacter: 0
+  baseSoulReward: 400
+  canBeDecomposed: 0
+  decomposeShardReward: 1
   canBeCaptured: 1
   captureRewardItem: {fileID: 11400000, guid: 8f03032dd35fbe04e8a76cfc5d0e08bb, type: 2}

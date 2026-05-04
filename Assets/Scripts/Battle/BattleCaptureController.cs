@@ -92,12 +92,12 @@ public class BattleCaptureController : MonoBehaviour
 
     public bool HasInventorySpaceForCapture()
     {
-        // ÇöÀç ±¸Á¶¿¡¼­´Â ¿ùµå ÀÎº¥Åä¸®/Æ÷·Î ÂÊÀ¸·Î ³Ñ±â¹Ç·Î ÀÏ´Ü true À¯Áö.
-        // ÃßÈÄ ¿ùµå Æ÷·Î/Ã¢°í ¿ë·® Ã¼Å©¸¦ ¿©±â·Î ¿Å±â¸é µÊ.
+        //    Îºä¸®/  Ñ±Ç· Ï´ true .
+        //   /Ã¢ ë·® Ã¼Å©  Å± .
         return true;
     }
 
-    // Àç±Í ¹æÁö¿ë: "Ä¿¸Çµå ÀÚÃ¼¸¦ ¿­ ¼ö ÀÖ´Â°¡"ÀÇ ±âº» Á¶°Ç¸¸ °Ë»ç
+    //  : "Ä¿Çµ Ã¼   Ö´Â°" âº» Ç¸ Ë»
     private bool CanActorUseCaptureCommandCore(BattleUnit actor)
     {
         return actor != null &&
@@ -155,6 +155,11 @@ public class BattleCaptureController : MonoBehaviour
             return false;
 
         if (target.Definition == null || !target.Definition.canBeCaptured)
+            return false;
+
+        // ìƒˆ í¬íš í”Œë¡œìš°ëŠ” ì  ìì²´ê°€ ì•„ë‹ˆë¼ ì ì—ê²Œ ì—°ê²°ëœ í¬ë¡œ ì•„ì´í…œì„ íšë“í•œ ë’¤
+        // ì „íˆ¬ ì¢…ë£Œ ì‹œ ê·¸ ì•„ì´í…œì„ í¬ë¡œ ë°ì´í„°ë¡œ ë³€í™˜í•œë‹¤.
+        if (target.Definition.captureRewardItem == null)
             return false;
 
         if (GetRemainingCaptureAttempts(target) <= 0)
@@ -223,6 +228,7 @@ public class BattleCaptureController : MonoBehaviour
 
         return target != null &&
                target.Definition != null &&
-               target.Definition.canBeCaptured;
+               target.Definition.canBeCaptured &&
+               target.Definition.captureRewardItem != null;
     }
 }

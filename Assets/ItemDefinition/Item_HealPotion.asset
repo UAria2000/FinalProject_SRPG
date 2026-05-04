@@ -18,12 +18,30 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: 8a4c4aa9256c5614eb73e23dc929a597, type: 3}
   targetTeam: 1
   targetScope: 0
+  itemTier: 1
   usableInBattle: 1
   baseSoulValue: 10
   consumeOnUse: 1
   consumeTurnOnUse: 1
   mainUICategory: 1
   canAssignToSharedConsumableSlot: 1
+  equipmentMaxHpBonus: 0
+  equipmentDmgBonus: 0
+  equipmentSpdBonus: 0
+  equipmentHitBonusX10: 0
+  equipmentAcBonusX10: 0
+  equipmentCriBonus: 0
+  equipmentCrdBonus: 0
+  equipmentAllResistBonus: 0
+  equipmentBurnResistBonus: 0
+  equipmentBleedResistBonus: 0
+  equipmentStunResistBonus: 0
+  equipmentFrostResistBonus: 0
+  equipmentBlindResistBonus: 0
+  equipmentStartShieldPercentOfMaxHP: 0
+  isPrisonerItem: 0
+  prisonerSourceUnitDefinition: {fileID: 0}
+  useItemIconAsPrisonerPortrait: 0
   effects:
   - kind: 1
     statusType: 0
@@ -34,7 +52,7 @@ MonoBehaviour:
     useRandomPowerPercentRange: 0
     randomPowerPercentMin: 0
     randomPowerPercentMax: 0
-    flatValue: 50
+    flatValue: 100
     valueReference: 1
     durationTurns: 0
     displayIcon: {fileID: 0}

@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61f1fb06c31e02446a44ea0f1253b30c, type: 3}
+  m_Name: Item_BladeDancer_Captured
+  m_EditorClassIdentifier: Assembly-CSharp::ItemDefinition
+  itemId: item_bladedancer_captured
+  itemName: "\uBD99\uC7A1\uD78C \uAC80\uBB34\uD76C"
+  description: "\uBD99\uC7A1\uD78C \uAC80\uBB34\uD76C"
+  icon: {fileID: 21300000, guid: 9cddc543e1ed9434082ef2e355f6b48f, type: 3}
+  targetTeam: 1
+  targetScope: 0
+  itemTier: 1
+  usableInBattle: 0
+  baseSoulValue: 0
+  consumeOnUse: 0
+  consumeTurnOnUse: 0
+  mainUICategory: 2
+  canAssignToSharedConsumableSlot: 0
+  equipmentMaxHpBonus: 0
+  equipmentDmgBonus: 0
+  equipmentSpdBonus: 0
+  equipmentHitBonusX10: 0
+  equipmentAcBonusX10: 0
+  equipmentCriBonus: 0
+  equipmentCrdBonus: 0
+  equipmentAllResistBonus: 0
+  equipmentBurnResistBonus: 0
+  equipmentBleedResistBonus: 0
+  equipmentStunResistBonus: 0
+  equipmentFrostResistBonus: 0
+  equipmentBlindResistBonus: 0
+  equipmentStartShieldPercentOfMaxHP: 0
+  isPrisonerItem: 1
+  prisonerSourceUnitDefinition: {fileID: 11400000, guid: f8f9adbf09c124c4f841e0510acbe903, type: 2}
+  useItemIconAsPrisonerPortrait: 1
+  effects: []

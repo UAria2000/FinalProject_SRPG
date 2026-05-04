@@ -1,0 +1,57 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c7d82bbe39798b41a6678e937734907, type: 3}
+  m_Name: UD_DarkPriest
+  m_EditorClassIdentifier: Assembly-CSharp::UnitDefinition
+  unitId: Dark_Priest
+  unitName: "\uC554\uD751\uC0AC\uC81C"
+  rangeType: 2
+  isNftUnit: 0
+  showInLegion: 1
+  legionSortPriority: 0
+  legionCategoryLabel: 
+  maxHP: 100
+  dmg: 30
+  spd: 100
+  hpGrowthPerLevel: {x: 2, y: 4}
+  dmgGrowthPerLevel: {x: 1, y: 3}
+  hit: 50
+  ac: 50
+  cri: 15
+  crd: 150
+  poisonResist: 5
+  burnResist: 5
+  bleedResist: 5
+  stunResist: 5
+  frostResist: 5
+  blindResist: 5
+  basicAttack: {fileID: 11400000, guid: 5d43f058900b56949b5aa06896459383, type: 2}
+  varianceRules:
+    maxHpRange: {x: -2, y: 3}
+    dmgRange: {x: -2, y: 3}
+    spdRange: {x: 2, y: 3}
+    hitRangeX10: {x: -2, y: 3}
+    acRangeX10: {x: -2, y: 3}
+    criRange: {x: -2, y: 3}
+    crdRange: {x: -2, y: 3}
+    poisonResistRange: {x: -2, y: 3}
+    burnResistRange: {x: -2, y: 3}
+    bleedResistRange: {x: -2, y: 3}
+    stunResistRange: {x: -2, y: 3}
+    frostResistRange: {x: -2, y: 3}
+    blindResistRange: {x: -2, y: 3}
+  isMainPlayerCharacter: 0
+  baseSoulReward: 0
+  canBeDecomposed: 1
+  decomposeShardReward: 1
+  canBeCaptured: 0
+  captureRewardItem: {fileID: 0}

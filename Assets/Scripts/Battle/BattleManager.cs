@@ -432,7 +432,24 @@ public class BattleManager : MonoBehaviour
         if (unit == null || unit.Definition == null)
             return;
 
-        currentBattleRewardSummary.capturedPrisoners.Add(unit.Definition);
+        ItemDefinition prisonerItem = unit.Definition.captureRewardItem;
+        UnitDefinition fallbackUnit = unit.Definition;
+
+        if (prisonerItem != null)
+        {
+            currentBattleRewardSummary.capturedPrisonerItems.Add(prisonerItem);
+            currentBattleRewardSummary.capturedPrisonerRewards.Add(new CapturedPrisonerRewardEntry
+            {
+                prisonerItem = prisonerItem,
+                fallbackUnit = fallbackUnit,
+                capturedLevel = Mathf.Max(1, unit.CurrentLevel)
+            });
+        }
+        else
+        {
+            // 구버전 호환: 포로 아이템이 연결되지 않은 적은 기존 방식으로만 기록한다.
+            currentBattleRewardSummary.capturedPrisoners.Add(fallbackUnit);
+        }
     }
 
     public void GrantCurrentBattleRewardsToInventory(List<InventoryStackData> inventory)

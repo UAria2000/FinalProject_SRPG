@@ -537,11 +537,80 @@ public class WorldRunManager : MonoBehaviour
         if (state == null || units == null)
             return;
 
+        bool addedAny = false;
         for (int i = 0; i < units.Count; i++)
-            state.AddPrisoner(units[i]);
+        {
+            if (units[i] == null)
+                continue;
 
-        RaiseStorageChanged();
-        RequestAutoSaveAll();
+            state.AddPrisoner(units[i]);
+            addedAny = true;
+        }
+
+        if (addedAny)
+        {
+            RaiseStorageChanged();
+            RequestAutoSaveAll();
+        }
+    }
+
+    public void AddCapturedPrisonerItems(IReadOnlyList<ItemDefinition> prisonerItems)
+    {
+        WorldRunTransientState state = GetOrCreateWorldRunState();
+        if (state == null || prisonerItems == null)
+            return;
+
+        bool addedAny = false;
+        for (int i = 0; i < prisonerItems.Count; i++)
+        {
+            ItemDefinition item = prisonerItems[i];
+            if (item == null)
+                continue;
+
+            state.AddPrisonerFromItem(item, 1, item.prisonerSourceUnitDefinition);
+            addedAny = true;
+        }
+
+        if (addedAny)
+        {
+            RaiseStorageChanged();
+            RequestAutoSaveAll();
+        }
+    }
+
+    public void AddCapturedPrisonerRewards(IReadOnlyList<CapturedPrisonerRewardEntry> prisonerRewards)
+    {
+        WorldRunTransientState state = GetOrCreateWorldRunState();
+        if (state == null || prisonerRewards == null)
+            return;
+
+        bool addedAny = false;
+        for (int i = 0; i < prisonerRewards.Count; i++)
+        {
+            CapturedPrisonerRewardEntry reward = prisonerRewards[i];
+            if (reward == null)
+                continue;
+
+            if (reward.prisonerItem != null)
+            {
+                state.AddPrisonerFromItem(
+                    reward.prisonerItem,
+                    Mathf.Max(1, reward.capturedLevel),
+                    reward.fallbackUnit);
+                addedAny = true;
+            }
+            else if (reward.fallbackUnit != null)
+            {
+                state.AddPrisoner(reward.fallbackUnit, Mathf.Max(1, reward.capturedLevel));
+                addedAny = true;
+            }
+        }
+
+        if (addedAny)
+        {
+            RaiseStorageChanged();
+            RequestAutoSaveAll();
+        }
     }
 
     public bool TryAddItemToStorage(ItemDefinition item, int amount)
@@ -857,6 +926,27 @@ public class WorldRunManager : MonoBehaviour
         return true;
     }
 
+    public bool TryGrantAndAssignSharedConsumable(ItemDefinition item, int amount)
+    {
+        WorldRunTransientState state = GetOrCreateWorldRunState();
+        if (state == null || item == null || amount <= 0)
+            return false;
+
+        if (!item.usableInBattle)
+            return false;
+
+        bool canAssign = item.canAssignToSharedConsumableSlot || item.mainUICategory == MainUIItemCategory.Consumable;
+        if (!canAssign)
+            return false;
+
+        state.AddItem(item, Mathf.Max(1, amount));
+        state.sharedConsumableItem = item;
+
+        RaiseStorageChanged();
+        RequestAutoSaveAll();
+        return true;
+    }
+
     public bool TrySpendPersistentSoul(int amount)
     {
         int clamped = Mathf.Max(0, amount);
@@ -1001,6 +1091,37 @@ public class WorldRunManager : MonoBehaviour
         if (!HasInventoryItem(item))
             return false;
 
+        ClearEquipmentReference(item);
+
+        if (slotIndex == 0)
+            data.slot0Item = item;
+        else
+            data.slot1Item = item;
+
+        RaiseStorageChanged();
+        RequestAutoSaveAll();
+        return true;
+    }
+
+    public bool TryGrantAndAssignEquipmentItem(PartyMemberData member, int slotIndex, ItemDefinition item, int amount)
+    {
+        if (member == null || item == null || amount <= 0)
+            return false;
+
+        if (item.mainUICategory != MainUIItemCategory.Equipment)
+            return false;
+
+        WorldRunTransientState state = GetOrCreateWorldRunState();
+        if (state == null)
+            return false;
+
+        slotIndex = Mathf.Clamp(slotIndex, 0, 1);
+
+        PartyEquipmentAssignmentData data = GetEquipmentAssignment(member, true);
+        if (data == null)
+            return false;
+
+        state.AddItem(item, Mathf.Max(1, amount));
         ClearEquipmentReference(item);
 
         if (slotIndex == 0)
@@ -1267,17 +1388,28 @@ public class WorldRunManager : MonoBehaviour
             for (int i = 0; i < saveData.prisoners.Count; i++)
             {
                 CapturedPrisonerSaveData saved = saveData.prisoners[i];
-                if (saved == null || string.IsNullOrWhiteSpace(saved.sourceUnitId))
+                if (saved == null)
                     continue;
 
-                UnitDefinition unit = resolver.FindUnitDefinition(saved.sourceUnitId);
-                if (unit == null)
+                UnitDefinition unit = !string.IsNullOrWhiteSpace(saved.sourceUnitId)
+                    ? resolver.FindUnitDefinition(saved.sourceUnitId)
+                    : null;
+
+                ItemDefinition prisonerItem = !string.IsNullOrWhiteSpace(saved.sourcePrisonerItemId)
+                    ? resolver.FindItemDefinition(saved.sourcePrisonerItemId)
+                    : null;
+
+                if (unit == null && prisonerItem != null)
+                    unit = prisonerItem.prisonerSourceUnitDefinition;
+
+                if (unit == null && prisonerItem == null)
                     continue;
 
                 PrisonerRuntimeData prisoner = new PrisonerRuntimeData
                 {
                     prisonerInstanceId = saved.prisonerInstanceId,
                     sourceUnit = unit,
+                    sourcePrisonerItem = prisonerItem,
                     prisonerNameOverride = saved.prisonerNameOverride,
                     capturedLevel = Mathf.Max(1, saved.capturedLevel),
                     isExchangeable = saved.isExchangeable,

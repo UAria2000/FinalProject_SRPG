@@ -15,16 +15,25 @@ MonoBehaviour:
   unitId: squire
   unitName: "\uACBD\uBE44\uBCD1"
   rangeType: 0
+  isNftUnit: 0
+  showInLegion: 0
+  legionSortPriority: 0
+  legionCategoryLabel: 
   maxHP: 100
   dmg: 40
   spd: 80
+  hpGrowthPerLevel: {x: 2, y: 4}
+  dmgGrowthPerLevel: {x: 1, y: 3}
   hit: 55
   ac: 45
   cri: 10
   crd: 150
   poisonResist: 5
+  burnResist: 0
   bleedResist: 5
   stunResist: 5
+  frostResist: 0
+  blindResist: 0
   basicAttack: {fileID: 11400000, guid: 4296badfbdac53c44923419eb89d18a3, type: 2}
   varianceRules:
     maxHpRange: {x: -10, y: 10}
@@ -35,5 +44,14 @@ MonoBehaviour:
     criRange: {x: -5, y: 5}
     crdRange: {x: -5, y: 5}
     poisonResistRange: {x: -5, y: 5}
+    burnResistRange: {x: 0, y: 0}
     bleedResistRange: {x: -5, y: 5}
     stunResistRange: {x: -5, y: 5}
+    frostResistRange: {x: 0, y: 0}
+    blindResistRange: {x: 0, y: 0}
+  isMainPlayerCharacter: 0
+  baseSoulReward: 500
+  canBeDecomposed: 0
+  decomposeShardReward: 1
+  canBeCaptured: 0
+  captureRewardItem: {fileID: 0}

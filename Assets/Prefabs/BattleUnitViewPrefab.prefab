@@ -52,7 +52,7 @@ MonoBehaviour:
   iconContainer: {fileID: 4958952226707649764}
   iconPrefab: {fileID: 1841482482518567224, guid: 0df96864e7abb4e419a9e0ca639b5f50, type: 3}
   tauntIcon: {fileID: 21300000, guid: cb1bfeba104350143840e1976fe47b53, type: 3}
-  counterStanceIcon: {fileID: 21300000, guid: d25aa6864da174244bf27589e5a23ad2, type: 3}
+  counterStanceIcon: {fileID: 21300000, guid: 1ae46050cf355ba48ad68a88486a7af7, type: 3}
   duelArenaIcon: {fileID: -6578280660335621614, guid: 9c7236b200de3ab4f813f20301edcc97, type: 3}
   stealthIcon: {fileID: 0}
   endTurnGuardIcon: {fileID: 0}
@@ -774,7 +774,7 @@ MonoBehaviour:
   disableChildGraphicRaycastsExceptClickableArea: 1
   activeRingRoot: {fileID: 752951535222056054}
   infoSelectedRingRoot: {fileID: 1079251847127486476}
-  finishedTurnBodyAlpha: 0.8
+  finishedTurnBodyAlpha: 0.88
   upcomingGrayOverlayImage: {fileID: 0}
   finishedGrayOverlayImage: {fileID: 0}
 --- !u!1 &8968532968539434593

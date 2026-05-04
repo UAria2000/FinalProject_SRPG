@@ -15,16 +15,25 @@ MonoBehaviour:
   unitId: knight
   unitName: "\uAE30\uC0AC"
   rangeType: 0
+  isNftUnit: 0
+  showInLegion: 0
+  legionSortPriority: 0
+  legionCategoryLabel: 
   maxHP: 120
   dmg: 35
   spd: 85
+  hpGrowthPerLevel: {x: 2, y: 4}
+  dmgGrowthPerLevel: {x: 1, y: 3}
   hit: 60
   ac: 60
   cri: 15
   crd: 150
   poisonResist: 5
+  burnResist: 0
   bleedResist: 20
   stunResist: 20
+  frostResist: 0
+  blindResist: 0
   basicAttack: {fileID: 11400000, guid: cfd95283123097d49a502236731c1592, type: 2}
   varianceRules:
     maxHpRange: {x: -15, y: 15}
@@ -35,8 +44,14 @@ MonoBehaviour:
     criRange: {x: -5, y: 5}
     crdRange: {x: -5, y: 5}
     poisonResistRange: {x: -5, y: 5}
+    burnResistRange: {x: 0, y: 0}
     bleedResistRange: {x: -10, y: 10}
     stunResistRange: {x: -10, y: 10}
+    frostResistRange: {x: 0, y: 0}
+    blindResistRange: {x: 0, y: 0}
   isMainPlayerCharacter: 0
+  baseSoulReward: 1000
+  canBeDecomposed: 0
+  decomposeShardReward: 1
   canBeCaptured: 1
   captureRewardItem: {fileID: 11400000, guid: 46952be8aa2e48645b359b084a4dca5d, type: 2}

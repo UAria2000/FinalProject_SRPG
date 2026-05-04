@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -6,6 +7,16 @@ public enum PendingLoadoutItemKind
     None,
     Equipment,
     SharedConsumable
+}
+
+public sealed class ExternalLoadoutItemContext
+{
+    public object sourceOwner;
+    public int sourceIndex;
+    public ItemDefinition item;
+    public int amount;
+    public PendingLoadoutItemKind kind;
+    public Func<bool> consumeReward;
 }
 
 public class BottomPartySummaryPanelUI : MonoBehaviour
@@ -25,8 +36,10 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
 
     private ItemDefinition pendingInventoryItem;
     private PendingLoadoutItemKind pendingItemKind = PendingLoadoutItemKind.None;
+    private ExternalLoadoutItemContext pendingExternalLoadoutItem;
 
     private ItemDefinition draggedInventoryItem;
+    private ExternalLoadoutItemContext draggedExternalLoadoutItem;
     private PartyEquipmentSlotUI draggedEquipmentSlot;
     private PartyLoadoutUnitEntryUI draggedUnitEntry;
 
@@ -38,10 +51,10 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
     private void Awake()
     {
         if (worldRunManager == null)
-            worldRunManager = Object.FindFirstObjectByType<WorldRunManager>();
+            worldRunManager = UnityEngine.Object.FindFirstObjectByType<WorldRunManager>();
 
         if (persistentProfileController == null)
-            persistentProfileController = Object.FindFirstObjectByType<PersistentProfileController>();
+            persistentProfileController = UnityEngine.Object.FindFirstObjectByType<PersistentProfileController>();
     }
 
     private void Start()
@@ -253,6 +266,87 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
         return pendingInventoryItem == item && pendingItemKind != PendingLoadoutItemKind.None;
     }
 
+    public bool TrySelectExternalLoadoutItem(object sourceOwner, int sourceIndex, ItemDefinition item, int amount, Func<bool> consumeReward)
+    {
+        PendingLoadoutItemKind kind = GetLoadoutKindForItem(item);
+        if (kind == PendingLoadoutItemKind.None)
+            return false;
+
+        if (pendingExternalLoadoutItem != null &&
+            ReferenceEquals(pendingExternalLoadoutItem.sourceOwner, sourceOwner) &&
+            pendingExternalLoadoutItem.sourceIndex == sourceIndex)
+        {
+            pendingExternalLoadoutItem = null;
+            RefreshAll();
+            return true;
+        }
+
+        pendingInventoryItem = null;
+        pendingItemKind = PendingLoadoutItemKind.None;
+
+        pendingExternalLoadoutItem = CreateExternalLoadoutContext(sourceOwner, sourceIndex, item, amount, kind, consumeReward);
+        RefreshAll();
+        return true;
+    }
+
+    public bool TryBeginExternalLoadoutItemDrag(object sourceOwner, int sourceIndex, ItemDefinition item, int amount, Func<bool> consumeReward)
+    {
+        PendingLoadoutItemKind kind = GetLoadoutKindForItem(item);
+        if (kind == PendingLoadoutItemKind.None)
+            return false;
+
+        draggedInventoryItem = null;
+        draggedEquipmentSlot = null;
+        pendingExternalLoadoutItem = null;
+        draggedExternalLoadoutItem = CreateExternalLoadoutContext(sourceOwner, sourceIndex, item, amount, kind, consumeReward);
+        RefreshAll();
+        return true;
+    }
+
+    public void EndExternalLoadoutItemDrag(object sourceOwner, int sourceIndex)
+    {
+        if (draggedExternalLoadoutItem != null &&
+            ReferenceEquals(draggedExternalLoadoutItem.sourceOwner, sourceOwner) &&
+            draggedExternalLoadoutItem.sourceIndex == sourceIndex)
+        {
+            draggedExternalLoadoutItem = null;
+            RefreshAll();
+        }
+    }
+
+    public bool IsExternalLoadoutItemPending(object sourceOwner, int sourceIndex)
+    {
+        return pendingExternalLoadoutItem != null &&
+               ReferenceEquals(pendingExternalLoadoutItem.sourceOwner, sourceOwner) &&
+               pendingExternalLoadoutItem.sourceIndex == sourceIndex;
+    }
+
+    public void CancelExternalLoadoutItemSource(object sourceOwner)
+    {
+        bool changed = false;
+
+        if (pendingExternalLoadoutItem != null && ReferenceEquals(pendingExternalLoadoutItem.sourceOwner, sourceOwner))
+        {
+            pendingExternalLoadoutItem = null;
+            changed = true;
+        }
+
+        if (draggedExternalLoadoutItem != null && ReferenceEquals(draggedExternalLoadoutItem.sourceOwner, sourceOwner))
+        {
+            draggedExternalLoadoutItem = null;
+            UIDragGhostUI.HideGhost();
+            changed = true;
+        }
+
+        if (changed)
+            RefreshAll();
+    }
+
+    public bool CanUseAsDirectLoadoutItem(ItemDefinition item)
+    {
+        return GetLoadoutKindForItem(item) != PendingLoadoutItemKind.None;
+    }
+
     public bool TryHandleStorageItemClicked(ItemDefinition item)
     {
         if (item == null)
@@ -329,7 +423,16 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
 
     public void HandleSharedConsumableClicked()
     {
-        if (!storageMode || worldRunManager == null)
+        if (worldRunManager == null)
+            return;
+
+        if (pendingExternalLoadoutItem != null && pendingExternalLoadoutItem.kind == PendingLoadoutItemKind.SharedConsumable)
+        {
+            TryAssignExternalLoadoutItemToSharedConsumable(pendingExternalLoadoutItem);
+            return;
+        }
+
+        if (!storageMode)
             return;
 
         if (pendingItemKind == PendingLoadoutItemKind.SharedConsumable && pendingInventoryItem != null)
@@ -349,7 +452,16 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
 
     public void HandleSharedConsumableDropped()
     {
-        if (!storageMode || worldRunManager == null)
+        if (worldRunManager == null)
+            return;
+
+        if (draggedExternalLoadoutItem != null)
+        {
+            TryAssignExternalLoadoutItemToSharedConsumable(draggedExternalLoadoutItem);
+            return;
+        }
+
+        if (!storageMode)
             return;
 
         if (draggedInventoryItem == null)
@@ -370,7 +482,16 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
 
     public void HandleEquipmentSlotClicked(PartyEquipmentSlotUI slotUI)
     {
-        if (!storageMode || worldRunManager == null || slotUI == null || slotUI.Member == null)
+        if (worldRunManager == null || slotUI == null || slotUI.Member == null)
+            return;
+
+        if (pendingExternalLoadoutItem != null && pendingExternalLoadoutItem.kind == PendingLoadoutItemKind.Equipment)
+        {
+            TryAssignExternalLoadoutItemToEquipmentSlot(pendingExternalLoadoutItem, slotUI);
+            return;
+        }
+
+        if (!storageMode)
             return;
 
         if (pendingItemKind == PendingLoadoutItemKind.Equipment && pendingInventoryItem != null)
@@ -390,7 +511,16 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
 
     public void HandleEquipmentSlotDropped(PartyEquipmentSlotUI targetSlotUI)
     {
-        if (!storageMode || worldRunManager == null || targetSlotUI == null || targetSlotUI.Member == null)
+        if (worldRunManager == null || targetSlotUI == null || targetSlotUI.Member == null)
+            return;
+
+        if (draggedExternalLoadoutItem != null)
+        {
+            TryAssignExternalLoadoutItemToEquipmentSlot(draggedExternalLoadoutItem, targetSlotUI);
+            return;
+        }
+
+        if (!storageMode)
             return;
 
         if (draggedInventoryItem != null)
@@ -531,6 +661,8 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
 
     public void BeginStorageItemDrag(ItemDefinition item)
     {
+        pendingExternalLoadoutItem = null;
+        draggedExternalLoadoutItem = null;
         draggedInventoryItem = item;
     }
 
@@ -635,6 +767,8 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
 
     private void TogglePendingItem(ItemDefinition item, PendingLoadoutItemKind kind)
     {
+        pendingExternalLoadoutItem = null;
+
         if (pendingInventoryItem == item && pendingItemKind == kind)
         {
             ClearPendingSelection();
@@ -647,6 +781,105 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
 
         RefreshAll();
     }
+    private ExternalLoadoutItemContext CreateExternalLoadoutContext(
+        object sourceOwner,
+        int sourceIndex,
+        ItemDefinition item,
+        int amount,
+        PendingLoadoutItemKind kind,
+        Func<bool> consumeReward)
+    {
+        return new ExternalLoadoutItemContext
+        {
+            sourceOwner = sourceOwner,
+            sourceIndex = sourceIndex,
+            item = item,
+            amount = Mathf.Max(1, amount),
+            kind = kind,
+            consumeReward = consumeReward,
+        };
+    }
+
+    private PendingLoadoutItemKind GetLoadoutKindForItem(ItemDefinition item)
+    {
+        if (item == null)
+            return PendingLoadoutItemKind.None;
+
+        if (item.mainUICategory == MainUIItemCategory.Equipment)
+            return PendingLoadoutItemKind.Equipment;
+
+        bool isSharedConsumableCandidate =
+            item.canAssignToSharedConsumableSlot ||
+            item.mainUICategory == MainUIItemCategory.Consumable;
+
+        if (isSharedConsumableCandidate && item.usableInBattle)
+            return PendingLoadoutItemKind.SharedConsumable;
+
+        return PendingLoadoutItemKind.None;
+    }
+
+    private bool TryAssignExternalLoadoutItemToSharedConsumable(ExternalLoadoutItemContext context)
+    {
+        if (context == null || context.kind != PendingLoadoutItemKind.SharedConsumable || context.item == null || worldRunManager == null)
+            return false;
+
+        bool assigned = worldRunManager.TryGrantAndAssignSharedConsumable(context.item, context.amount);
+        if (!assigned)
+            return false;
+
+        FinishExternalLoadoutAssignment(context);
+        return true;
+    }
+
+    private bool TryAssignExternalLoadoutItemToEquipmentSlot(ExternalLoadoutItemContext context, PartyEquipmentSlotUI slotUI)
+    {
+        if (context == null || context.kind != PendingLoadoutItemKind.Equipment || context.item == null)
+            return false;
+
+        if (worldRunManager == null || slotUI == null || slotUI.Member == null)
+            return false;
+
+        bool assigned = worldRunManager.TryGrantAndAssignEquipmentItem(
+            slotUI.Member,
+            slotUI.SlotIndex,
+            context.item,
+            context.amount);
+
+        if (!assigned)
+            return false;
+
+        FinishExternalLoadoutAssignment(context);
+        return true;
+    }
+
+    private void FinishExternalLoadoutAssignment(ExternalLoadoutItemContext context)
+    {
+        bool rewardConsumed = context.consumeReward == null || context.consumeReward.Invoke();
+        if (!rewardConsumed)
+            Debug.LogWarning("[BottomPartySummaryPanelUI] Direct loadout reward was assigned, but the source reward could not be consumed.");
+
+        if (pendingExternalLoadoutItem == context || IsSameExternalContext(pendingExternalLoadoutItem, context))
+            pendingExternalLoadoutItem = null;
+
+        if (draggedExternalLoadoutItem == context || IsSameExternalContext(draggedExternalLoadoutItem, context))
+            draggedExternalLoadoutItem = null;
+
+        draggedInventoryItem = null;
+        draggedEquipmentSlot = null;
+        UIDragGhostUI.HideGhost();
+        RefreshAll();
+    }
+
+    private bool IsSameExternalContext(ExternalLoadoutItemContext a, ExternalLoadoutItemContext b)
+    {
+        if (a == null || b == null)
+            return false;
+
+        return ReferenceEquals(a.sourceOwner, b.sourceOwner) &&
+               a.sourceIndex == b.sourceIndex &&
+               a.item == b.item;
+    }
+
     public void HandleSharedConsumableHoverEnter()
     {
         if (sharedConsumableTooltipUI == null || worldRunManager == null)
@@ -678,5 +911,6 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
     {
         pendingInventoryItem = null;
         pendingItemKind = PendingLoadoutItemKind.None;
+        pendingExternalLoadoutItem = null;
     }
 }
