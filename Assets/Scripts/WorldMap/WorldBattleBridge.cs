@@ -29,7 +29,7 @@ public class WorldBattleBridge : MonoBehaviour
     [SerializeField] private float battleExitFadeInDuration = 0.2f;
 
     [Header("Scene Exit")]
-    [SerializeField] private string titleSceneName = "Title";
+    [SerializeField] private string titleSceneName = "Bootstrap";
 
     private WorldRunManager runManager;
     private WorldGenerationSettings settings;
@@ -297,17 +297,29 @@ public class WorldBattleBridge : MonoBehaviour
             {
                 runManager.FinalizeWorldSettlement(summary);
                 waiting = false;
-                if (!string.IsNullOrWhiteSpace(titleSceneName))
-                    SceneManager.LoadScene(titleSceneName);
+                ReturnToTitleSceneIfAvailable();
             });
             while (waiting) yield return null;
         }
         else
         {
             runManager.FinalizeWorldSettlement(summary);
-            if (!string.IsNullOrWhiteSpace(titleSceneName))
-                SceneManager.LoadScene(titleSceneName);
+            ReturnToTitleSceneIfAvailable();
         }
+    }
+
+    private void ReturnToTitleSceneIfAvailable()
+    {
+        if (string.IsNullOrWhiteSpace(titleSceneName))
+            return;
+
+        if (Application.CanStreamedLevelBeLoaded(titleSceneName))
+        {
+            SceneManager.LoadScene(titleSceneName);
+            return;
+        }
+
+        Debug.LogWarning($"[WorldBattleBridge] Scene '{titleSceneName}' is not in the active Build Profile or shared scene list. World settlement was finalized, but scene load was skipped.");
     }
 
     private void SetWorldBattleRoots(bool isInBattle)

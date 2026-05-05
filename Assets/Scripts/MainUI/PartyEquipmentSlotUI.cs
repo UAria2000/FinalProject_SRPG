@@ -64,8 +64,10 @@ public class PartyEquipmentSlotUI : MonoBehaviour,
         if (eventData.button != PointerEventData.InputButton.Left || AssignedItem == null || owner == null)
             return;
 
+        if (!owner.BeginEquipmentDrag(this))
+            return;
+
         canvasGroup.blocksRaycasts = false;
-        owner.BeginEquipmentDrag(this);
 
         if (iconImage != null && iconImage.sprite != null)
             UIDragGhostUI.Show(iconImage.sprite, transform as RectTransform);

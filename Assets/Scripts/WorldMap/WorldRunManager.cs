@@ -1088,10 +1088,21 @@ public class WorldRunManager : MonoBehaviour
         if (item.mainUICategory != MainUIItemCategory.Equipment)
             return false;
 
-        if (!HasInventoryItem(item))
+        int inventoryAmount = GetInventoryItemAmount(item);
+        if (inventoryAmount <= 0)
             return false;
 
-        ClearEquipmentReference(item);
+        ItemDefinition currentItem = slotIndex == 0 ? data.slot0Item : data.slot1Item;
+        if (currentItem != item)
+        {
+            int assignedExceptTarget = CountAssignedEquipmentItem(item, member, slotIndex);
+
+            // 장비는 아직 개별 인스턴스 ID가 없고 ItemDefinition + 수량으로 관리된다.
+            // 같은 장비 보유 수량이 남아 있으면 기존 장착은 유지하고,
+            // 남는 수량이 없을 때만 기존 장착 위치 중 1개를 새 슬롯으로 이동시킨다.
+            if (assignedExceptTarget >= inventoryAmount)
+                ClearFirstEquipmentReference(item, member, slotIndex);
+        }
 
         if (slotIndex == 0)
             data.slot0Item = item;
@@ -1121,8 +1132,9 @@ public class WorldRunManager : MonoBehaviour
         if (data == null)
             return false;
 
+        // 보상 슬롯에서 직접 장착하는 경우에는 먼저 새 보상 아이템을 월드 인벤토리에 등록한다.
+        // 기존 같은 종류 장비를 전부 해제하지 않는다. 그래야 같은 장비 여러 개를 정상적으로 유지할 수 있다.
         state.AddItem(item, Mathf.Max(1, amount));
-        ClearEquipmentReference(item);
 
         if (slotIndex == 0)
             data.slot0Item = item;
@@ -1165,6 +1177,7 @@ public class WorldRunManager : MonoBehaviour
             target.slot1Item = sourceItem;
 
         RaiseStorageChanged();
+        RequestAutoSaveAll();
         return true;
     }
 
@@ -1466,31 +1479,71 @@ public class WorldRunManager : MonoBehaviour
     }
     private bool HasInventoryItem(ItemDefinition item)
     {
+        return GetInventoryItemAmount(item) > 0;
+    }
+
+    private int GetInventoryItemAmount(ItemDefinition item)
+    {
         if (item == null)
-            return false;
+            return 0;
 
         WorldRunTransientState state = GetOrCreateWorldRunState();
         if (state == null || state.inventory == null)
-            return false;
+            return 0;
 
+        int amount = 0;
         for (int i = 0; i < state.inventory.Count; i++)
         {
             InventoryStackData stack = state.inventory[i];
             if (stack != null && stack.item == item && stack.amount > 0)
-                return true;
+                amount += stack.amount;
         }
 
-        return false;
+        return amount;
     }
 
-    private void ClearEquipmentReference(ItemDefinition item)
+    private int CountAssignedEquipmentItem(ItemDefinition item, PartyMemberData excludeMember = null, int excludeSlotIndex = -1)
     {
         if (item == null)
-            return;
+            return 0;
 
         WorldRunTransientState state = GetOrCreateWorldRunState();
         if (state == null || state.partyEquipmentAssignments == null)
-            return;
+            return 0;
+
+        string excludeMemberId = excludeMember != null ? excludeMember.instanceId : null;
+        int excludeSlot = excludeSlotIndex >= 0 ? Mathf.Clamp(excludeSlotIndex, 0, 1) : -1;
+
+        int count = 0;
+        for (int i = 0; i < state.partyEquipmentAssignments.Count; i++)
+        {
+            PartyEquipmentAssignmentData data = state.partyEquipmentAssignments[i];
+            if (data == null)
+                continue;
+
+            bool sameMember = !string.IsNullOrWhiteSpace(excludeMemberId) && data.memberInstanceId == excludeMemberId;
+
+            if (!(sameMember && excludeSlot == 0) && data.slot0Item == item)
+                count++;
+
+            if (!(sameMember && excludeSlot == 1) && data.slot1Item == item)
+                count++;
+        }
+
+        return count;
+    }
+
+    private bool ClearFirstEquipmentReference(ItemDefinition item, PartyMemberData excludeMember = null, int excludeSlotIndex = -1)
+    {
+        if (item == null)
+            return false;
+
+        WorldRunTransientState state = GetOrCreateWorldRunState();
+        if (state == null || state.partyEquipmentAssignments == null)
+            return false;
+
+        string excludeMemberId = excludeMember != null ? excludeMember.instanceId : null;
+        int excludeSlot = excludeSlotIndex >= 0 ? Mathf.Clamp(excludeSlotIndex, 0, 1) : -1;
 
         for (int i = 0; i < state.partyEquipmentAssignments.Count; i++)
         {
@@ -1498,12 +1551,22 @@ public class WorldRunManager : MonoBehaviour
             if (data == null)
                 continue;
 
-            if (data.slot0Item == item)
-                data.slot0Item = null;
+            bool sameMember = !string.IsNullOrWhiteSpace(excludeMemberId) && data.memberInstanceId == excludeMemberId;
 
-            if (data.slot1Item == item)
+            if (!(sameMember && excludeSlot == 0) && data.slot0Item == item)
+            {
+                data.slot0Item = null;
+                return true;
+            }
+
+            if (!(sameMember && excludeSlot == 1) && data.slot1Item == item)
+            {
                 data.slot1Item = null;
+                return true;
+            }
         }
+
+        return false;
     }
 
     private PartyEquipmentAssignmentData GetEquipmentAssignment(PartyMemberData member, bool createIfMissing)

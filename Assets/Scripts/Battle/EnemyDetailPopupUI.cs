@@ -46,13 +46,13 @@ public class EnemyDetailPopupUI : MonoBehaviour
         if (acValueText != null) acValueText.text = Mathf.RoundToInt(enemy.AC * 10f).ToString();
         if (criValueText != null) criValueText.text = enemy.CRI.ToString();
         if (crdValueText != null) crdValueText.text = enemy.CRD.ToString();
-        if (poisonResistValueText != null) poisonResistValueText.text = BattleStatFormatter.FormatPercent(enemy.BurnResist);
+        if (poisonResistValueText != null) poisonResistValueText.text = BattleStatFormatter.FormatPercent(enemy.PoisonResist);
         if (burnResistValueText != null) burnResistValueText.text = BattleStatFormatter.FormatPercent(enemy.BurnResist);
         if (bleedResistValueText != null) bleedResistValueText.text = BattleStatFormatter.FormatPercent(enemy.BleedResist);
         if (stunResistValueText != null) stunResistValueText.text = BattleStatFormatter.FormatPercent(enemy.StunResist);
         if (frostResistValueText != null) frostResistValueText.text = BattleStatFormatter.FormatPercent(enemy.FrostResist);
         if (blindResistValueText != null) blindResistValueText.text = BattleStatFormatter.FormatPercent(enemy.BlindResist);
-        if (epitaphText != null) epitaphText.text = enemy.Epitaph;
+        if (epitaphText != null) epitaphText.text = enemy.HasBattleInfoLastWill ? enemy.BattleInfoLastWillText : enemy.Epitaph;
     }
 
     public void Hide()

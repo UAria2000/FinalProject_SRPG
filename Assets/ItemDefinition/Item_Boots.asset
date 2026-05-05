@@ -15,7 +15,7 @@ MonoBehaviour:
   itemId: item_boots
   itemName: "\uBD80\uCE20"
   description: "\uBD80\uCE20"
-  icon: {fileID: 21300000, guid: bc70ff3fc2b523d44ac5db2712941d90, type: 3}
+  icon: {fileID: 5642367458152434026, guid: ab02d561f10debb4e8dfed3f3fb2e150, type: 3}
   targetTeam: 1
   targetScope: 0
   itemTier: 2

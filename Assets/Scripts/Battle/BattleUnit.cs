@@ -15,6 +15,10 @@ public class BattleUnit
     private BattleUnit duelLockedTarget;
     private int persistentBattleDmgModifierPercent;
 
+    private bool battleInfoLastWillRolled;
+    private bool battleInfoHasLastWill;
+    private string battleInfoLastWillText;
+
     public BattleUnit(PartyMemberData data, TeamType team)
     {
         memberData = data;
@@ -41,6 +45,22 @@ public class BattleUnit
 
     public string Name { get { return memberData != null ? memberData.GetDisplayName() : "Unit"; } }
     public string Epitaph { get { return memberData != null ? memberData.fixedEpitaph : string.Empty; } }
+
+    public bool HasBattleInfoLastWill
+    {
+        get { return battleInfoLastWillRolled && battleInfoHasLastWill && !string.IsNullOrWhiteSpace(battleInfoLastWillText); }
+    }
+
+    public string BattleInfoLastWillText
+    {
+        get
+        {
+            if (!string.IsNullOrWhiteSpace(battleInfoLastWillText))
+                return battleInfoLastWillText;
+
+            return Epitaph;
+        }
+    }
 
     public Sprite SlotFaceSprite { get { return ViewDefinition != null ? ViewDefinition.GetSlotFaceSprite() : null; } }
     public Sprite BustPortraitSprite { get { return ViewDefinition != null ? ViewDefinition.GetBustPortraitSprite() : SlotFaceSprite; } }
@@ -349,6 +369,58 @@ public class BattleUnit
     }
 
     public SkillDefinition BasicAttack { get { return Definition != null ? Definition.basicAttack : null; } }
+
+    public bool EnsureBattleInfoLastWill(float chancePercent, BattleLastWillTextTable table, string[] fallbackTexts = null)
+    {
+        if (Team != TeamType.Enemy)
+            return false;
+
+        if (battleInfoLastWillRolled)
+            return HasBattleInfoLastWill;
+
+        battleInfoLastWillRolled = true;
+        battleInfoHasLastWill = false;
+        battleInfoLastWillText = string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(Epitaph))
+        {
+            battleInfoHasLastWill = true;
+            battleInfoLastWillText = Epitaph;
+            return true;
+        }
+
+        if (Random.Range(0f, 100f) > Mathf.Clamp(chancePercent, 0f, 100f))
+            return false;
+
+        string picked = table != null ? table.GetRandomText() : string.Empty;
+        if (string.IsNullOrWhiteSpace(picked) && fallbackTexts != null && fallbackTexts.Length > 0)
+            picked = PickRandomNonEmptyText(fallbackTexts);
+
+        if (string.IsNullOrWhiteSpace(picked))
+            return false;
+
+        battleInfoHasLastWill = true;
+        battleInfoLastWillText = picked;
+        return true;
+    }
+
+    private static string PickRandomNonEmptyText(string[] texts)
+    {
+        if (texts == null || texts.Length <= 0)
+            return string.Empty;
+
+        List<string> candidates = new List<string>();
+        for (int i = 0; i < texts.Length; i++)
+        {
+            if (!string.IsNullOrWhiteSpace(texts[i]))
+                candidates.Add(texts[i]);
+        }
+
+        if (candidates.Count <= 0)
+            return string.Empty;
+
+        return candidates[Random.Range(0, candidates.Count)];
+    }
 
     public SkillDefinition GetActionSkillAt(int slotIndex)
     {

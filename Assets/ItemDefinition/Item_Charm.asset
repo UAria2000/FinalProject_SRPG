@@ -15,7 +15,7 @@ MonoBehaviour:
   itemId: item_charm
   itemName: "\uBD80\uC801"
   description: "\uBD80\uC801"
-  icon: {fileID: 21300000, guid: bc70ff3fc2b523d44ac5db2712941d90, type: 3}
+  icon: {fileID: 8530889235992783434, guid: b3106cefc4c4c934e93ecd3730e1607d, type: 3}
   targetTeam: 1
   targetScope: 0
   itemTier: 1

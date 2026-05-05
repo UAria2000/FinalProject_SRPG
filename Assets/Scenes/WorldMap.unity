@@ -27025,7 +27025,7 @@ MonoBehaviour:
   battleEnterFadeInDuration: 0.2
   battleExitFadeOutDuration: 0.2
   battleExitFadeInDuration: 0.2
-  titleSceneName: Title
+  titleSceneName: Bootstrap
 --- !u!4 &949419374
 Transform:
   m_ObjectHideFlags: 0
@@ -29064,7 +29064,7 @@ MonoBehaviour:
   restPartyPreviewHeaderText: "\uD30C\uD2F0 \uC0C1\uD0DC"
   restDescriptionSuffix: "\uD734\uC2DD\uC744 \uCDE8\uD574 \uCCB4\uB825\uC744 \uD68C\uBCF5\uD569\uB2C8\uB2E4."
   restHealMode: 1
-  restHealPercentOfMaxHp: 50
+  restHealPercentOfMaxHp: 30
   restFlatHealAmount: 0
   restCanReviveDeadUnits: 0
   restNoPartyText: "\uD734\uC2DD\uD560 \uD30C\uD2F0\uC6D0\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
@@ -37763,7 +37763,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1411984302
 RectTransform:
   m_ObjectHideFlags: 0

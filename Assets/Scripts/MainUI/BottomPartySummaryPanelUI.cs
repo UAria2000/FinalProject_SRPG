@@ -88,6 +88,13 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
     public bool IsStorageMode() => storageMode;
     public bool IsBarracksMode() => barracksMode;
     public bool IsAnyMainPanelOpen() => storageMode || barracksMode || externalMainPanelOpen;
+
+    private bool CanEditEquipmentLoadout()
+    {
+        // 창고가 임시 삭제/비활성 상태여도, 군단/퀘스트/보물 창이 열려 장비 슬롯이 보이는 동안에는
+        // 이미 장착된 파티 장비끼리의 드래그 이동/교체를 허용한다.
+        return IsAnyMainPanelOpen();
+    }
     public PersistentRosterUnitData PendingBarracksUnit => pendingBarracksUnit;
     public bool HasPendingBarracksUnit => pendingBarracksUnit != null;
     public bool HasDraggedPartyEntry => draggedUnitEntry != null && draggedUnitEntry.Member != null;
@@ -520,6 +527,24 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
             return;
         }
 
+        // 파티 장비 슬롯끼리의 이동/교체는 창고 모드에만 묶지 않는다.
+        // 군단/퀘스트/보물 창이 열려 있으면 장비 슬롯이 보이므로, 그 상태에서도 즉시 교체 가능해야 한다.
+        if (draggedEquipmentSlot != null && draggedEquipmentSlot != targetSlotUI && draggedEquipmentSlot.Member != null)
+        {
+            if (!CanEditEquipmentLoadout())
+                return;
+
+            worldRunManager.TryMoveOrSwapEquipment(
+                draggedEquipmentSlot.Member,
+                draggedEquipmentSlot.SlotIndex,
+                targetSlotUI.Member,
+                targetSlotUI.SlotIndex);
+
+            draggedEquipmentSlot = null;
+            RefreshAll();
+            return;
+        }
+
         if (!storageMode)
             return;
 
@@ -530,19 +555,6 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
 
             draggedInventoryItem = null;
             ClearPendingSelection();
-            RefreshAll();
-            return;
-        }
-
-        if (draggedEquipmentSlot != null && draggedEquipmentSlot != targetSlotUI && draggedEquipmentSlot.Member != null)
-        {
-            worldRunManager.TryMoveOrSwapEquipment(
-                draggedEquipmentSlot.Member,
-                draggedEquipmentSlot.SlotIndex,
-                targetSlotUI.Member,
-                targetSlotUI.SlotIndex);
-
-            draggedEquipmentSlot = null;
             RefreshAll();
         }
     }
@@ -672,12 +684,18 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
             draggedInventoryItem = null;
     }
 
-    public void BeginEquipmentDrag(PartyEquipmentSlotUI slotUI)
+    public bool BeginEquipmentDrag(PartyEquipmentSlotUI slotUI)
     {
-        if (!storageMode || slotUI == null || slotUI.AssignedItem == null)
-            return;
+        if (!CanEditEquipmentLoadout() || slotUI == null || slotUI.AssignedItem == null)
+            return false;
 
+        pendingInventoryItem = null;
+        pendingItemKind = PendingLoadoutItemKind.None;
+        pendingExternalLoadoutItem = null;
+        draggedInventoryItem = null;
+        draggedExternalLoadoutItem = null;
         draggedEquipmentSlot = slotUI;
+        return true;
     }
 
     public void EndEquipmentDrag(PartyEquipmentSlotUI slotUI)

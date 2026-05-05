@@ -46,6 +46,7 @@ public class WorldQuestController : MonoBehaviour
 
     private WorldQuestState pendingConfirmQuest;
     private ConfirmPopupMode pendingConfirmMode = ConfirmPopupMode.None;
+    private bool initialized;
 
     public IReadOnlyList<WorldQuestState> ActiveAcceptedQuests => activeAcceptedQuests;
     public bool IsPopupOpen => (questPopupUI != null && questPopupUI.IsOpen) || (abandonConfirmPopupUI != null && abandonConfirmPopupUI.IsOpen);
@@ -67,7 +68,18 @@ public class WorldQuestController : MonoBehaviour
         if (abandonConfirmPopupUI != null)
             abandonConfirmPopupUI.Initialize(this);
 
+        initialized = true;
         RefreshQuestListUI();
+        TryShowQueuedCompletionPopup();
+    }
+
+    private void OnEnable()
+    {
+        if (!Application.isPlaying || !initialized)
+            return;
+
+        RefreshQuestListUI();
+        TryShowQueuedCompletionPopup();
     }
 
     private void RequestAutoSaveAll()
@@ -602,12 +614,22 @@ public class WorldQuestController : MonoBehaviour
     private void PostProgressRefresh()
     {
         RefreshQuestListUI();
+        RequestAutoSaveAll();
 
         for (int i = 0; i < activeAcceptedQuests.Count; i++)
         {
             WorldQuestState quest = activeAcceptedQuests[i];
             if (quest == null || !quest.isCompleted || quest.completionPopupQueued || quest.completionPopupShown)
                 continue;
+
+            if (!isActiveAndEnabled)
+            {
+                // 전투 중에는 월드 루트가 꺼져 있을 수 있으므로 Coroutine을 시작하지 않는다.
+                // 다시 활성화되면 OnEnable에서 완료 팝업 표시를 재시도한다.
+                quest.completionPopupQueued = false;
+                quest.completionPopupShown = false;
+                continue;
+            }
 
             quest.completionPopupQueued = true;
             StartCoroutine(QueueCompletionAfterDelay(quest));
