@@ -182,6 +182,9 @@ public class RandomEnemyEncounterBootstrapper : MonoBehaviour
         member.fixedEpitaph = entry.fixedEpitaph;
         member.statVariance = RollVariance(entry.unitDefinition.varianceRules);
         member.learnedSkills = CopySkills(entry.learnedSkills);
+        member.isExchangeable = RollCapturableEnemyNft(entry.unitDefinition);
+        member.isNft = member.isExchangeable;
+        member.equippedItems = RollEnemyEquipment(entry);
         return member;
     }
 
@@ -217,11 +220,11 @@ public class RandomEnemyEncounterBootstrapper : MonoBehaviour
         variance.maxHpDelta = RollRange(rules.maxHpRange);
         variance.dmgDelta = RollRange(rules.dmgRange);
         variance.spdDelta = RollRange(rules.spdRange);
+        variance.idtDelta = RollRange(rules.idtRange);
         variance.hitDeltaX10 = RollRange(rules.hitRangeX10);
         variance.acDeltaX10 = RollRange(rules.acRangeX10);
         variance.criDelta = RollRange(rules.criRange);
         variance.crdDelta = RollRange(rules.crdRange);
-        variance.poisonResistDelta = RollRange(rules.poisonResistRange);
         variance.burnResistDelta = RollRange(rules.burnResistRange);
         variance.bleedResistDelta = RollRange(rules.bleedResistRange);
         variance.stunResistDelta = RollRange(rules.stunResistRange);
@@ -235,6 +238,37 @@ public class RandomEnemyEncounterBootstrapper : MonoBehaviour
         int min = Mathf.Min(range.x, range.y);
         int max = Mathf.Max(range.x, range.y);
         return UnityEngine.Random.Range(min, max + 1);
+    }
+
+    private bool RollCapturableEnemyNft(UnitDefinition definition)
+    {
+        if (definition == null || !definition.canBeCaptured)
+            return false;
+
+        return UnityEngine.Random.Range(0f, 100f) < Mathf.Clamp(definition.capturableEnemyNftChancePercent, 0f, 100f);
+    }
+
+    private List<ItemDefinition> RollEnemyEquipment(EnemyEncounterEntry entry)
+    {
+        List<ItemDefinition> result = new List<ItemDefinition>();
+        if (entry == null || entry.unitDefinition == null || entry.unitDefinition.randomEnemyEquipment == null)
+            return result;
+
+        for (int i = 0; i < entry.unitDefinition.randomEnemyEquipment.Count && result.Count < 2; i++)
+        {
+            ItemDropDefinition roll = entry.unitDefinition.randomEnemyEquipment[i];
+            if (roll == null || roll.item == null)
+                continue;
+
+            if (roll.item.mainUICategory != MainUIItemCategory.Equipment)
+                continue;
+
+            float chance = Mathf.Clamp(roll.dropChancePercent, 0f, 100f);
+            if (UnityEngine.Random.Range(0f, 100f) < chance)
+                result.Add(roll.item);
+        }
+
+        return result;
     }
 
     private List<SkillDefinition> CopySkills(List<SkillDefinition> source)

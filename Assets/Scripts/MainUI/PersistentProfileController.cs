@@ -981,6 +981,7 @@ public class PersistentProfileController : MonoBehaviour
         summary.maxHp += item.equipmentMaxHpBonus;
         summary.dmg += item.equipmentDmgBonus;
         summary.spd += item.equipmentSpdBonus;
+        summary.idt += item.equipmentIdtBonus;
         summary.hitX10 += item.equipmentHitBonusX10;
         summary.acX10 += item.equipmentAcBonusX10;
         summary.cri += item.equipmentCriBonus;
@@ -994,7 +995,6 @@ public class PersistentProfileController : MonoBehaviour
         int blind = allResist + item.equipmentBlindResistBonus;
 
         summary.burnRes += burn;
-        summary.poisonRes += burn; // 구버전 화상/중독 저항 표시 호환
         summary.bleedRes += bleed;
         summary.stunRes += stun;
         summary.frostRes += frost;
@@ -1018,6 +1018,9 @@ public class PersistentProfileController : MonoBehaviour
                     break;
                 case StatModifierType.SPD:
                     summary.spd += amount;
+                    break;
+                case StatModifierType.IncomingDamageTakenPercent:
+                    summary.idt -= amount;
                     break;
                 case StatModifierType.HIT:
                     summary.hitX10 += amount;

@@ -596,12 +596,14 @@ public class WorldRunManager : MonoBehaviour
                 state.AddPrisonerFromItem(
                     reward.prisonerItem,
                     Mathf.Max(1, reward.capturedLevel),
-                    reward.fallbackUnit);
+                    reward.fallbackUnit,
+                    reward.fallbackView,
+                    reward.isExchangeable);
                 addedAny = true;
             }
             else if (reward.fallbackUnit != null)
             {
-                state.AddPrisoner(reward.fallbackUnit, Mathf.Max(1, reward.capturedLevel));
+                state.AddPrisoner(reward.fallbackUnit, Mathf.Max(1, reward.capturedLevel), reward.fallbackView, reward.isExchangeable);
                 addedAny = true;
             }
         }
@@ -984,10 +986,58 @@ public class WorldRunManager : MonoBehaviour
 
         bool removed = state.prisoners.Remove(prisoner);
         if (removed)
+        {
             RaiseStorageChanged();
             RequestAutoSaveAll();
+        }
 
         return removed;
+    }
+
+    public bool TryCorruptReadyPrisoner(PrisonerRuntimeData prisoner)
+    {
+        WorldRunTransientState state = GetOrCreateWorldRunState();
+        if (state == null || prisoner == null || state.prisoners == null)
+            return false;
+
+        if (!prisoner.IsReadyToCorrupt || prisoner.sourceUnit == null)
+            return false;
+
+        if (persistentProfileController == null)
+            persistentProfileController = UnityEngine.Object.FindFirstObjectByType<PersistentProfileController>();
+
+        if (persistentProfileController == null)
+            return false;
+
+        PersistentRosterUnitData rosterUnit = new PersistentRosterUnitData
+        {
+            instanceId = Guid.NewGuid().ToString("N"),
+            instanceDisplayNameOverride = string.Empty,
+            fixedEpitaph = string.Empty,
+            unitDefinition = prisoner.sourceUnit,
+            unitViewDefinition = prisoner.sourceUnitViewDefinition,
+            isExchangeable = prisoner.isExchangeable,
+            isNft = prisoner.isExchangeable || (prisoner.sourceUnit != null && prisoner.sourceUnit.isNftUnit),
+            currentLevel = Mathf.Max(1, prisoner.capturedLevel),
+            originalLevel = Mathf.Max(1, prisoner.capturedLevel),
+            currentExp = 0,
+            levelGrowthMaxHp = 0,
+            levelGrowthDmg = 0,
+            promotionRank = 1,
+            statVariance = new UnitInstanceStatVariance(),
+            persistentCurrentHP = -1
+        };
+
+        rosterUnit.EnsureDefaults();
+        persistentProfileController.AddRosterUnit(rosterUnit);
+
+        bool removed = state.prisoners.Remove(prisoner);
+        if (!removed)
+            return false;
+
+        RaiseStorageChanged();
+        RequestAutoSaveAll();
+        return true;
     }
 
     public IReadOnlyList<PartyMemberData> GetDisplayOrderedPartyMembers()
@@ -1408,6 +1458,10 @@ public class WorldRunManager : MonoBehaviour
                     ? resolver.FindUnitDefinition(saved.sourceUnitId)
                     : null;
 
+                UnitViewDefinition view = !string.IsNullOrWhiteSpace(saved.sourceUnitViewDefinitionName)
+                    ? resolver.FindUnitViewDefinition(saved.sourceUnitViewDefinitionName)
+                    : null;
+
                 ItemDefinition prisonerItem = !string.IsNullOrWhiteSpace(saved.sourcePrisonerItemId)
                     ? resolver.FindItemDefinition(saved.sourcePrisonerItemId)
                     : null;
@@ -1422,6 +1476,7 @@ public class WorldRunManager : MonoBehaviour
                 {
                     prisonerInstanceId = saved.prisonerInstanceId,
                     sourceUnit = unit,
+                    sourceUnitViewDefinition = view,
                     sourcePrisonerItem = prisonerItem,
                     prisonerNameOverride = saved.prisonerNameOverride,
                     capturedLevel = Mathf.Max(1, saved.capturedLevel),

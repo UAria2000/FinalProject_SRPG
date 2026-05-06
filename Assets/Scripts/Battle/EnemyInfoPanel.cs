@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 public class EnemyInfoPanel : MonoBehaviour
@@ -20,11 +21,27 @@ public class EnemyInfoPanel : MonoBehaviour
     [Header("Identity")]
     [SerializeField] private TMP_Text nameValueText;
     [SerializeField] private TMP_Text levelValueText;
+    [Tooltip("오리지널 레벨 라벨/괄호까지 함께 숨기고 싶으면 이 루트를 연결합니다. 비워두면 originalLevelValueText만 숨깁니다.")]
+    [SerializeField] private GameObject originalLevelRoot;
+    [SerializeField] private TMP_Text originalLevelValueText;
     [SerializeField] private TMP_Text hpValueText;
+    [SerializeField] private Image hpFillImage;
+    [SerializeField] private Slider hpSlider;
     [SerializeField] private Color enemyNameColor = new Color(0.2941f, 0.6353f, 0.9569f, 1f); // #4BA2F4
 
+    [Header("Badges")]
+    [SerializeField] private GameObject nftBadgeRoot;
+    [SerializeField] private GameObject exchangeableBadge;
+    [SerializeField] private GameObject meleeIcon;
+    [SerializeField] private GameObject midIcon;
+    [SerializeField] private GameObject rangedIcon;
+
+    [Header("Equipment Display - Read Only")]
+    [SerializeField] private GameObject[] equipmentSlotRoots = new GameObject[2];
+    [SerializeField] private Image[] equipmentIconImages = new Image[2];
+
     [Header("Info Area Roots")]
-    [Tooltip("7개 기본 스탯을 담은 루트. 클릭 시 저항 스탯으로 전환할 버튼/영역은 infoAreaToggleButton에 연결합니다.")]
+    [Tooltip("7개 기본 스탯을 담은 루트. 기본/저항 상태에서만 클릭 전환이 동작합니다.")]
     [SerializeField] private GameObject mainStatsRoot;
     [Tooltip("5개 저항 스탯을 담은 루트.")]
     [SerializeField] private GameObject resistStatsRoot;
@@ -36,25 +53,23 @@ public class EnemyInfoPanel : MonoBehaviour
     [SerializeField] private Button descriptionBackButton;
     [SerializeField] private TMP_Text infoModeLabelText;
 
-    [Header("Main Stats - 7 Slots")]
+    [Header("Main Stats - DMG / HIT / AC / IDT / CRI / CRD / SPD")]
     [SerializeField] private TMP_Text dmgValueText;
-    [Tooltip("방어 스탯이 별도로 없으므로 현재는 0 또는 비워둘 수 있습니다. 향후 방어 스탯 추가 시 연결용입니다.")]
-    [SerializeField] private TMP_Text defenseValueText;
-    [SerializeField] private TMP_Text spdValueText;
     [SerializeField] private TMP_Text hitValueText;
     [SerializeField] private TMP_Text acValueText;
+    [FormerlySerializedAs("defenseValueText")]
+    [SerializeField] private TMP_Text idtValueText;
     [SerializeField] private TMP_Text criValueText;
     [SerializeField] private TMP_Text crdValueText;
+    [SerializeField] private TMP_Text spdValueText;
 
-    [Header("Resistance Stats - 5 Slots")]
-    [SerializeField] private TMP_Text poisonResistValueText;
-    [SerializeField] private TMP_Text bleedResistValueText;
+    [Header("Resistance Stats - Stun / Bleed / Burn / Frost / Blind")]
     [SerializeField] private TMP_Text stunResistValueText;
+    [SerializeField] private TMP_Text bleedResistValueText;
+    [FormerlySerializedAs("poisonResistValueText")]
+    [SerializeField] private TMP_Text burnResistValueText;
     [SerializeField] private TMP_Text frostResistValueText;
     [SerializeField] private TMP_Text blindResistValueText;
-    [Header("Legacy Optional Resistance Texts")]
-    [SerializeField] private TMP_Text burnResistValueText;
-    [SerializeField] private TMP_Text epitaphText;
 
     [Header("Enemy Skill Preview - Enemy Uses 3 Skill Slots")]
     [SerializeField] private GameObject[] skillSlotRoots = new GameObject[4];
@@ -63,56 +78,56 @@ public class EnemyInfoPanel : MonoBehaviour
     [SerializeField] private TMP_Text[] skillNameTexts = new TMP_Text[4];
     [SerializeField] private Image[] cooldownOverlays = new Image[4];
     [SerializeField] private TMP_Text[] cooldownTexts = new TMP_Text[4];
-    [SerializeField] private GameObject[] selectedSkillRoots = new GameObject[4];
+    [Tooltip("각 스킬/유언장 버튼 안의 SelectedFrame 오브젝트를 순서대로 연결합니다. 0~2=스킬, 3=유언장.")]
+    [FormerlySerializedAs("selectedSkillRoots")]
+    [SerializeField] private GameObject[] selectedFrameRoots = new GameObject[4];
 
     [Header("Last Will Slot")]
     [SerializeField] private Button lastWillButton;
     [SerializeField] private GameObject lastWillSlotRoot;
     [SerializeField] private Image lastWillIconImage;
     [SerializeField] private TMP_Text lastWillButtonLabelText;
-    [SerializeField] private GameObject lastWillSelectedRoot;
-    [Range(0f, 100f)] [SerializeField] private float lastWillButtonChancePercent = 30f;
-    [SerializeField] private BattleLastWillTextTable lastWillTextTable;
-    [TextArea(2, 6)] [SerializeField] private string[] fallbackLastWillTexts;
     [Tooltip("켜면 기존처럼 유언장 버튼이 EnemyDetailPopup을 열도록 외부 액션을 호출합니다. 기본값은 꺼짐이며, 새 패널 내부에 유언장을 표시합니다.")]
     [SerializeField] private bool lastWillButtonOpensLegacyDetailPopup = false;
 
-    [Header("Skill Description")]
+    [Header("Skill Description - Header")]
     [SerializeField] private Image selectedSkillIcon;
+    [SerializeField] private Image selectedSkillClassBadgeImage;
+    [SerializeField] private TMP_Text selectedSkillClassBadgeText;
     [SerializeField] private TMP_Text selectedSkillNameText;
+
+    [Header("Skill Description - Positions")]
+    [Tooltip("스킬 사용 가능 위치 1~4. 회색 육각형 이미지를 연결합니다.")]
+    [SerializeField] private GameObject[] usablePositionHexRoots = new GameObject[4];
+    [SerializeField] private Image[] usablePositionHexImages = new Image[4];
+    [SerializeField] private TMP_Text[] usablePositionHexTexts = new TMP_Text[4];
+    [Tooltip("스킬 대상 위치 1~4. 적 대상은 붉은색, 아군/자신 대상은 노란색으로 표시합니다.")]
+    [SerializeField] private GameObject[] targetPositionHexRoots = new GameObject[4];
+    [SerializeField] private Image[] targetPositionHexImages = new Image[4];
+    [SerializeField] private TMP_Text[] targetPositionHexTexts = new TMP_Text[4];
+    [Header("Skill Description - Position Hex Sprites")]
+    [Tooltip("스킬 사용 가능 위치에 표시할 회색 육각형 이미지입니다.")]
+    [SerializeField] private Sprite usablePositionHexSprite;
+    [Tooltip("적 대상 가능 위치에 표시할 붉은색 육각형 이미지입니다.")]
+    [SerializeField] private Sprite targetEnemyPositionHexSprite;
+    [Tooltip("아군/자신 대상 가능 위치에 표시할 노란색 육각형 이미지입니다.")]
+    [SerializeField] private Sprite targetAllyPositionHexSprite;
+    [Tooltip("불가능/비활성 위치에 표시할 빈칸 이미지입니다.")]
+    [SerializeField] private Sprite emptyPositionHexSprite;
+
+    [Header("Skill Description - Texts")]
     [SerializeField] private TMP_Text selectedSkillDescriptionText;
+    [SerializeField] private TMP_Text selectedSkillPowerText;
+    [SerializeField] private TMP_Text selectedSkillAccuracyText;
     [SerializeField] private TMP_Text selectedSkillCooldownText;
-    [SerializeField] private TMP_Text selectedSkillTargetText;
-    [SerializeField] private TMP_Text selectedSkillTargetRanksText;
-    [SerializeField] private TMP_Text selectedSkillUsableRanksText;
+    [SerializeField] private TMP_Text selectedSkillEffectText;
 
     [Header("Last Will Description")]
     [SerializeField] private TMP_Text lastWillTitleText;
     [SerializeField] private TMP_Text lastWillBodyText;
 
-    [Header("Skill Target Type Icons")]
-    [Tooltip("선택 사항. 0=단일, 1=전체, 2=자기, 3=아군/적군 요약 아이콘으로 사용합니다.")]
-    [SerializeField] private GameObject[] targetKindRoots = new GameObject[4];
-    [SerializeField] private Image[] targetKindImages = new Image[4];
-    [SerializeField] private TMP_Text[] targetKindTexts = new TMP_Text[4];
-
-    [Header("Skill Target Rank Icons")]
-    [Tooltip("선택 사항. 대상 가능 열 1~4 아이콘입니다.")]
-    [SerializeField] private Image[] targetRankImages = new Image[4];
-    [SerializeField] private TMP_Text[] targetRankTexts = new TMP_Text[4];
-
-    [Header("Skill Usable Rank Icons")]
-    [Tooltip("선택 사항. 사용 가능 열 1~4 아이콘입니다. 텍스트 표시는 selectedSkillUsableRanksText가 담당합니다.")]
-    [SerializeField] private Image[] usableRankImages = new Image[4];
-    [SerializeField] private TMP_Text[] usableRankTexts = new TMP_Text[4];
-
-    [Header("Icon State Colors")]
-    [SerializeField] private Color enabledIconColor = Color.white;
-    [SerializeField] private Color disabledIconColor = new Color(1f, 1f, 1f, 0.25f);
-
     private BattleUnit currentEnemy;
     private InfoViewMode viewMode = InfoViewMode.MainStats;
-    private InfoViewMode lastStatViewMode = InfoViewMode.MainStats;
     private int selectedSkillIndex = -1;
     private bool buttonsBound;
     private UnityAction legacyLastWillAction;
@@ -122,6 +137,11 @@ public class EnemyInfoPanel : MonoBehaviour
     private void Awake()
     {
         BindButtonsOnce();
+    }
+
+    private void OnDisable()
+    {
+        ResetToInitialView();
     }
 
     public void SetLastWillButtonAction(UnityAction action)
@@ -140,22 +160,24 @@ public class EnemyInfoPanel : MonoBehaviour
             return;
         }
 
-        if (currentEnemy != enemy)
-        {
-            currentEnemy = enemy;
-            viewMode = InfoViewMode.MainStats;
-            lastStatViewMode = InfoViewMode.MainStats;
-            selectedSkillIndex = -1;
-        }
+        bool wasClosed = root != null && !root.activeSelf;
+        if (currentEnemy != enemy || wasClosed)
+            ResetToInitialView();
+
+        currentEnemy = enemy;
 
         if (root != null)
             root.SetActive(true);
 
         RefreshIdentity(enemy);
+        RefreshBadges(enemy);
+        RefreshClassBadge(enemy);
+        RefreshEquipmentSlots(enemy);
         RefreshStats(enemy);
         RefreshSkillButtons(enemy);
         RefreshLastWillSlot(enemy);
         RefreshViewRoots();
+        RefreshSelectedFrames();
     }
 
     public void Refresh()
@@ -166,9 +188,7 @@ public class EnemyInfoPanel : MonoBehaviour
     public void Hide()
     {
         currentEnemy = null;
-        selectedSkillIndex = -1;
-        viewMode = InfoViewMode.MainStats;
-        lastStatViewMode = InfoViewMode.MainStats;
+        ResetToInitialView();
 
         if (root != null)
             root.SetActive(false);
@@ -176,28 +196,26 @@ public class EnemyInfoPanel : MonoBehaviour
 
     public void ToggleStatResistanceMode()
     {
-        if (viewMode == InfoViewMode.MainStats)
-        {
-            viewMode = InfoViewMode.ResistStats;
-            lastStatViewMode = viewMode;
-        }
-        else
-        {
-            viewMode = InfoViewMode.MainStats;
-            lastStatViewMode = viewMode;
-        }
+        if (viewMode == InfoViewMode.SkillDescription || viewMode == InfoViewMode.LastWill)
+            return;
 
+        viewMode = viewMode == InfoViewMode.MainStats ? InfoViewMode.ResistStats : InfoViewMode.MainStats;
         selectedSkillIndex = -1;
         RefreshViewRoots();
         RefreshSelectedFrames();
     }
 
-    public void ReturnToStatMode()
+    public void ReturnToMainStats()
     {
-        viewMode = lastStatViewMode == InfoViewMode.ResistStats ? InfoViewMode.ResistStats : InfoViewMode.MainStats;
-        selectedSkillIndex = -1;
+        ResetToInitialView();
         RefreshViewRoots();
         RefreshSelectedFrames();
+    }
+
+    private void ResetToInitialView()
+    {
+        viewMode = InfoViewMode.MainStats;
+        selectedSkillIndex = -1;
     }
 
     private void BindButtonsOnce(bool force = false)
@@ -216,7 +234,7 @@ public class EnemyInfoPanel : MonoBehaviour
         if (descriptionBackButton != null)
         {
             descriptionBackButton.onClick.RemoveAllListeners();
-            descriptionBackButton.onClick.AddListener(ReturnToStatMode);
+            descriptionBackButton.onClick.AddListener(ReturnToMainStats);
         }
 
         for (int i = 0; i < 3; i++)
@@ -262,12 +280,9 @@ public class EnemyInfoPanel : MonoBehaviour
 
         if (viewMode == InfoViewMode.SkillDescription && selectedSkillIndex == slotIndex)
         {
-            ReturnToStatMode();
+            ReturnToMainStats();
             return;
         }
-
-        if (viewMode == InfoViewMode.MainStats || viewMode == InfoViewMode.ResistStats)
-            lastStatViewMode = viewMode;
 
         selectedSkillIndex = slotIndex;
         viewMode = InfoViewMode.SkillDescription;
@@ -289,12 +304,9 @@ public class EnemyInfoPanel : MonoBehaviour
 
         if (viewMode == InfoViewMode.LastWill)
         {
-            ReturnToStatMode();
+            ReturnToMainStats();
             return;
         }
-
-        if (viewMode == InfoViewMode.MainStats || viewMode == InfoViewMode.ResistStats)
-            lastStatViewMode = viewMode;
 
         selectedSkillIndex = -1;
         viewMode = InfoViewMode.LastWill;
@@ -317,27 +329,95 @@ public class EnemyInfoPanel : MonoBehaviour
             nameValueText.color = enemyNameColor;
         }
 
-        if (levelValueText != null) levelValueText.text = enemy.CurrentLevel.ToString();
-        if (hpValueText != null) hpValueText.text = $"{enemy.CurrentHP}/{enemy.MaxHP}";
+        if (levelValueText != null)
+            levelValueText.text = enemy.CurrentLevel.ToString();
+
+        RefreshOriginalLevel(enemy);
+
+        if (hpValueText != null)
+            hpValueText.text = $"{enemy.CurrentHP}/{enemy.MaxHP}";
+
+        RefreshHpBar(enemy);
+    }
+
+    private void RefreshOriginalLevel(BattleUnit enemy)
+    {
+        bool showOriginalLevel = enemy != null && enemy.CurrentLevel < enemy.OriginalLevel;
+
+        if (originalLevelValueText != null)
+        {
+            originalLevelValueText.text = enemy != null ? $"({enemy.OriginalLevel})" : string.Empty;
+            if (originalLevelRoot == null)
+                originalLevelValueText.gameObject.SetActive(showOriginalLevel);
+        }
+
+        if (originalLevelRoot != null)
+            originalLevelRoot.SetActive(showOriginalLevel);
+    }
+
+    private void RefreshHpBar(BattleUnit enemy)
+    {
+        float hp01 = enemy != null && enemy.MaxHP > 0 ? Mathf.Clamp01(enemy.CurrentHP / (float)enemy.MaxHP) : 0f;
+
+        if (hpFillImage != null)
+            hpFillImage.fillAmount = hp01;
+
+        if (hpSlider != null)
+        {
+            hpSlider.minValue = 0f;
+            hpSlider.maxValue = 1f;
+            hpSlider.value = hp01;
+        }
+    }
+
+    private void RefreshBadges(BattleUnit enemy)
+    {
+        bool showNft = enemy != null && enemy.IsNftUnit;
+        if (nftBadgeRoot != null)
+            nftBadgeRoot.SetActive(showNft);
+        if (exchangeableBadge != null)
+            exchangeableBadge.SetActive(showNft);
+    }
+
+    private void RefreshClassBadge(BattleUnit enemy)
+    {
+        CharacterRangeType rangeType = enemy != null ? enemy.RangeType : CharacterRangeType.Melee;
+        if (meleeIcon != null) meleeIcon.SetActive(rangeType == CharacterRangeType.Melee);
+        if (midIcon != null) midIcon.SetActive(rangeType == CharacterRangeType.Mid);
+        if (rangedIcon != null) rangedIcon.SetActive(rangeType == CharacterRangeType.Ranged);
+    }
+
+    private void RefreshEquipmentSlots(BattleUnit enemy)
+    {
+        for (int i = 0; i < 2; i++)
+        {
+            ItemDefinition item = enemy != null ? enemy.GetEquippedItemAt(i) : null;
+            if (equipmentSlotRoots != null && i < equipmentSlotRoots.Length && equipmentSlotRoots[i] != null)
+                equipmentSlotRoots[i].SetActive(true);
+
+            if (equipmentIconImages != null && i < equipmentIconImages.Length && equipmentIconImages[i] != null)
+            {
+                equipmentIconImages[i].sprite = item != null ? item.icon : null;
+                equipmentIconImages[i].color = item != null && item.icon != null ? Color.white : new Color(1f, 1f, 1f, 0f);
+            }
+        }
     }
 
     private void RefreshStats(BattleUnit enemy)
     {
         if (dmgValueText != null) dmgValueText.text = enemy.DMG.ToString();
-        if (defenseValueText != null) defenseValueText.text = "0";
-        if (spdValueText != null) spdValueText.text = enemy.SPD.ToString();
         if (hitValueText != null) hitValueText.text = Mathf.RoundToInt(enemy.HIT * 10f).ToString();
         if (acValueText != null) acValueText.text = Mathf.RoundToInt(enemy.AC * 10f).ToString();
+        if (idtValueText != null) idtValueText.text = BattleStatFormatter.FormatPercent(enemy.IDT);
         if (criValueText != null) criValueText.text = enemy.CRI.ToString();
         if (crdValueText != null) crdValueText.text = enemy.CRD.ToString();
+        if (spdValueText != null) spdValueText.text = enemy.SPD.ToString();
 
-        if (poisonResistValueText != null) poisonResistValueText.text = BattleStatFormatter.FormatPercent(enemy.PoisonResist);
-        if (burnResistValueText != null) burnResistValueText.text = BattleStatFormatter.FormatPercent(enemy.BurnResist);
-        if (bleedResistValueText != null) bleedResistValueText.text = BattleStatFormatter.FormatPercent(enemy.BleedResist);
         if (stunResistValueText != null) stunResistValueText.text = BattleStatFormatter.FormatPercent(enemy.StunResist);
+        if (bleedResistValueText != null) bleedResistValueText.text = BattleStatFormatter.FormatPercent(enemy.BleedResist);
+        if (burnResistValueText != null) burnResistValueText.text = BattleStatFormatter.FormatPercent(enemy.BurnResist);
         if (frostResistValueText != null) frostResistValueText.text = BattleStatFormatter.FormatPercent(enemy.FrostResist);
         if (blindResistValueText != null) blindResistValueText.text = BattleStatFormatter.FormatPercent(enemy.BlindResist);
-        if (epitaphText != null) epitaphText.text = enemy.HasBattleInfoLastWill ? enemy.BattleInfoLastWillText : enemy.Epitaph;
     }
 
     private void RefreshSkillButtons(BattleUnit enemy)
@@ -352,7 +432,7 @@ public class EnemyInfoPanel : MonoBehaviour
             if (skillIcons != null && i < skillIcons.Length && skillIcons[i] != null)
             {
                 skillIcons[i].sprite = hasSkill ? skill.icon : null;
-                skillIcons[i].color = hasSkill ? Color.white : new Color(1f, 1f, 1f, 0.2f);
+                skillIcons[i].color = hasSkill && skill.icon != null ? Color.white : new Color(1f, 1f, 1f, 0.2f);
             }
 
             if (skillNameTexts != null && i < skillNameTexts.Length && skillNameTexts[i] != null)
@@ -374,13 +454,11 @@ public class EnemyInfoPanel : MonoBehaviour
             if (button != null)
                 button.interactable = hasSkill;
         }
-
-        RefreshSelectedFrames();
     }
 
     private void RefreshLastWillSlot(BattleUnit enemy)
     {
-        bool hasLastWill = enemy != null && enemy.EnsureBattleInfoLastWill(lastWillButtonChancePercent, lastWillTextTable, fallbackLastWillTexts);
+        bool hasLastWill = enemy != null && enemy.HasBattleInfoLastWill;
 
         if (lastWillSlotRoot != null)
             lastWillSlotRoot.SetActive(hasLastWill);
@@ -412,7 +490,7 @@ public class EnemyInfoPanel : MonoBehaviour
             cooldownTexts[3].text = string.Empty;
 
         if (viewMode == InfoViewMode.LastWill && !hasLastWill)
-            ReturnToStatMode();
+            ReturnToMainStats();
     }
 
     private void RefreshViewRoots()
@@ -422,14 +500,10 @@ public class EnemyInfoPanel : MonoBehaviour
         bool showSkill = viewMode == InfoViewMode.SkillDescription;
         bool showLastWill = viewMode == InfoViewMode.LastWill;
 
-        if (mainStatsRoot != null)
-            mainStatsRoot.SetActive(showMain);
-        if (resistStatsRoot != null)
-            resistStatsRoot.SetActive(showResist);
-        if (skillDescriptionRoot != null)
-            skillDescriptionRoot.SetActive(showSkill);
-        if (lastWillDescriptionRoot != null)
-            lastWillDescriptionRoot.SetActive(showLastWill);
+        if (mainStatsRoot != null) mainStatsRoot.SetActive(showMain);
+        if (resistStatsRoot != null) resistStatsRoot.SetActive(showResist);
+        if (skillDescriptionRoot != null) skillDescriptionRoot.SetActive(showSkill);
+        if (lastWillDescriptionRoot != null) lastWillDescriptionRoot.SetActive(showLastWill);
 
         if (infoModeLabelText != null)
         {
@@ -448,12 +522,11 @@ public class EnemyInfoPanel : MonoBehaviour
     private void RefreshSelectedFrames()
     {
         for (int i = 0; i < 4; i++)
-            SetActiveInArray(selectedSkillRoots, i, viewMode == InfoViewMode.SkillDescription && selectedSkillIndex == i);
-
-        if (lastWillSelectedRoot != null)
-            lastWillSelectedRoot.SetActive(viewMode == InfoViewMode.LastWill);
-        else
-            SetActiveInArray(selectedSkillRoots, 3, viewMode == InfoViewMode.LastWill);
+        {
+            bool selected = (viewMode == InfoViewMode.SkillDescription && selectedSkillIndex == i) ||
+                            (viewMode == InfoViewMode.LastWill && i == 3);
+            SetActiveInArray(selectedFrameRoots, i, selected);
+        }
     }
 
     private void RefreshSkillDescription(SkillDefinition skill)
@@ -467,16 +540,31 @@ public class EnemyInfoPanel : MonoBehaviour
             selectedSkillIcon.color = skill.icon != null ? Color.white : new Color(1f, 1f, 1f, 0f);
         }
 
-        if (selectedSkillNameText != null) selectedSkillNameText.text = skill.skillName;
-        if (selectedSkillDescriptionText != null) selectedSkillDescriptionText.text = skill.description;
-        if (selectedSkillCooldownText != null) selectedSkillCooldownText.text = skill.cooldownTurns > 0 ? $"쿨타임 {skill.cooldownTurns}턴" : "쿨타임 없음";
-        if (selectedSkillTargetText != null) selectedSkillTargetText.text = GetTargetSummary(skill);
-        if (selectedSkillTargetRanksText != null) selectedSkillTargetRanksText.text = $"대상 열: {FormatSlotRange(skill.targetMinSlotIndex, skill.targetMaxSlotIndex)}";
-        if (selectedSkillUsableRanksText != null) selectedSkillUsableRanksText.text = $"사용 가능 열: {FormatSlotRange(skill.usableMinSlotIndex, skill.usableMaxSlotIndex)}";
+        if (selectedSkillClassBadgeImage != null)
+            selectedSkillClassBadgeImage.gameObject.SetActive(true);
 
-        RefreshTargetKindIcons(skill);
-        RefreshRankIcons(targetRankImages, targetRankTexts, skill.targetMinSlotIndex, skill.targetMaxSlotIndex);
-        RefreshRankIcons(usableRankImages, usableRankTexts, skill.usableMinSlotIndex, skill.usableMaxSlotIndex);
+        if (selectedSkillClassBadgeText != null)
+            selectedSkillClassBadgeText.text = BattleSkillInfoFormatter.GetSkillClassLabel(skill);
+
+        if (selectedSkillNameText != null)
+            selectedSkillNameText.text = skill.skillName;
+
+        if (selectedSkillDescriptionText != null)
+            selectedSkillDescriptionText.text = skill.description;
+
+        if (selectedSkillPowerText != null)
+            selectedSkillPowerText.text = BattleSkillInfoFormatter.GetPowerText(skill);
+
+        if (selectedSkillAccuracyText != null)
+            selectedSkillAccuracyText.text = BattleSkillInfoFormatter.GetSuccessText(skill);
+
+        if (selectedSkillCooldownText != null)
+            selectedSkillCooldownText.text = BattleSkillInfoFormatter.GetCooldownText(skill);
+
+        if (selectedSkillEffectText != null)
+            selectedSkillEffectText.text = BattleSkillInfoFormatter.GetEffectText(skill);
+
+        RefreshPositionHexes(skill);
     }
 
     private void RefreshLastWillDescription(BattleUnit enemy)
@@ -488,82 +576,62 @@ public class EnemyInfoPanel : MonoBehaviour
             lastWillTitleText.text = "유언장";
 
         if (lastWillBodyText != null)
-            lastWillBodyText.text = enemy.HasBattleInfoLastWill ? enemy.BattleInfoLastWillText : "";
+            lastWillBodyText.text = enemy.HasBattleInfoLastWill ? enemy.BattleInfoLastWillText : string.Empty;
     }
 
-    private void RefreshTargetKindIcons(SkillDefinition skill)
-    {
-        bool isSelf = skill.targetTeam == SkillTargetTeam.Self;
-        bool isAll = skill.targetScope == TargetScope.All;
-        bool isSingle = !isSelf && skill.targetScope == TargetScope.Single;
-        bool isTeam = skill.targetTeam == SkillTargetTeam.Ally || skill.targetTeam == SkillTargetTeam.Enemy;
-
-        SetTargetKindState(0, isSingle, "단일");
-        SetTargetKindState(1, isAll, "전체");
-        SetTargetKindState(2, isSelf, "자기");
-        SetTargetKindState(3, isTeam, skill.targetTeam == SkillTargetTeam.Ally ? "아군" : skill.targetTeam == SkillTargetTeam.Enemy ? "적군" : "자기");
-    }
-
-    private void SetTargetKindState(int index, bool enabled, string label)
-    {
-        if (targetKindRoots != null && index >= 0 && index < targetKindRoots.Length && targetKindRoots[index] != null)
-            targetKindRoots[index].SetActive(true);
-
-        if (targetKindImages != null && index >= 0 && index < targetKindImages.Length && targetKindImages[index] != null)
-            targetKindImages[index].color = enabled ? enabledIconColor : disabledIconColor;
-
-        if (targetKindTexts != null && index >= 0 && index < targetKindTexts.Length && targetKindTexts[index] != null)
-        {
-            targetKindTexts[index].text = label;
-            targetKindTexts[index].color = enabled ? enabledIconColor : disabledIconColor;
-        }
-    }
-
-    private void RefreshRankIcons(Image[] images, TMP_Text[] texts, int minSlot, int maxSlot)
-    {
-        for (int i = 0; i < 4; i++)
-        {
-            bool enabled = i >= minSlot && i <= maxSlot;
-            if (images != null && i < images.Length && images[i] != null)
-                images[i].color = enabled ? enabledIconColor : disabledIconColor;
-            if (texts != null && i < texts.Length && texts[i] != null)
-            {
-                texts[i].text = $"{i + 1}열";
-                texts[i].color = enabled ? enabledIconColor : disabledIconColor;
-            }
-        }
-    }
-
-    private static string FormatSlotRange(int minSlot, int maxSlot)
-    {
-        minSlot = Mathf.Clamp(minSlot, 0, 3);
-        maxSlot = Mathf.Clamp(maxSlot, minSlot, 3);
-        if (minSlot == maxSlot)
-            return $"{minSlot + 1}열";
-        return $"{minSlot + 1}~{maxSlot + 1}열";
-    }
-
-    private static string GetTargetSummary(SkillDefinition skill)
+    private void RefreshPositionHexes(SkillDefinition skill)
     {
         if (skill == null)
-            return string.Empty;
-
-        string team;
-        switch (skill.targetTeam)
         {
-            case SkillTargetTeam.Ally:
-                team = "아군";
-                break;
-            case SkillTargetTeam.Self:
-                team = "자기 자신";
-                break;
-            default:
-                team = "적군";
-                break;
+            RefreshPositionHexGroup(usablePositionHexRoots, usablePositionHexImages, usablePositionHexTexts,
+                -1, -1, usablePositionHexSprite);
+            RefreshPositionHexGroup(targetPositionHexRoots, targetPositionHexImages, targetPositionHexTexts,
+                -1, -1, targetEnemyPositionHexSprite);
+            return;
         }
 
-        string scope = skill.targetScope == TargetScope.All ? "전체" : "단일";
-        return skill.targetTeam == SkillTargetTeam.Self ? team : $"{team} {scope}";
+        RefreshPositionHexGroup(usablePositionHexRoots, usablePositionHexImages, usablePositionHexTexts,
+            skill.usableMinSlotIndex, skill.usableMaxSlotIndex, usablePositionHexSprite);
+
+        Sprite targetSprite = GetTargetPositionHexSprite(skill);
+        RefreshPositionHexGroup(targetPositionHexRoots, targetPositionHexImages, targetPositionHexTexts,
+            skill.targetMinSlotIndex, skill.targetMaxSlotIndex, targetSprite);
+    }
+
+    private Sprite GetTargetPositionHexSprite(SkillDefinition skill)
+    {
+        if (skill != null && (skill.targetTeam == SkillTargetTeam.Ally || skill.targetTeam == SkillTargetTeam.Self))
+            return targetAllyPositionHexSprite;
+
+        return targetEnemyPositionHexSprite;
+    }
+
+    private void RefreshPositionHexGroup(GameObject[] roots, Image[] images, TMP_Text[] texts, int minSlot, int maxSlot, Sprite enabledSprite)
+    {
+        bool hasValidRange = minSlot >= 0 && maxSlot >= minSlot;
+        minSlot = Mathf.Clamp(minSlot, 0, 3);
+        maxSlot = Mathf.Clamp(maxSlot, 0, 3);
+
+        for (int i = 0; i < 4; i++)
+        {
+            bool enabled = hasValidRange && i >= minSlot && i <= maxSlot;
+
+            SetActiveInArray(roots, i, true);
+
+            if (images != null && i < images.Length && images[i] != null)
+            {
+                Sprite sprite = enabled ? enabledSprite : emptyPositionHexSprite;
+                images[i].sprite = sprite;
+                images[i].color = Color.white;
+                images[i].enabled = sprite != null;
+            }
+
+            if (texts != null && i < texts.Length && texts[i] != null)
+            {
+                texts[i].text = enabled ? (i + 1).ToString() : string.Empty;
+                texts[i].color = Color.white;
+            }
+        }
     }
 
     private static void SetActiveInArray(GameObject[] roots, int index, bool active)

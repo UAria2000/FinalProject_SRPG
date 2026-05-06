@@ -6,6 +6,7 @@ public class CapturedPrisonerSaveData
 {
     public string prisonerInstanceId;
     public string sourceUnitId;
+    public string sourceUnitViewDefinitionName;
     public string sourcePrisonerItemId;
     public string prisonerNameOverride;
     public int capturedLevel = 1;
@@ -24,6 +25,7 @@ public class CapturedPrisonerSaveData
         {
             prisonerInstanceId = runtime.prisonerInstanceId,
             sourceUnitId = runtime.sourceUnit != null ? runtime.sourceUnit.unitId : string.Empty,
+            sourceUnitViewDefinitionName = runtime.sourceUnitViewDefinition != null ? runtime.sourceUnitViewDefinition.name : string.Empty,
             sourcePrisonerItemId = runtime.sourcePrisonerItem != null ? runtime.sourcePrisonerItem.itemId : string.Empty,
             prisonerNameOverride = runtime.prisonerNameOverride,
             capturedLevel = runtime.capturedLevel,

@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 [Serializable]
 public class BattleEffectBlock
@@ -116,6 +117,7 @@ public class UnitInstanceStatVariance
     public int maxHpDelta;
     public int dmgDelta;
     public int spdDelta;
+    public int idtDelta;
 
     [Tooltip("실스탯 단위. UI는 x10 표시")]
     public int hitDeltaX10;
@@ -125,7 +127,7 @@ public class UnitInstanceStatVariance
     public int criDelta;
     public int crdDelta;
 
-    public int poisonResistDelta;
+    [FormerlySerializedAs("poisonResistDelta")]
     public int burnResistDelta;
     public int bleedResistDelta;
     public int stunResistDelta;
@@ -139,11 +141,11 @@ public class UnitInstanceStatVariance
             maxHpDelta = maxHpDelta,
             dmgDelta = dmgDelta,
             spdDelta = spdDelta,
+            idtDelta = idtDelta,
             hitDeltaX10 = hitDeltaX10,
             acDeltaX10 = acDeltaX10,
             criDelta = criDelta,
             crdDelta = crdDelta,
-            poisonResistDelta = poisonResistDelta,
             burnResistDelta = burnResistDelta,
             bleedResistDelta = bleedResistDelta,
             stunResistDelta = stunResistDelta,
@@ -159,11 +161,12 @@ public class StatVarianceRules
     public Vector2Int maxHpRange = Vector2Int.zero;
     public Vector2Int dmgRange = Vector2Int.zero;
     public Vector2Int spdRange = Vector2Int.zero;
+    public Vector2Int idtRange = Vector2Int.zero;
     public Vector2Int hitRangeX10 = Vector2Int.zero;
     public Vector2Int acRangeX10 = Vector2Int.zero;
     public Vector2Int criRange = Vector2Int.zero;
     public Vector2Int crdRange = Vector2Int.zero;
-    public Vector2Int poisonResistRange = Vector2Int.zero;
+    [FormerlySerializedAs("poisonResistRange")]
     public Vector2Int burnResistRange = Vector2Int.zero;
     public Vector2Int bleedResistRange = Vector2Int.zero;
     public Vector2Int stunResistRange = Vector2Int.zero;

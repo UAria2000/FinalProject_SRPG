@@ -69,6 +69,8 @@ public class PersistentRosterUnitData
 
         instanceDisplayNameOverride = member.instanceDisplayNameOverride;
         fixedEpitaph = member.fixedEpitaph;
+        isExchangeable = member.isExchangeable;
+        isNft = member.isNft;
         unitDefinition = member.unitDefinition;
         unitViewDefinition = member.unitViewDefinition;
         currentLevel = Mathf.Max(1, member.currentLevel);
@@ -96,6 +98,8 @@ public class PersistentRosterUnitData
         runtime.instanceId = instanceId;
         runtime.instanceDisplayNameOverride = instanceDisplayNameOverride;
         runtime.fixedEpitaph = fixedEpitaph;
+        runtime.isExchangeable = isExchangeable;
+        runtime.isNft = isNft;
         runtime.currentLevel = Mathf.Max(1, currentLevel);
         runtime.originalLevel = Mathf.Max(1, originalLevel);
         runtime.currentExp = Mathf.Max(0, currentExp);

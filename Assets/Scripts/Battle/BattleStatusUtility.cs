@@ -2,20 +2,17 @@ using UnityEngine;
 
 /// <summary>
 /// 상태이상/전투 기믹 상태 공통 규칙.
-/// Poison은 구 에셋 호환용으로 Burn과 같은 enum 값으로 유지된다.
 /// </summary>
 public static class BattleStatusUtility
 {
     public const int MaxStack = 99;
     public const int BleedCurrentHpDamagePercentPerStack = 5;
-    public const int BurnIncomingDamageTakenPercentPerStack = 10;
+    public const int BurnIdtPenaltyPercentPerStack = 10;
     public const int FrostAcSpdPenaltyPercentPerStack = 10;
     public const int BlindFinalHitChancePenaltyPercent = 30;
 
     public static StatusEffectType Normalize(StatusEffectType statusType)
     {
-        if (statusType == StatusEffectType.Poison)
-            return StatusEffectType.Burn;
         return statusType;
     }
 

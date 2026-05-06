@@ -50,6 +50,8 @@ public class ItemDefinition : ScriptableObject
     public int equipmentDmgBonus = 0;
     [Tooltip("장비 착용 중 적용되는 SPD 고정 보너스")]
     public int equipmentSpdBonus = 0;
+    [Tooltip("장비 착용 중 적용되는 IDT 고정 보너스(%)")]
+    public int equipmentIdtBonus = 0;
     [Tooltip("장비 착용 중 적용되는 HIT 표시값 보너스. 예: 10 입력 시 UI HIT +10, 전투 실스탯 +1.0")]
     public int equipmentHitBonusX10 = 0;
     [Tooltip("장비 착용 중 적용되는 AC 표시값 보너스. 예: 10 입력 시 UI AC +10, 전투 실스탯 +1.0")]

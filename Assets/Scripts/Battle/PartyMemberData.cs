@@ -16,6 +16,8 @@ public class PartyMemberData
     public string instanceId;
     public string instanceDisplayNameOverride;
     [TextArea(2, 5)] public string fixedEpitaph;
+    public bool isExchangeable;
+    public bool isNft;
 
     [Header("Level")]
     public int currentLevel = 1;
@@ -38,6 +40,10 @@ public class PartyMemberData
     [Tooltip("평타 제외, 최대 3개. 전투 외부에서 이미 결정된 상태를 넣는다.")]
     public List<SkillDefinition> learnedSkills = new List<SkillDefinition>();
 
+    [Header("Equipment")]
+    [Tooltip("전투 중 실제 장착 장비. 적은 이 목록을 직접 사용하고, 아군은 월드 런 장비 배정을 우선 사용한다.")]
+    public List<ItemDefinition> equippedItems = new List<ItemDefinition>();
+
     [Header("Battle Loot Drops")]
     public List<ItemDropDefinition> battleLootDrops = new List<ItemDropDefinition>();
 
@@ -54,6 +60,8 @@ public class PartyMemberData
         clone.instanceId = instanceId;
         clone.instanceDisplayNameOverride = instanceDisplayNameOverride;
         clone.fixedEpitaph = fixedEpitaph;
+        clone.isExchangeable = isExchangeable;
+        clone.isNft = isNft;
         clone.currentLevel = Mathf.Max(1, currentLevel);
         clone.originalLevel = Mathf.Max(1, originalLevel);
         clone.currentExp = Mathf.Max(0, currentExp);
@@ -63,6 +71,7 @@ public class PartyMemberData
         clone.promotionBonusPercentPerRank = promotionBonusPercentPerRank;
         clone.statVariance = statVariance != null ? statVariance.CloneRuntime() : new UnitInstanceStatVariance();
         clone.learnedSkills = learnedSkills != null ? new List<SkillDefinition>(learnedSkills) : new List<SkillDefinition>();
+        clone.equippedItems = equippedItems != null ? new List<ItemDefinition>(equippedItems) : new List<ItemDefinition>();
         clone.battleLootDrops = battleLootDrops != null ? new List<ItemDropDefinition>(battleLootDrops) : new List<ItemDropDefinition>();
         clone.persistentCurrentHP = persistentCurrentHP;
         return clone;

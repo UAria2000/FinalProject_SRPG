@@ -40,20 +40,20 @@ public class WorldRunTransientState
             inventory.Add(new InventoryStackData { item = item, amount = amount });
     }
 
-    public void AddPrisoner(UnitDefinition unit, int capturedLevel = 1)
+    public void AddPrisoner(UnitDefinition unit, int capturedLevel = 1, UnitViewDefinition viewDefinition = null, bool isExchangeable = false)
     {
         if (unit == null)
             return;
 
-        prisoners.Add(PrisonerRuntimeData.CreateFromCapturedUnit(unit, capturedLevel, nextPrisonerSequence++));
+        prisoners.Add(PrisonerRuntimeData.CreateFromCapturedUnit(unit, capturedLevel, nextPrisonerSequence++, viewDefinition, isExchangeable));
     }
 
-    public void AddPrisonerFromItem(ItemDefinition prisonerItem, int capturedLevel = 1, UnitDefinition fallbackUnit = null)
+    public void AddPrisonerFromItem(ItemDefinition prisonerItem, int capturedLevel = 1, UnitDefinition fallbackUnit = null, UnitViewDefinition fallbackView = null, bool isExchangeable = false)
     {
         if (prisonerItem == null && fallbackUnit == null)
             return;
 
-        prisoners.Add(PrisonerRuntimeData.CreateFromPrisonerItem(prisonerItem, capturedLevel, nextPrisonerSequence++, fallbackUnit));
+        prisoners.Add(PrisonerRuntimeData.CreateFromPrisonerItem(prisonerItem, capturedLevel, nextPrisonerSequence++, fallbackUnit, fallbackView, isExchangeable));
     }
 
     public void AddSoulEarnedInWorld(int amount)

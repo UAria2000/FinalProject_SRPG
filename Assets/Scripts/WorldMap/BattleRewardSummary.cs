@@ -7,7 +7,9 @@ public class CapturedPrisonerRewardEntry
 {
     public ItemDefinition prisonerItem;
     public UnitDefinition fallbackUnit;
+    public UnitViewDefinition fallbackView;
     public int capturedLevel = 1;
+    public bool isExchangeable;
 
     public string GetDisplayName()
     {
@@ -30,7 +32,7 @@ public class CapturedPrisonerRewardEntry
         if (fallbackUnit != null && fallbackUnit.captureRewardItem != null)
             return fallbackUnit.captureRewardItem.icon;
 
-        return null;
+        return fallbackView != null ? fallbackView.GetSlotFaceSprite() : null;
     }
 }
 

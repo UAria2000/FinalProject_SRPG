@@ -189,7 +189,7 @@ public class StoragePanelUI : MainUIPanelBase
 
         if (prisoner.IsReadyToCorrupt)
         {
-            Debug.Log("[StoragePanelUI] 타락 완료 포로 수령 로직은 다음 단계에서 연결 예정입니다.");
+            worldRunManager.TryCorruptReadyPrisoner(prisoner);
             RefreshAll();
         }
     }

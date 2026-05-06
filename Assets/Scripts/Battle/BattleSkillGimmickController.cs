@@ -205,11 +205,11 @@ public class BattleSkillGimmickController : MonoBehaviour
         variance.maxHpDelta = RollRange(rules.maxHpRange);
         variance.dmgDelta = RollRange(rules.dmgRange);
         variance.spdDelta = RollRange(rules.spdRange);
+        variance.idtDelta = RollRange(rules.idtRange);
         variance.hitDeltaX10 = RollRange(rules.hitRangeX10);
         variance.acDeltaX10 = RollRange(rules.acRangeX10);
         variance.criDelta = RollRange(rules.criRange);
         variance.crdDelta = RollRange(rules.crdRange);
-        variance.poisonResistDelta = RollRange(rules.poisonResistRange);
         variance.burnResistDelta = RollRange(rules.burnResistRange);
         variance.bleedResistDelta = RollRange(rules.bleedResistRange);
         variance.stunResistDelta = RollRange(rules.stunResistRange);

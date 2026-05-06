@@ -34,6 +34,7 @@ public class BattleUnit
         CurrentShield = 0;
         endTurnGuardPercent = 0;
         ApplyEquipmentBattleStartEffects();
+        InitializeBattleInfoLastWill();
     }
 
     public TeamType Team { get; private set; }
@@ -116,17 +117,20 @@ public class BattleUnit
     }
 
     public CharacterRangeType RangeType { get { return Definition != null ? Definition.rangeType : CharacterRangeType.Melee; } }
+    public bool IsExchangeable { get { return memberData != null && memberData.isExchangeable; } }
+    public bool IsNftUnit { get { return (memberData != null && (memberData.isNft || memberData.isExchangeable)) || (Definition != null && Definition.isNftUnit); } }
 
     public int BaseMaxHP { get { return Definition != null ? Definition.maxHP : 0; } }
     public int BaseDMG { get { return Definition != null ? Definition.dmg : 0; } }
     public int LevelGrowthMaxHP { get { return memberData != null ? Mathf.Max(0, memberData.levelGrowthMaxHp) : 0; } }
     public int LevelGrowthDMG { get { return memberData != null ? Mathf.Max(0, memberData.levelGrowthDmg) : 0; } }
     public int BaseSPD { get { return Definition != null ? Definition.spd : 0; } }
+    public int BaseIDT { get { return Definition != null ? Definition.idt : 0; } }
     public float BaseHIT { get { return Definition != null ? Definition.hit : 0f; } }
     public float BaseAC { get { return Definition != null ? Definition.ac : 0f; } }
     public int BaseCRI { get { return Definition != null ? Definition.cri : 0; } }
     public int BaseCRD { get { return Definition != null ? Definition.crd : 0; } }
-    public int BaseBurnResist { get { return Definition != null ? (Definition.burnResist != 0 ? Definition.burnResist : Definition.poisonResist) : 0; } }
+    public int BaseBurnResist { get { return Definition != null ? Definition.burnResist : 0; } }
     public int BaseBleedResist { get { return Definition != null ? Definition.bleedResist : 0; } }
     public int BaseStunResist { get { return Definition != null ? Definition.stunResist : 0; } }
     public int BaseFrostResist { get { return Definition != null ? Definition.frostResist : 0; } }
@@ -192,8 +196,17 @@ public class BattleUnit
         }
     }
 
-    public int PoisonResist { get { return BurnResist; } }
-    public int BurnResist { get { int delta = GetVariance().burnResistDelta != 0 ? GetVariance().burnResistDelta : GetVariance().poisonResistDelta; return ApplyPromotionToInt(Mathf.Max(0, BaseBurnResist + delta)) + EquipmentAllResistBonus + EquipmentBurnResistBonus; } }
+    public int IDT
+    {
+        get
+        {
+            int baseValue = ApplyPromotionToInt(BaseIDT + GetVariance().idtDelta + EquipmentIdtBonus);
+            int incomingDamageTakenPercent = GetTimedModifierMagnitude(StatModifierType.IncomingDamageTakenPercent);
+            return baseValue - incomingDamageTakenPercent - BurnIdtPenaltyPercent;
+        }
+    }
+
+    public int BurnResist { get { return ApplyPromotionToInt(Mathf.Max(0, BaseBurnResist + GetVariance().burnResistDelta)) + EquipmentAllResistBonus + EquipmentBurnResistBonus; } }
     public int BleedResist { get { return ApplyPromotionToInt(Mathf.Max(0, BaseBleedResist + GetVariance().bleedResistDelta)) + EquipmentAllResistBonus + EquipmentBleedResistBonus; } }
     public int StunResist { get { return ApplyPromotionToInt(Mathf.Max(0, BaseStunResist + GetVariance().stunResistDelta)) + EquipmentAllResistBonus + EquipmentStunResistBonus; } }
     public int FrostResist { get { return ApplyPromotionToInt(Mathf.Max(0, BaseFrostResist + GetVariance().frostResistDelta)) + EquipmentAllResistBonus + EquipmentFrostResistBonus; } }
@@ -202,7 +215,7 @@ public class BattleUnit
     public int BurnStackCount { get { return GetStatusStackCount(StatusEffectType.Burn); } }
     public int BleedStackCount { get { return GetStatusStackCount(StatusEffectType.Bleed); } }
     public int FrostStackCount { get { return GetStatusStackCount(StatusEffectType.Frost); } }
-    public int BurnIncomingDamageTakenPercent { get { return Mathf.Max(0, BurnStackCount * BattleStatusUtility.BurnIncomingDamageTakenPercentPerStack); } }
+    public int BurnIdtPenaltyPercent { get { return Mathf.Max(0, BurnStackCount * BattleStatusUtility.BurnIdtPenaltyPercentPerStack); } }
     public int FrostStatPenaltyPercent { get { return Mathf.Max(0, FrostStackCount * BattleStatusUtility.FrostAcSpdPenaltyPercentPerStack); } }
     public int BlindFinalHitPenaltyPercent { get { return HasStatus(StatusEffectType.Blind) ? BattleStatusUtility.BlindFinalHitChancePenaltyPercent : 0; } }
 
@@ -214,6 +227,7 @@ public class BattleUnit
     private int EquipmentMaxHpBonus { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.MaxHP); } }
     private int EquipmentDmgBonus { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.DMG); } }
     private int EquipmentSpdBonus { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.SPD); } }
+    private int EquipmentIdtBonus { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.IDT); } }
     private int EquipmentHitBonusX10 { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.HITX10); } }
     private int EquipmentAcBonusX10 { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.ACX10); } }
     private int EquipmentCriBonus { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.CRI); } }
@@ -230,6 +244,7 @@ public class BattleUnit
         MaxHP,
         DMG,
         SPD,
+        IDT,
         HITX10,
         ACX10,
         CRI,
@@ -246,15 +261,25 @@ public class BattleUnit
     {
         equippedItems.Clear();
 
-        if (memberData == null || Team != TeamType.Ally)
+        if (memberData == null)
             return;
 
-        WorldRunManager runManager = Object.FindFirstObjectByType<WorldRunManager>();
-        if (runManager == null)
+        if (Team == TeamType.Ally)
+        {
+            WorldRunManager runManager = Object.FindFirstObjectByType<WorldRunManager>();
+            if (runManager == null)
+                return;
+
+            AddEquippedItemIfValid(runManager.GetAssignedEquipmentItem(memberData, 0));
+            AddEquippedItemIfValid(runManager.GetAssignedEquipmentItem(memberData, 1));
+            return;
+        }
+
+        if (memberData.equippedItems == null)
             return;
 
-        AddEquippedItemIfValid(runManager.GetAssignedEquipmentItem(memberData, 0));
-        AddEquippedItemIfValid(runManager.GetAssignedEquipmentItem(memberData, 1));
+        for (int i = 0; i < memberData.equippedItems.Count && equippedItems.Count < 2; i++)
+            AddEquippedItemIfValid(memberData.equippedItems[i]);
     }
 
     private void AddEquippedItemIfValid(ItemDefinition item)
@@ -265,8 +290,16 @@ public class BattleUnit
         if (item.mainUICategory != MainUIItemCategory.Equipment)
             return;
 
-        if (!equippedItems.Contains(item))
+        if (equippedItems.Count < 2)
             equippedItems.Add(item);
+    }
+
+    public ItemDefinition GetEquippedItemAt(int slotIndex)
+    {
+        if (slotIndex < 0 || slotIndex >= equippedItems.Count)
+            return null;
+
+        return equippedItems[slotIndex];
     }
 
     private int SumEquipmentIntBonus(EquipmentIntBonusKind kind)
@@ -288,6 +321,9 @@ public class BattleUnit
                     break;
                 case EquipmentIntBonusKind.SPD:
                     total += item.equipmentSpdBonus;
+                    break;
+                case EquipmentIntBonusKind.IDT:
+                    total += item.equipmentIdtBonus;
                     break;
                 case EquipmentIntBonusKind.HITX10:
                     total += item.equipmentHitBonusX10;
@@ -370,57 +406,39 @@ public class BattleUnit
 
     public SkillDefinition BasicAttack { get { return Definition != null ? Definition.basicAttack : null; } }
 
-    public bool EnsureBattleInfoLastWill(float chancePercent, BattleLastWillTextTable table, string[] fallbackTexts = null)
+    private void InitializeBattleInfoLastWill()
     {
-        if (Team != TeamType.Enemy)
-            return false;
-
-        if (battleInfoLastWillRolled)
-            return HasBattleInfoLastWill;
-
-        battleInfoLastWillRolled = true;
+        battleInfoLastWillRolled = false;
         battleInfoHasLastWill = false;
         battleInfoLastWillText = string.Empty;
+
+        if (Team != TeamType.Enemy)
+            return;
+
+        battleInfoLastWillRolled = true;
 
         if (!string.IsNullOrWhiteSpace(Epitaph))
         {
             battleInfoHasLastWill = true;
             battleInfoLastWillText = Epitaph;
-            return true;
+            return;
         }
 
-        if (Random.Range(0f, 100f) > Mathf.Clamp(chancePercent, 0f, 100f))
-            return false;
+        UnitDefinition definition = Definition;
+        if (definition == null)
+            return;
 
-        string picked = table != null ? table.GetRandomText() : string.Empty;
-        if (string.IsNullOrWhiteSpace(picked) && fallbackTexts != null && fallbackTexts.Length > 0)
-            picked = PickRandomNonEmptyText(fallbackTexts);
+        if (Random.Range(0f, 100f) > Mathf.Clamp(definition.lastWillChancePercent, 0f, 100f))
+            return;
 
+        string picked = definition.lastWillTextTable != null ? definition.lastWillTextTable.GetRandomText() : string.Empty;
         if (string.IsNullOrWhiteSpace(picked))
-            return false;
+            return;
 
         battleInfoHasLastWill = true;
         battleInfoLastWillText = picked;
-        return true;
     }
 
-    private static string PickRandomNonEmptyText(string[] texts)
-    {
-        if (texts == null || texts.Length <= 0)
-            return string.Empty;
-
-        List<string> candidates = new List<string>();
-        for (int i = 0; i < texts.Length; i++)
-        {
-            if (!string.IsNullOrWhiteSpace(texts[i]))
-                candidates.Add(texts[i]);
-        }
-
-        if (candidates.Count <= 0)
-            return string.Empty;
-
-        return candidates[Random.Range(0, candidates.Count)];
-    }
 
     public SkillDefinition GetActionSkillAt(int slotIndex)
     {
@@ -667,10 +685,10 @@ public class BattleUnit
             amount = Mathf.Max(0, Mathf.RoundToInt(amount * guardMultiplier));
         }
 
-        int takenModifierPercent = GetTimedModifierMagnitude(StatModifierType.IncomingDamageTakenPercent) + BurnIncomingDamageTakenPercent;
-        if (takenModifierPercent != 0)
+        int idt = IDT;
+        if (idt != 0)
         {
-            float multiplier = 1f + (takenModifierPercent / 100f);
+            float multiplier = 1f - (idt / 100f);
             amount = Mathf.Max(0, Mathf.RoundToInt(amount * multiplier));
         }
 

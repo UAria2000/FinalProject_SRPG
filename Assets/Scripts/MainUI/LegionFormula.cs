@@ -141,13 +141,12 @@ public struct LegionEquipmentBonusSummary
     public int maxHp;
     public int dmg;
     public int spd;
+    public int idt;
     public int hitX10;
     public int acX10;
     public int cri;
     public int crd;
 
-    // poisonRes는 구버전 UI 호환용. 신규 정책에서는 burnRes와 같은 값으로 취급한다.
-    public int poisonRes;
     public int burnRes;
     public int bleedRes;
     public int stunRes;

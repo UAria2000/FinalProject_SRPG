@@ -129,7 +129,6 @@ public enum StatusEffectType
     None = 0,
 
     Burn = 1,
-    Poison = 1,
     Bleed = 2,
     Stun = 3,
 

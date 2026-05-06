@@ -1,6 +1,6 @@
-using System.Reflection;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 public enum LegionStatKind
@@ -12,7 +12,7 @@ public enum LegionStatKind
     Idt,
     Cri,
     Crd,
-    Poison,
+    Burn,
     Bleed,
     Stun,
 }
@@ -61,7 +61,8 @@ public class LegionDetailPanelUI : MonoBehaviour
     [SerializeField] private TMP_Text idtText;
     [SerializeField] private TMP_Text criText;
     [SerializeField] private TMP_Text crdText;
-    [SerializeField] private TMP_Text poisonResText;
+    [FormerlySerializedAs("poisonResText")]
+    [SerializeField] private TMP_Text burnResText;
     [SerializeField] private TMP_Text bleedResText;
     [SerializeField] private TMP_Text stunResText;
 
@@ -73,7 +74,8 @@ public class LegionDetailPanelUI : MonoBehaviour
     [SerializeField] private LegionStatHoverTargetUI idtHover;
     [SerializeField] private LegionStatHoverTargetUI criHover;
     [SerializeField] private LegionStatHoverTargetUI crdHover;
-    [SerializeField] private LegionStatHoverTargetUI poisonHover;
+    [FormerlySerializedAs("poisonHover")]
+    [SerializeField] private LegionStatHoverTargetUI burnHover;
     [SerializeField] private LegionStatHoverTargetUI bleedHover;
     [SerializeField] private LegionStatHoverTargetUI stunHover;
     [SerializeField] private LegionStatTooltipUI statTooltipUI;
@@ -223,7 +225,7 @@ public class LegionDetailPanelUI : MonoBehaviour
         SetText(idtText, FormatPercentStat(GetIncomingDamageTakenTotal(def, var, bonus)));
         SetText(criText, FormatStatValue((def?.cri ?? 0) + var.criDelta + bonus.cri));
         SetText(crdText, FormatStatValue((def?.crd ?? 0) + var.crdDelta + bonus.crd));
-        SetText(poisonResText, FormatStatValue((def?.poisonResist ?? 0) + bonus.poisonRes));
+        SetText(burnResText, FormatStatValue((def?.burnResist ?? 0) + bonus.burnRes));
         SetText(bleedResText, FormatStatValue((def?.bleedResist ?? 0) + bonus.bleedRes));
         SetText(stunResText, FormatStatValue((def?.stunResist ?? 0) + bonus.stunRes));
     }
@@ -237,7 +239,7 @@ public class LegionDetailPanelUI : MonoBehaviour
         BindHover(idtHover, LegionStatKind.Idt, "IDT");
         BindHover(criHover, LegionStatKind.Cri, "CRI");
         BindHover(crdHover, LegionStatKind.Crd, "CRD");
-        BindHover(poisonHover, LegionStatKind.Poison, "중독 저항");
+        BindHover(burnHover, LegionStatKind.Burn, "화상 저항");
         BindHover(bleedHover, LegionStatKind.Bleed, "출혈 저항");
         BindHover(stunHover, LegionStatKind.Stun, "기절 저항");
     }
@@ -289,20 +291,9 @@ public class LegionDetailPanelUI : MonoBehaviour
                 break;
 
             case LegionStatKind.Idt:
-                baseValue = GetOptionalInt(def,
-                    "incomingDamageTakenReduction",
-                    "idt",
-                    "incomingDamageTaken",
-                    "damageTakenReduction",
-                    "incomingDamageReduction");
-                varianceValue = GetOptionalInt(var,
-                    "idtDelta",
-                    "incomingDamageTakenReductionDelta",
-                    "damageTakenReductionDelta");
-                equipValue = GetOptionalInt(bonus,
-                    "idt",
-                    "incomingDamageTakenReduction",
-                    "damageTakenReduction");
+                baseValue = def != null ? def.idt : 0;
+                varianceValue = var != null ? var.idtDelta : 0;
+                equipValue = bonus.idt;
                 suffix = "%";
                 break;
 
@@ -320,9 +311,9 @@ public class LegionDetailPanelUI : MonoBehaviour
                 suffix = "%";
                 break;
 
-            case LegionStatKind.Poison:
-                baseValue = def != null ? def.poisonResist : 0;
-                equipValue = bonus.poisonRes;
+            case LegionStatKind.Burn:
+                baseValue = def != null ? def.burnResist : 0;
+                equipValue = bonus.burnRes;
                 suffix = "%";
                 break;
 
@@ -369,75 +360,13 @@ public class LegionDetailPanelUI : MonoBehaviour
 
     private int GetIncomingDamageTakenTotal(UnitDefinition def, UnitInstanceStatVariance var, LegionEquipmentBonusSummary bonus)
     {
-        int baseValue = GetOptionalInt(def,
-            "incomingDamageTakenReduction",
-            "idt",
-            "incomingDamageTaken",
-            "damageTakenReduction",
-            "incomingDamageReduction");
-
-        int varianceValue = GetOptionalInt(var,
-            "idtDelta",
-            "incomingDamageTakenReductionDelta",
-            "damageTakenReductionDelta");
-
-        int equipValue = GetOptionalInt(bonus,
-            "idt",
-            "incomingDamageTakenReduction",
-            "damageTakenReduction");
+        int baseValue = def != null ? def.idt : 0;
+        int varianceValue = var != null ? var.idtDelta : 0;
+        int equipValue = bonus.idt;
 
         return baseValue + varianceValue + equipValue;
     }
 
-    private static int GetOptionalInt(object target, params string[] candidateNames)
-    {
-        if (target == null || candidateNames == null)
-            return 0;
-
-        const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-        System.Type type = target.GetType();
-
-        for (int i = 0; i < candidateNames.Length; i++)
-        {
-            string name = candidateNames[i];
-            if (string.IsNullOrWhiteSpace(name))
-                continue;
-
-            FieldInfo field = type.GetField(name, flags);
-            if (field != null)
-                return ConvertToInt(field.GetValue(target));
-
-            PropertyInfo property = type.GetProperty(name, flags);
-            if (property != null && property.CanRead)
-                return ConvertToInt(property.GetValue(target));
-        }
-
-        return 0;
-    }
-
-    private static int ConvertToInt(object value)
-    {
-        if (value == null)
-            return 0;
-
-        switch (value)
-        {
-            case int intValue:
-                return intValue;
-            case float floatValue:
-                return Mathf.RoundToInt(floatValue);
-            case double doubleValue:
-                return Mathf.RoundToInt((float)doubleValue);
-            case long longValue:
-                return (int)longValue;
-            case short shortValue:
-                return shortValue;
-            case byte byteValue:
-                return byteValue;
-            default:
-                return 0;
-        }
-    }
 
     private static void BindButton(Button button, UnityEngine.Events.UnityAction action)
     {

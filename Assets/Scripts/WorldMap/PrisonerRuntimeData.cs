@@ -14,6 +14,7 @@ public class PrisonerRuntimeData
 {
     public string prisonerInstanceId;
     public UnitDefinition sourceUnit;
+    public UnitViewDefinition sourceUnitViewDefinition;
     public ItemDefinition sourcePrisonerItem;
     public string prisonerNameOverride;
     public int capturedLevel = 1;
@@ -41,6 +42,9 @@ public class PrisonerRuntimeData
 
         if (sourceUnit != null && sourceUnit.captureRewardItem != null && sourceUnit.captureRewardItem.icon != null)
             return sourceUnit.captureRewardItem.icon;
+
+        if (sourceUnitViewDefinition != null)
+            return sourceUnitViewDefinition.GetBustPortraitSprite();
 
         return null;
     }
@@ -105,27 +109,28 @@ public class PrisonerRuntimeData
         currentValue = targetValue;
     }
 
-    public static PrisonerRuntimeData CreateFromPrisonerItem(ItemDefinition prisonerItem, int capturedLevel, long sequence, UnitDefinition fallbackUnit = null)
+    public static PrisonerRuntimeData CreateFromPrisonerItem(ItemDefinition prisonerItem, int capturedLevel, long sequence, UnitDefinition fallbackUnit = null, UnitViewDefinition fallbackView = null, bool isExchangeable = false)
     {
         UnitDefinition sourceUnit = prisonerItem != null && prisonerItem.prisonerSourceUnitDefinition != null
             ? prisonerItem.prisonerSourceUnitDefinition
             : fallbackUnit;
 
-        PrisonerRuntimeData data = CreateFromCapturedUnit(sourceUnit, capturedLevel, sequence);
+        PrisonerRuntimeData data = CreateFromCapturedUnit(sourceUnit, capturedLevel, sequence, fallbackView, isExchangeable);
         data.sourcePrisonerItem = prisonerItem;
         if (prisonerItem != null && !string.IsNullOrWhiteSpace(prisonerItem.itemName))
             data.prisonerNameOverride = prisonerItem.itemName;
         return data;
     }
 
-    public static PrisonerRuntimeData CreateFromCapturedUnit(UnitDefinition unit, int capturedLevel, long sequence)
+    public static PrisonerRuntimeData CreateFromCapturedUnit(UnitDefinition unit, int capturedLevel, long sequence, UnitViewDefinition viewDefinition = null, bool isExchangeable = false)
     {
         var data = new PrisonerRuntimeData();
         data.prisonerInstanceId = Guid.NewGuid().ToString("N");
         data.sourceUnit = unit;
+        data.sourceUnitViewDefinition = viewDefinition;
         data.capturedLevel = Mathf.Max(1, capturedLevel);
         data.captureSequence = sequence;
-        data.isExchangeable = false;
+        data.isExchangeable = isExchangeable || (unit != null && unit.isNftUnit);
 
         data.corruptionConditionType = (PrisonerCorruptionConditionType)UnityEngine.Random.Range(0, 4);
         switch (data.corruptionConditionType)

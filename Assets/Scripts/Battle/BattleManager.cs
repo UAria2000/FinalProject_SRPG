@@ -442,7 +442,9 @@ public class BattleManager : MonoBehaviour
             {
                 prisonerItem = prisonerItem,
                 fallbackUnit = fallbackUnit,
-                capturedLevel = Mathf.Max(1, unit.CurrentLevel)
+                fallbackView = unit.ViewDefinition,
+                capturedLevel = Mathf.Max(1, unit.CurrentLevel),
+                isExchangeable = unit.IsNftUnit
             });
         }
         else

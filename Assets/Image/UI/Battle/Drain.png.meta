@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: f1e5e6f41a2610e489777663f0c83239
+guid: 7f9799c8a4ec7b540a603d52a7c6693c
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -7665679977402024170
-    second: BattleEnd_LeftLine_0
+      213: 5470686625893181768
+    second: Drain_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -100,13 +100,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: BattleEnd_LeftLine_0
+      name: Drain_0
       rect:
         serializedVersion: 2
         x: 0
-        y: 0
-        width: 545
-        height: 2
+        y: 15
+        width: 250
+        height: 208
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -115,8 +115,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 61fb021dca80e9590800000000000000
-      internalID: -7665679977402024170
+      spriteID: 849e7d55088cbeb40800000000000000
+      internalID: 5470686625893181768
       vertices: []
       indices: 
       edges: []
@@ -135,7 +135,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      BattleEnd_LeftLine_0: -7665679977402024170
+      Drain_0: 5470686625893181768
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
