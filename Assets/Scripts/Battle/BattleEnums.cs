@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 
 public enum TeamType
@@ -71,15 +70,13 @@ public enum SkillSelfMoveDirection
     Backward
 }
 
-[Flags]
-public enum SkillLearnTag
+public enum SkillClass
 {
-    None = 0,
-    Unique = 1 << 0,
-    Common = 1 << 1,
     Melee = 1 << 2,
     Mid = 1 << 3,
-    Ranged = 1 << 4
+    Ranged = 1 << 4,
+    Common = 1 << 1,
+    Unique = 1 << 0
 }
 
 public enum SkillTargetTeam

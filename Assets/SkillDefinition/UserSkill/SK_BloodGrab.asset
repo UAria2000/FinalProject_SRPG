@@ -20,7 +20,7 @@ MonoBehaviour:
   isBasicAttack: 0
   castType: 0
   activeRole: 0
-  learnTags: 0
+  skillClass: 8
   rangeTag: 1
   passiveGimmick: 0
   activeGimmick: 3
@@ -37,11 +37,28 @@ MonoBehaviour:
   allowGraze: 1
   selfMoveDirection: 0
   selfMoveSteps: 0
+  selfApplyStatusAfterUse: 0
+  selfApplyStatusDurationTurns: 0
+  useMissingHpPowerBonus: 0
+  missingHpPercentStep: 1
+  bonusPowerPerStep: 0
   secondaryTargetRule: 0
   secondaryAccuracyCoefficientPercent: 100
   secondaryDamagePercent: 0
   secondaryApplyNonDamageEffects: 0
   forcedTargetMoveToRank: 1
+  forcedTargetMoveSteps: 1
+  pushBackFailFinalPowerPercent: 0
+  delayedReinforcementDelayRounds: 2
+  abyssReboundRecoilPercentFromTotalDamage: 20
+  blackArenaDuelDurationTurns: 2
+  battleStartEnemyTeamDmgDownPercent: 10
+  battleStartEnemyTeamDmgDownDurationTurns: 0
+  battleStartEnemyTeamDmgDownPermanent: 1
+  shieldedHitBleedChancePercent: 100
+  shieldedHitBleedStacks: 1
+  blackAuraShieldGainPercentFromHpDamage: 100
+  blackAuraShieldFlatBonus: 0
   effects:
   - kind: 0
     statusType: 0
@@ -57,3 +74,5 @@ MonoBehaviour:
     durationTurns: 0
     displayIcon: {fileID: 0}
   disableAfterUseInBattle: 0
+  castEffectPrefab: {fileID: 0}
+  hitEffectPrefab: {fileID: 0}

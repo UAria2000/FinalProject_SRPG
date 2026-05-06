@@ -3,22 +3,49 @@ using UnityEngine;
 
 public static class BattleSkillInfoFormatter
 {
-    public static string GetSkillClassLabel(SkillDefinition skill)
+    public static SkillClass GetSkillClass(SkillDefinition skill)
     {
         if (skill == null)
-            return string.Empty;
+            return SkillClass.Melee;
 
-        if (HasTag(skill, SkillLearnTag.Unique)) return "고유";
-        if (HasTag(skill, SkillLearnTag.Common)) return "공통";
-        if (HasTag(skill, SkillLearnTag.Melee)) return "밀리";
-        if (HasTag(skill, SkillLearnTag.Mid)) return "미드";
-        if (HasTag(skill, SkillLearnTag.Ranged)) return "레인지";
+        int raw = (int)skill.skillClass;
 
+        // Former learnTags was a flags enum. If an old asset still contains multiple bits,
+        // normalize it into one display class using this priority.
+        if ((raw & (int)SkillClass.Unique) != 0) return SkillClass.Unique;
+        if ((raw & (int)SkillClass.Common) != 0) return SkillClass.Common;
+        if ((raw & (int)SkillClass.Melee) != 0) return SkillClass.Melee;
+        if ((raw & (int)SkillClass.Mid) != 0) return SkillClass.Mid;
+        if ((raw & (int)SkillClass.Ranged) != 0) return SkillClass.Ranged;
+
+        // Old None/empty data falls back to the unit-style range tag so existing assets do not show blank badges.
         switch (skill.rangeTag)
         {
             case CharacterRangeType.Mid:
-                return "미드";
+                return SkillClass.Mid;
             case CharacterRangeType.Ranged:
+                return SkillClass.Ranged;
+            default:
+                return SkillClass.Melee;
+        }
+    }
+
+    public static string GetSkillClassLabel(SkillDefinition skill)
+    {
+        return GetSkillClassLabel(GetSkillClass(skill));
+    }
+
+    public static string GetSkillClassLabel(SkillClass skillClass)
+    {
+        switch (skillClass)
+        {
+            case SkillClass.Unique:
+                return "고유";
+            case SkillClass.Common:
+                return "공통";
+            case SkillClass.Mid:
+                return "미드";
+            case SkillClass.Ranged:
                 return "레인지";
             default:
                 return "밀리";
@@ -225,10 +252,6 @@ public static class BattleSkillInfoFormatter
         return skill != null && skill.activeGimmick == ActiveSkillGimmick.BleedDrainStrike;
     }
 
-    private static bool HasTag(SkillDefinition skill, SkillLearnTag tag)
-    {
-        return skill != null && (skill.learnTags & tag) != 0;
-    }
 
     private static void AddEffectEntry(List<string> entries, string value)
     {

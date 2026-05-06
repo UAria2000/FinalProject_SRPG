@@ -19,7 +19,7 @@ MonoBehaviour:
   isBasicAttack: 0
   castType: 0
   activeRole: 0
-  learnTags: 0
+  skillClass: 4
   rangeTag: 0
   passiveGimmick: 0
   activeGimmick: 6
@@ -73,3 +73,5 @@ MonoBehaviour:
     durationTurns: 0
     displayIcon: {fileID: 0}
   disableAfterUseInBattle: 0
+  castEffectPrefab: {fileID: 0}
+  hitEffectPrefab: {fileID: 0}

@@ -96,6 +96,13 @@ public class EnemyInfoPanel : MonoBehaviour
     [SerializeField] private TMP_Text selectedSkillClassBadgeText;
     [SerializeField] private TMP_Text selectedSkillNameText;
 
+    [Header("Skill Class Badge Sprites")]
+    [SerializeField] private Sprite meleeSkillClassBadgeSprite;
+    [SerializeField] private Sprite midSkillClassBadgeSprite;
+    [SerializeField] private Sprite rangedSkillClassBadgeSprite;
+    [SerializeField] private Sprite commonSkillClassBadgeSprite;
+    [SerializeField] private Sprite uniqueSkillClassBadgeSprite;
+
     [Header("Skill Description - Positions")]
     [Tooltip("스킬 사용 가능 위치 1~4. 회색 육각형 이미지를 연결합니다.")]
     [SerializeField] private GameObject[] usablePositionHexRoots = new GameObject[4];
@@ -540,11 +547,7 @@ public class EnemyInfoPanel : MonoBehaviour
             selectedSkillIcon.color = skill.icon != null ? Color.white : new Color(1f, 1f, 1f, 0f);
         }
 
-        if (selectedSkillClassBadgeImage != null)
-            selectedSkillClassBadgeImage.gameObject.SetActive(true);
-
-        if (selectedSkillClassBadgeText != null)
-            selectedSkillClassBadgeText.text = BattleSkillInfoFormatter.GetSkillClassLabel(skill);
+        RefreshSelectedSkillClassBadge(skill);
 
         if (selectedSkillNameText != null)
             selectedSkillNameText.text = skill.skillName;
@@ -577,6 +580,39 @@ public class EnemyInfoPanel : MonoBehaviour
 
         if (lastWillBodyText != null)
             lastWillBodyText.text = enemy.HasBattleInfoLastWill ? enemy.BattleInfoLastWillText : string.Empty;
+    }
+
+    private void RefreshSelectedSkillClassBadge(SkillDefinition skill)
+    {
+        SkillClass skillClass = BattleSkillInfoFormatter.GetSkillClass(skill);
+        Sprite badgeSprite = GetSkillClassBadgeSprite(skillClass);
+
+        if (selectedSkillClassBadgeImage != null)
+        {
+            selectedSkillClassBadgeImage.sprite = badgeSprite;
+            selectedSkillClassBadgeImage.enabled = badgeSprite != null;
+            selectedSkillClassBadgeImage.gameObject.SetActive(badgeSprite != null);
+        }
+
+        if (selectedSkillClassBadgeText != null)
+            selectedSkillClassBadgeText.text = BattleSkillInfoFormatter.GetSkillClassLabel(skillClass);
+    }
+
+    private Sprite GetSkillClassBadgeSprite(SkillClass skillClass)
+    {
+        switch (skillClass)
+        {
+            case SkillClass.Unique:
+                return uniqueSkillClassBadgeSprite;
+            case SkillClass.Common:
+                return commonSkillClassBadgeSprite;
+            case SkillClass.Mid:
+                return midSkillClassBadgeSprite;
+            case SkillClass.Ranged:
+                return rangedSkillClassBadgeSprite;
+            default:
+                return meleeSkillClassBadgeSprite;
+        }
     }
 
     private void RefreshPositionHexes(SkillDefinition skill)

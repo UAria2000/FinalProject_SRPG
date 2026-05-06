@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public enum PassiveSkillGimmick
 {
@@ -34,7 +35,8 @@ public class SkillDefinition : ScriptableObject
     public bool isBasicAttack = false;
     public SkillCastType castType = SkillCastType.Active;
     public ActiveSkillRole activeRole = ActiveSkillRole.Attack;
-    public SkillLearnTag learnTags = SkillLearnTag.None;
+    [FormerlySerializedAs("learnTags")]
+    public SkillClass skillClass = SkillClass.Melee;
     public CharacterRangeType rangeTag = CharacterRangeType.Melee;
     public PassiveSkillGimmick passiveGimmick = PassiveSkillGimmick.None;
     public ActiveSkillGimmick activeGimmick = ActiveSkillGimmick.None;

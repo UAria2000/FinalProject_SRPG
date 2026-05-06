@@ -20,7 +20,7 @@ MonoBehaviour:
   isBasicAttack: 0
   castType: 1
   activeRole: 2
-  learnTags: 0
+  skillClass: 4
   rangeTag: 0
   passiveGimmick: 2
   activeGimmick: 0
@@ -61,3 +61,5 @@ MonoBehaviour:
   blackAuraShieldFlatBonus: 0
   effects: []
   disableAfterUseInBattle: 0
+  castEffectPrefab: {fileID: 0}
+  hitEffectPrefab: {fileID: 0}
