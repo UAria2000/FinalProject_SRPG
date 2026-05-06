@@ -29,7 +29,6 @@ public class SelectedTileInfoPanel : MonoBehaviour
     [SerializeField] private GameObject enemyPreviewRoot;
     [SerializeField] private List<Image> enemyPortraitSlots = new List<Image>(4);
     [SerializeField] private List<TMP_Text> enemyUnknownTexts = new List<TMP_Text>(4);
-    [SerializeField] private int revealedEnemyPreviewCount = 0;
 
     private WorldRunManager runManager;
     private WorldGenerationSettings settings;
@@ -166,7 +165,8 @@ public class SelectedTileInfoPanel : MonoBehaviour
             if (portrait == null && unknownText == null)
                 continue;
 
-            bool canRevealSlot = !isUnknownTile && i < revealedEnemyPreviewCount;
+            int revealCount = runManager != null ? runManager.RevealedEnemyPreviewCount : enemyPortraitSlots.Count;
+            bool canRevealSlot = !isUnknownTile && i < revealCount;
             bool hasSprite =
                 showPreview &&
                 canRevealSlot &&

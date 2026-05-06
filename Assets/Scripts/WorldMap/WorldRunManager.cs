@@ -34,7 +34,7 @@ public class WorldRunManager : MonoBehaviour
 
     [Header("World HUD")]
     [SerializeField] private WorldTopHudUI worldTopHudUI;
-    [SerializeField, Range(0,4)] private int revealedEnemyPreviewCount = 0;
+    [SerializeField, Range(0,6)] private int revealedEnemyPreviewCount = 4;
     [SerializeField] private string playerDisplayName = "플레이어";
 
     [Header("Optional Conquest UI")]
@@ -49,7 +49,7 @@ public class WorldRunManager : MonoBehaviour
     public WorldRunTransientState CurrentWorldRunState => currentWorldRunState;
     public int PersistentSoul => persistentSoul;
     public int PersistentCash => persistentCash;
-    public int RevealedEnemyPreviewCount => Mathf.Clamp(revealedEnemyPreviewCount, 0, 4);
+    public int RevealedEnemyPreviewCount => Mathf.Clamp(revealedEnemyPreviewCount, 0, 6);
     public string PlayerDisplayName => string.IsNullOrWhiteSpace(playerDisplayName) ? "플레이어" : playerDisplayName;
 
     public WorldMapData MapData { get; private set; }
@@ -71,6 +71,9 @@ public class WorldRunManager : MonoBehaviour
     public string RuntimeDifficultyId => runtimeDifficultyId;
     private void Awake()
     {
+        if (revealedEnemyPreviewCount <= 0)
+            revealedEnemyPreviewCount = 4;
+
         if (worldConquestButton != null)
         {
             worldConquestButton.onClick.RemoveAllListeners();
@@ -315,7 +318,7 @@ public class WorldRunManager : MonoBehaviour
 
     public void SetRevealedEnemyPreviewCount(int count)
     {
-        revealedEnemyPreviewCount = Mathf.Clamp(count, 0, 4);
+        revealedEnemyPreviewCount = Mathf.Clamp(count, 0, 6);
         RaiseWorldStateChanged();
     }
 
@@ -1367,6 +1370,10 @@ public class WorldRunManager : MonoBehaviour
                 isIconDisabled = saved.isIconDisabled,
             };
 
+            tile.previewEnemyPortraits = RestoreSavedEnemyPreviewPortraits(tile, saved);
+            if (tile.IsCombatEvent && tile.previewEnemyPortraits.Count == 0)
+                tile.previewEnemyPortraits = BuildEnemyPreviewListForTile(tile);
+
             map.tiles.Add(tile);
 
             if (tile.isPlayerStart)
@@ -1375,6 +1382,211 @@ public class WorldRunManager : MonoBehaviour
 
         map.RebuildLookup();
         return map;
+    }
+
+
+    private List<Sprite> RestoreSavedEnemyPreviewPortraits(WorldTileData tile, WorldTileSaveData saved)
+    {
+        List<Sprite> result = new List<Sprite>();
+        if (tile == null || saved == null || saved.previewEnemyPortraitSpriteNames == null)
+            return result;
+
+        for (int i = 0; i < saved.previewEnemyPortraitSpriteNames.Count; i++)
+        {
+            Sprite sprite = FindEnemyPreviewSpriteByName(tile.nativeFaction, saved.previewEnemyPortraitSpriteNames[i]);
+            if (sprite != null)
+                result.Add(sprite);
+        }
+
+        return result;
+    }
+
+    private List<Sprite> BuildEnemyPreviewListForTile(WorldTileData tile)
+    {
+        List<Sprite> sourcePool = new List<Sprite>();
+        if (tile == null || generationSettings == null || !tile.IsCombatEvent)
+            return sourcePool;
+
+        bool isBoss = tile.eventType == WorldTileEventType.Boss;
+        FactionBattleConfig config = generationSettings.GetFactionBattleConfig(tile.nativeFaction);
+        if (config != null)
+        {
+            if (isBoss)
+            {
+                AddPreviewSpritesFromPartyDefinition(sourcePool, config.bossPartyDefinition);
+                AddPreviewSpritesFromEncounterTable(sourcePool, config.bossEncounterTable);
+            }
+            else
+            {
+                AddPreviewSpritesFromEncounterTable(sourcePool, config.battleTier1Table);
+                AddPreviewSpritesFromEncounterTable(sourcePool, config.battleTier2Table);
+                AddPreviewSpritesFromEncounterTable(sourcePool, config.battleTier3Table);
+                AddPreviewSpritesFromEncounterTable(sourcePool, config.eliteTier1Table);
+                AddPreviewSpritesFromEncounterTable(sourcePool, config.eliteTier2Table);
+                AddPreviewSpritesFromEncounterTable(sourcePool, config.eliteTier3Table);
+            }
+        }
+
+        if (sourcePool.Count == 0)
+        {
+            IReadOnlyList<Sprite> fallbackPool = generationSettings.GetFactionEnemyPortraitPool(tile.nativeFaction);
+            if (fallbackPool != null)
+            {
+                for (int i = 0; i < fallbackPool.Count; i++)
+                {
+                    if (fallbackPool[i] != null)
+                        sourcePool.Add(fallbackPool[i]);
+                }
+            }
+        }
+
+        List<Sprite> result = new List<Sprite>();
+        if (sourcePool.Count == 0)
+            return result;
+
+        int minCount = Mathf.Clamp(generationSettings.enemyPortraitMinCount, 1, 6);
+        int maxCount = Mathf.Clamp(generationSettings.enemyPortraitMaxCount, minCount, 6);
+        int count = isBoss ? 1 : UnityEngine.Random.Range(minCount, maxCount + 1);
+
+        for (int i = 0; i < count; i++)
+        {
+            Sprite sprite = sourcePool[UnityEngine.Random.Range(0, sourcePool.Count)];
+            if (sprite != null)
+                result.Add(sprite);
+        }
+
+        return result;
+    }
+
+    private Sprite FindEnemyPreviewSpriteByName(FactionType faction, string spriteName)
+    {
+        if (string.IsNullOrWhiteSpace(spriteName) || generationSettings == null)
+            return null;
+
+        FactionBattleConfig config = generationSettings.GetFactionBattleConfig(faction);
+        if (config != null)
+        {
+            Sprite sprite = FindPreviewSpriteInPartyDefinition(config.bossPartyDefinition, spriteName);
+            if (sprite != null)
+                return sprite;
+
+            sprite = FindPreviewSpriteInEncounterTable(config.bossEncounterTable, spriteName);
+            if (sprite != null)
+                return sprite;
+
+            sprite = FindPreviewSpriteInEncounterTable(config.battleTier1Table, spriteName);
+            if (sprite != null)
+                return sprite;
+
+            sprite = FindPreviewSpriteInEncounterTable(config.battleTier2Table, spriteName);
+            if (sprite != null)
+                return sprite;
+
+            sprite = FindPreviewSpriteInEncounterTable(config.battleTier3Table, spriteName);
+            if (sprite != null)
+                return sprite;
+
+            sprite = FindPreviewSpriteInEncounterTable(config.eliteTier1Table, spriteName);
+            if (sprite != null)
+                return sprite;
+
+            sprite = FindPreviewSpriteInEncounterTable(config.eliteTier2Table, spriteName);
+            if (sprite != null)
+                return sprite;
+
+            sprite = FindPreviewSpriteInEncounterTable(config.eliteTier3Table, spriteName);
+            if (sprite != null)
+                return sprite;
+        }
+
+        IReadOnlyList<Sprite> fallbackPool = generationSettings.GetFactionEnemyPortraitPool(faction);
+        if (fallbackPool != null)
+        {
+            for (int i = 0; i < fallbackPool.Count; i++)
+            {
+                Sprite sprite = fallbackPool[i];
+                if (sprite != null && sprite.name == spriteName)
+                    return sprite;
+            }
+        }
+
+        return null;
+    }
+
+    private Sprite FindPreviewSpriteInEncounterTable(EnemyEncounterTable table, string spriteName)
+    {
+        if (table == null || table.entries == null || string.IsNullOrWhiteSpace(spriteName))
+            return null;
+
+        for (int i = 0; i < table.entries.Count; i++)
+        {
+            EnemyEncounterEntry entry = table.entries[i];
+            if (entry == null || entry.unitViewDefinition == null)
+                continue;
+
+            Sprite sprite = entry.unitViewDefinition.GetSlotFaceSprite();
+            if (sprite != null && sprite.name == spriteName)
+                return sprite;
+        }
+
+        return null;
+    }
+
+    private Sprite FindPreviewSpriteInPartyDefinition(PartyDefinition party, string spriteName)
+    {
+        if (party == null || party.members == null || string.IsNullOrWhiteSpace(spriteName))
+            return null;
+
+        for (int i = 0; i < party.members.Count; i++)
+        {
+            PartyMemberData member = party.members[i];
+            if (member == null || member.unitViewDefinition == null)
+                continue;
+
+            Sprite sprite = member.unitViewDefinition.GetSlotFaceSprite();
+            if (sprite != null && sprite.name == spriteName)
+                return sprite;
+        }
+
+        return null;
+    }
+
+    private void AddPreviewSpritesFromEncounterTable(List<Sprite> target, EnemyEncounterTable table)
+    {
+        if (target == null || table == null || table.entries == null)
+            return;
+
+        for (int i = 0; i < table.entries.Count; i++)
+        {
+            EnemyEncounterEntry entry = table.entries[i];
+            if (entry == null || !entry.enabled || entry.unitViewDefinition == null)
+                continue;
+
+            Sprite sprite = entry.unitViewDefinition.GetSlotFaceSprite();
+            if (sprite == null)
+                continue;
+
+            int repeat = Mathf.Max(1, entry.weight);
+            for (int r = 0; r < repeat; r++)
+                target.Add(sprite);
+        }
+    }
+
+    private void AddPreviewSpritesFromPartyDefinition(List<Sprite> target, PartyDefinition party)
+    {
+        if (target == null || party == null || party.members == null)
+            return;
+
+        for (int i = 0; i < party.members.Count; i++)
+        {
+            PartyMemberData member = party.members[i];
+            if (member == null || member.unitViewDefinition == null)
+                continue;
+
+            Sprite sprite = member.unitViewDefinition.GetSlotFaceSprite();
+            if (sprite != null)
+                target.Add(sprite);
+        }
     }
 
     private void RestorePartyRuntimeFromSave(ActiveWorldRunSaveData saveData)

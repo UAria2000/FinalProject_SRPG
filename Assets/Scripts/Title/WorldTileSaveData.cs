@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 [Serializable]
 public class WorldTileSaveData
@@ -15,12 +16,14 @@ public class WorldTileSaveData
     public bool isResolved;
     public bool isIconDisabled;
 
+    public List<string> previewEnemyPortraitSpriteNames = new List<string>();
+
     public static WorldTileSaveData FromRuntime(WorldTileData tile)
     {
         if (tile == null)
             return null;
 
-        return new WorldTileSaveData
+        WorldTileSaveData data = new WorldTileSaveData
         {
             tileId = tile.tileId,
             q = tile.coord.q,
@@ -33,5 +36,16 @@ public class WorldTileSaveData
             isResolved = tile.isResolved,
             isIconDisabled = tile.isIconDisabled,
         };
+
+        if (tile.previewEnemyPortraits != null)
+        {
+            for (int i = 0; i < tile.previewEnemyPortraits.Count; i++)
+            {
+                if (tile.previewEnemyPortraits[i] != null && !string.IsNullOrWhiteSpace(tile.previewEnemyPortraits[i].name))
+                    data.previewEnemyPortraitSpriteNames.Add(tile.previewEnemyPortraits[i].name);
+            }
+        }
+
+        return data;
     }
 }

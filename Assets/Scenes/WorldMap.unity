@@ -29484,8 +29484,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1d9522cde14134d4ca5a6017d0906acf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BattleUIController
-  currentUnitInfoPanel: {fileID: 0}
-  enemyInfoPanel: {fileID: 0}
+  currentUnitInfoPanel: {fileID: 129987158}
+  enemyInfoPanel: {fileID: 1612875611}
   enemyDetailPopupUI: {fileID: 0}
   inventoryPanelUI: {fileID: 0}
   actionWheelUI: {fileID: 1705304011}
@@ -36170,7 +36170,7 @@ MonoBehaviour:
   - {fileID: 2012451577}
   - {fileID: 1606596710}
   - {fileID: 1606596710}
-  revealedEnemyPreviewCount: 3
+  revealedEnemyPreviewCount: 4
 --- !u!1 &1114886663
 GameObject:
   m_ObjectHideFlags: 0
@@ -40722,7 +40722,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1239349749
 RectTransform:
   m_ObjectHideFlags: 0
