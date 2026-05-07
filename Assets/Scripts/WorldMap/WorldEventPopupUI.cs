@@ -36,6 +36,7 @@ public class WorldEventPopupUI : MonoBehaviour
     private bool autoGrantTreasureWhenNoRewardSlots;
 
     public bool HasUsableRewardSlots => rewardSlots != null && rewardSlots.Count > 0;
+    public bool IsOpen => root != null ? root.activeInHierarchy : gameObject.activeInHierarchy;
 
     private void Awake()
     {

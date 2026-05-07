@@ -44,10 +44,10 @@ public class EnemyDetailPopupUI : MonoBehaviour
         if (hpValueText != null) hpValueText.text = string.Format("{0}/{1}", enemy.CurrentHP, enemy.MaxHP);
         if (dmgValueText != null) dmgValueText.text = enemy.DMG.ToString();
         if (spdValueText != null) spdValueText.text = enemy.SPD.ToString();
-        if (hitValueText != null) hitValueText.text = Mathf.RoundToInt(enemy.HIT * 10f).ToString();
-        if (acValueText != null) acValueText.text = Mathf.RoundToInt(enemy.AC * 10f).ToString();
+        if (hitValueText != null) hitValueText.text = Mathf.RoundToInt(enemy.HIT).ToString();
+        if (acValueText != null) acValueText.text = Mathf.RoundToInt(enemy.AC).ToString();
         if (idtValueText != null) idtValueText.text = BattleStatFormatter.FormatPercent(enemy.IDT);
-        if (criValueText != null) criValueText.text = enemy.CRI.ToString();
+        if (criValueText != null) criValueText.text = BattleStatFormatter.FormatPercent(enemy.CRI);
         if (crdValueText != null) crdValueText.text = enemy.CRD.ToString();
         if (stunResistValueText != null) stunResistValueText.text = BattleStatFormatter.FormatPercent(enemy.StunResist);
         if (bleedResistValueText != null) bleedResistValueText.text = BattleStatFormatter.FormatPercent(enemy.BleedResist);

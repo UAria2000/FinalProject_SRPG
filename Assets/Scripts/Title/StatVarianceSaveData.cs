@@ -8,8 +8,10 @@ public class StatVarianceSaveData
     public int dmgDelta;
     public int spdDelta;
     public int idtDelta;
-    public int hitDeltaX10;
-    public int acDeltaX10;
+    [FormerlySerializedAs("hitDeltaX10")]
+    public int hitDelta;
+    [FormerlySerializedAs("acDeltaX10")]
+    public int acDelta;
     public int criDelta;
     public int crdDelta;
     [FormerlySerializedAs("poisonResistDelta")]
@@ -30,8 +32,8 @@ public class StatVarianceSaveData
             dmgDelta = variance.dmgDelta,
             spdDelta = variance.spdDelta,
             idtDelta = variance.idtDelta,
-            hitDeltaX10 = variance.hitDeltaX10,
-            acDeltaX10 = variance.acDeltaX10,
+            hitDelta = variance.hitDelta,
+            acDelta = variance.acDelta,
             criDelta = variance.criDelta,
             crdDelta = variance.crdDelta,
             burnResistDelta = variance.burnResistDelta,
@@ -50,8 +52,8 @@ public class StatVarianceSaveData
             dmgDelta = dmgDelta,
             spdDelta = spdDelta,
             idtDelta = idtDelta,
-            hitDeltaX10 = hitDeltaX10,
-            acDeltaX10 = acDeltaX10,
+            hitDelta = hitDelta,
+            acDelta = acDelta,
             criDelta = criDelta,
             crdDelta = crdDelta,
             burnResistDelta = burnResistDelta,

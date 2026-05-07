@@ -94,6 +94,12 @@ public class PersistentProfileController : MonoBehaviour
         return persistentProfile.rosterUnits;
     }
 
+    public IReadOnlyList<PersistentRosterUnitData> GetGraveyardUnits()
+    {
+        EnsureInitialized();
+        return persistentProfile.graveyardUnits;
+    }
+
     public PersistentRosterUnitData FindRosterUnit(string instanceId)
     {
         if (string.IsNullOrWhiteSpace(instanceId))
@@ -734,6 +740,84 @@ public class PersistentProfileController : MonoBehaviour
         return spent;
     }
 
+    public int MoveDeadNonMainRosterUnitsToGraveyard()
+    {
+        EnsureInitialized();
+        if (persistentProfile == null || persistentProfile.rosterUnits == null)
+            return 0;
+
+        if (persistentProfile.graveyardUnits == null)
+            persistentProfile.graveyardUnits = new List<PersistentRosterUnitData>();
+
+        int moved = 0;
+        for (int i = persistentProfile.rosterUnits.Count - 1; i >= 0; i--)
+        {
+            PersistentRosterUnitData unit = persistentProfile.rosterUnits[i];
+            if (unit == null || !IsDeadUnit(unit) || IsMainCharacter(unit))
+                continue;
+
+            persistentProfile.rosterUnits.RemoveAt(i);
+            unit.EnsureDefaults();
+            unit.persistentCurrentHP = 0;
+
+            if (!ContainsUnitInstanceId(persistentProfile.graveyardUnits, unit.instanceId))
+                persistentProfile.graveyardUnits.Add(unit);
+
+            moved++;
+        }
+
+        if (moved > 0)
+            RaiseProfileChanged();
+
+        return moved;
+    }
+
+    public void RestoreRosterUnitsForNewWorld()
+    {
+        EnsureInitialized();
+        if (persistentProfile == null || persistentProfile.rosterUnits == null)
+            return;
+
+        bool changed = false;
+        for (int i = 0; i < persistentProfile.rosterUnits.Count; i++)
+        {
+            PersistentRosterUnitData unit = persistentProfile.rosterUnits[i];
+            if (unit == null)
+                continue;
+
+            bool isMain = IsMainCharacter(unit);
+            if (!isMain && IsDeadUnit(unit))
+                continue;
+
+            int maxHp = GetRosterMaxHp(unit);
+            if (unit.persistentCurrentHP != maxHp)
+            {
+                unit.persistentCurrentHP = maxHp;
+                changed = true;
+            }
+        }
+
+        SyncRosterToActivePartyRuntime();
+
+        if (changed)
+            RaiseProfileChanged();
+    }
+
+    private bool ContainsUnitInstanceId(List<PersistentRosterUnitData> units, string instanceId)
+    {
+        if (units == null || string.IsNullOrWhiteSpace(instanceId))
+            return false;
+
+        for (int i = 0; i < units.Count; i++)
+        {
+            PersistentRosterUnitData unit = units[i];
+            if (unit != null && unit.instanceId == instanceId)
+                return true;
+        }
+
+        return false;
+    }
+
     public void AddRosterUnit(PersistentRosterUnitData unit)
     {
         EnsureInitialized();
@@ -982,8 +1066,8 @@ public class PersistentProfileController : MonoBehaviour
         summary.dmg += item.equipmentDmgBonus;
         summary.spd += item.equipmentSpdBonus;
         summary.idt += item.equipmentIdtBonus;
-        summary.hitX10 += item.equipmentHitBonusX10;
-        summary.acX10 += item.equipmentAcBonusX10;
+        summary.hit += item.equipmentHitBonus;
+        summary.ac += item.equipmentAcBonus;
         summary.cri += item.equipmentCriBonus;
         summary.crd += item.equipmentCrdBonus;
 
@@ -1023,10 +1107,10 @@ public class PersistentProfileController : MonoBehaviour
                     summary.idt -= amount;
                     break;
                 case StatModifierType.HIT:
-                    summary.hitX10 += amount;
+                    summary.hit += amount;
                     break;
                 case StatModifierType.AC:
-                    summary.acX10 += amount;
+                    summary.ac += amount;
                     break;
                 case StatModifierType.CRI:
                     summary.cri += amount;

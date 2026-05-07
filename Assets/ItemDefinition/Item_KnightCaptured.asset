@@ -41,6 +41,7 @@ MonoBehaviour:
   equipmentBlindResistBonus: 0
   equipmentStartShieldPercentOfMaxHP: 0
   isPrisonerItem: 1
-  prisonerSourceUnitDefinition: {fileID: 11400000, guid: 592fc88aebc95f14da1c15df923601fc, type: 2}
+  convertedAllyUnitDefinition: {fileID: 11400000, guid: 592fc88aebc95f14da1c15df923601fc, type: 2}
+  convertedAllyUnitViewDefinition: {fileID: 11400000, guid: 358658ab6cd56c84184d837f206ebc73, type: 2}
   useItemIconAsPrisonerPortrait: 1
   effects: []

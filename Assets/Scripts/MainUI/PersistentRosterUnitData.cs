@@ -16,6 +16,8 @@ public class PersistentRosterUnitData
     public UnitViewDefinition unitViewDefinition;
     public bool isExchangeable;
     public bool isFavorite;
+    [Tooltip("포획 포로 아이템에서 즉시 전환되어 생성된 유닛인지 여부. 연결 유닛이 레기온 표시 비활성 상태여도 이 값이 true면 군단 창에 표시할 수 있다.")]
+    public bool isConvertedFromPrisoner;
 
     [Header("Legion Instance")]
     [Tooltip("true면 UnitDefinition의 NFT 기본값과 무관하게 NFT/교환 가능 유닛으로 표시된다.")]
@@ -172,6 +174,7 @@ public class PersistentRosterUnitData
 public class PersistentProfileState
 {
     public List<PersistentRosterUnitData> rosterUnits = new List<PersistentRosterUnitData>();
+    public List<PersistentRosterUnitData> graveyardUnits = new List<PersistentRosterUnitData>();
     public PersistentAccountCurrencyState accountCurrencies = new PersistentAccountCurrencyState();
     public long nextObtainedOrder = 1;
 
@@ -179,6 +182,9 @@ public class PersistentProfileState
     {
         if (rosterUnits == null)
             rosterUnits = new List<PersistentRosterUnitData>();
+
+        if (graveyardUnits == null)
+            graveyardUnits = new List<PersistentRosterUnitData>();
 
         if (accountCurrencies == null)
             accountCurrencies = new PersistentAccountCurrencyState();
@@ -192,6 +198,12 @@ public class PersistentProfileState
         {
             if (rosterUnits[i] != null)
                 rosterUnits[i].EnsureDefaults();
+        }
+
+        for (int i = 0; i < graveyardUnits.Count; i++)
+        {
+            if (graveyardUnits[i] != null)
+                graveyardUnits[i].EnsureDefaults();
         }
     }
 

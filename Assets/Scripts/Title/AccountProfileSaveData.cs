@@ -11,6 +11,7 @@ public class AccountProfileSaveData
     public AccountCurrencySaveData currencies = new AccountCurrencySaveData();
     public List<PersistentInventoryItemSaveData> persistentInventory = new List<PersistentInventoryItemSaveData>();
     public List<RosterUnitSaveData> rosterUnits = new List<RosterUnitSaveData>();
+    public List<RosterUnitSaveData> graveyardUnits = new List<RosterUnitSaveData>();
 
     // battle slot index order: 0,1,2,3
     public List<string> activePartyUnitInstanceIds = new List<string>();

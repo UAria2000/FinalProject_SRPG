@@ -129,10 +129,10 @@ public class BattleFlowController : MonoBehaviour
         }
 
         if (!IsUnitInBattle(battleManager.SelectedEnemyInfoUnit))
-            battleManager.SelectedEnemyInfoUnit = battleManager.GetDefaultShownEnemyUnit();
+            battleManager.SelectedEnemyInfoUnit = null;
 
         if (!IsUnitInBattle(battleManager.LastShownAllyUnit))
-            battleManager.SetLastShownAllyUnit(battleManager.GetDefaultShownAllyUnit());
+            battleManager.SetLastShownAllyUnit(null);
     }
 
     public void OnActionExecutionFinished(bool consumeTurn)
@@ -168,10 +168,10 @@ public class BattleFlowController : MonoBehaviour
             captureController.NotifyUnitLeftBattle(unit);
 
         if (battleManager.LastShownAllyUnit == unit)
-            battleManager.SetLastShownAllyUnit(battleManager.GetDefaultShownAllyUnit());
+            battleManager.SetLastShownAllyUnit(null);
 
         if (battleManager.SelectedEnemyInfoUnit == unit)
-            battleManager.SelectedEnemyInfoUnit = battleManager.GetDefaultShownEnemyUnit();
+            battleManager.SelectedEnemyInfoUnit = null;
 
         if (battleManager.PresentationController != null)
             battleManager.PresentationController.NotifyUnitLeftBattle(unit);
@@ -481,21 +481,7 @@ private void ClearInvalidDuelLocks()
         if (!mainAlive)
         {
             battleManager.SetPendingWorldFailure(true);
-
-            BattleUnit actingUnit = battleManager.CurrentActingUnit;
-            bool canFinalizeWorldFailure = actingUnit == null
-                                           || actingUnit.IsDead
-                                           || battleManager.CurrentTurnSkippedByStatus
-                                           || battleManager.CurrentState == TurnState.TurnEnding
-                                           || battleManager.CurrentState == TurnState.BattleEnded;
-
-            if (canFinalizeWorldFailure)
-            {
-                battleManager.SetBattleResult(BattleResultType.WorldFailure);
-                return;
-            }
-
-            battleManager.SetBattleResult(BattleResultType.None);
+            battleManager.SetBattleResult(BattleResultType.WorldFailure);
             return;
         }
 

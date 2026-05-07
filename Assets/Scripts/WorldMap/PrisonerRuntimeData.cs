@@ -111,11 +111,16 @@ public class PrisonerRuntimeData
 
     public static PrisonerRuntimeData CreateFromPrisonerItem(ItemDefinition prisonerItem, int capturedLevel, long sequence, UnitDefinition fallbackUnit = null, UnitViewDefinition fallbackView = null, bool isExchangeable = false)
     {
-        UnitDefinition sourceUnit = prisonerItem != null && prisonerItem.prisonerSourceUnitDefinition != null
-            ? prisonerItem.prisonerSourceUnitDefinition
+        UnitDefinition sourceUnit = prisonerItem != null
+            ? prisonerItem.GetConvertedAllyUnitDefinition(fallbackUnit)
             : fallbackUnit;
 
-        PrisonerRuntimeData data = CreateFromCapturedUnit(sourceUnit, capturedLevel, sequence, fallbackView, isExchangeable);
+        UnitViewDefinition sourceView = prisonerItem != null
+            ? prisonerItem.GetConvertedAllyUnitViewDefinition(fallbackView)
+            : fallbackView;
+
+
+        PrisonerRuntimeData data = CreateFromCapturedUnit(sourceUnit, capturedLevel, sequence, sourceView, isExchangeable);
         data.sourcePrisonerItem = prisonerItem;
         if (prisonerItem != null && !string.IsNullOrWhiteSpace(prisonerItem.itemName))
             data.prisonerNameOverride = prisonerItem.itemName;

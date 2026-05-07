@@ -10,6 +10,7 @@ public class CapturedPrisonerRewardEntry
     public UnitViewDefinition fallbackView;
     public int capturedLevel = 1;
     public bool isExchangeable;
+    public List<SkillDefinition> learnedSkills = new List<SkillDefinition>();
 
     public string GetDisplayName()
     {

@@ -20,6 +20,10 @@ public class WorldRunManager : MonoBehaviour
     [Header("Player Party")]
     [SerializeField] private PartyDefinition playerPartyTemplate;
 
+    [Header("Prisoner Conversion")]
+    [SerializeField] private SkillLearnPoolTable convertedUnitSkillPoolTable;
+    [SerializeField, Min(0)] private int convertedUnitRandomSkillCount = 3;
+
     [Header("Persistent Currencies")]
     [SerializeField] private int persistentSoul;
     [SerializeField] private int persistentCash;
@@ -110,6 +114,7 @@ public class WorldRunManager : MonoBehaviour
 
     public void GenerateNewWorld()
     {
+        RestoreRosterUnitsForNewWorld();
         ResetWorldRunStateForNewWorld();
 
         HexWorldGenerator generator = new HexWorldGenerator(generationSettings);
@@ -451,31 +456,30 @@ public class WorldRunManager : MonoBehaviour
             if (reward == null)
                 continue;
 
-            UnitDefinition sourceUnit = reward.fallbackUnit;
-            if (sourceUnit == null && reward.prisonerItem != null)
-                sourceUnit = reward.prisonerItem.prisonerSourceUnitDefinition;
-
-            if (sourceUnit == null)
+            UnitDefinition convertedUnit = GetConvertedUnitDefinition(reward);
+            if (convertedUnit == null)
                 continue;
 
-            int level = Mathf.Max(1, reward.capturedLevel);
+            UnitViewDefinition convertedView = GetConvertedUnitViewDefinition(reward);
+
             PersistentRosterUnitData rosterUnit = new PersistentRosterUnitData
             {
                 instanceId = Guid.NewGuid().ToString("N"),
                 instanceDisplayNameOverride = string.Empty,
                 fixedEpitaph = string.Empty,
-                unitDefinition = sourceUnit,
-                unitViewDefinition = reward.fallbackView,
+                unitDefinition = convertedUnit,
+                unitViewDefinition = convertedView,
                 isExchangeable = reward.isExchangeable,
-                isNft = reward.isExchangeable || sourceUnit.isNftUnit,
-                currentLevel = level,
-                originalLevel = level,
+                isConvertedFromPrisoner = true,
+                isNft = reward.isExchangeable || convertedUnit.isNftUnit,
+                currentLevel = 1,
+                originalLevel = Mathf.Max(1, reward.capturedLevel),
                 currentExp = 0,
                 levelGrowthMaxHp = 0,
                 levelGrowthDmg = 0,
                 promotionRank = 1,
-                statVariance = new UnitInstanceStatVariance(),
-                learnedSkills = new List<SkillDefinition>(),
+                statVariance = RollConvertedUnitVariance(convertedUnit != null ? convertedUnit.varianceRules : null),
+                learnedSkills = RollConvertedUnitLearnedSkills(convertedUnit),
                 battleLootDrops = new List<ItemDropDefinition>(),
                 persistentCurrentHP = -1
             };
@@ -492,6 +496,167 @@ public class WorldRunManager : MonoBehaviour
         }
 
         return created;
+    }
+
+    private UnitDefinition GetConvertedUnitDefinition(CapturedPrisonerRewardEntry reward)
+    {
+        if (reward == null)
+            return null;
+
+        if (reward.prisonerItem != null)
+            return reward.prisonerItem.GetConvertedAllyUnitDefinition(reward.fallbackUnit);
+
+        return reward.fallbackUnit;
+    }
+
+    private UnitViewDefinition GetConvertedUnitViewDefinition(CapturedPrisonerRewardEntry reward)
+    {
+        if (reward == null)
+            return null;
+
+        if (reward.prisonerItem != null)
+            return reward.prisonerItem.GetConvertedAllyUnitViewDefinition(reward.fallbackView);
+
+        return reward.fallbackView;
+    }
+
+    private UnitInstanceStatVariance RollConvertedUnitVariance(StatVarianceRules rules)
+    {
+        UnitInstanceStatVariance variance = new UnitInstanceStatVariance();
+        if (rules == null)
+            return variance;
+
+        variance.maxHpDelta = RollRangeInclusive(rules.maxHpRange);
+        variance.dmgDelta = RollRangeInclusive(rules.dmgRange);
+        variance.spdDelta = RollRangeInclusive(rules.spdRange);
+        variance.idtDelta = RollRangeInclusive(rules.idtRange);
+        variance.hitDelta = RollRangeInclusive(rules.hitRange);
+        variance.acDelta = RollRangeInclusive(rules.acRange);
+        variance.criDelta = RollRangeInclusive(rules.criRange);
+        variance.crdDelta = RollRangeInclusive(rules.crdRange);
+        variance.burnResistDelta = RollRangeInclusive(rules.burnResistRange);
+        variance.bleedResistDelta = RollRangeInclusive(rules.bleedResistRange);
+        variance.stunResistDelta = RollRangeInclusive(rules.stunResistRange);
+        variance.frostResistDelta = RollRangeInclusive(rules.frostResistRange);
+        variance.blindResistDelta = RollRangeInclusive(rules.blindResistRange);
+        return variance;
+    }
+
+    private int RollRangeInclusive(Vector2Int range)
+    {
+        int min = Mathf.Min(range.x, range.y);
+        int max = Mathf.Max(range.x, range.y);
+        return UnityEngine.Random.Range(min, max + 1);
+    }
+
+    private List<SkillDefinition> RollConvertedUnitLearnedSkills(UnitDefinition unitDefinition)
+    {
+        List<SkillDefinition> result = new List<SkillDefinition>();
+        if (unitDefinition == null)
+            return result;
+
+        int maxSkills = Mathf.Max(0, convertedUnitRandomSkillCount);
+        if (maxSkills <= 0)
+            return result;
+
+        AddFixedStartingSkills(result, unitDefinition.fixedStartingSkills, maxSkills, uniqueOnly: true);
+        AddFixedStartingSkills(result, unitDefinition.fixedStartingSkills, maxSkills, uniqueOnly: false);
+
+        if (result.Count >= maxSkills)
+            return result;
+
+        List<SkillDefinition> candidates = BuildConvertedUnitRandomSkillCandidates(unitDefinition, result);
+        while (result.Count < maxSkills && candidates.Count > 0)
+        {
+            int index = UnityEngine.Random.Range(0, candidates.Count);
+            SkillDefinition picked = candidates[index];
+            candidates.RemoveAt(index);
+            AddSkillIfValid(result, picked, maxSkills, allowUnique: false);
+        }
+
+        return result;
+    }
+
+    private void AddFixedStartingSkills(List<SkillDefinition> result, List<SkillDefinition> source, int maxSkills, bool uniqueOnly)
+    {
+        if (result == null || source == null || result.Count >= maxSkills)
+            return;
+
+        for (int i = 0; i < source.Count && result.Count < maxSkills; i++)
+        {
+            SkillDefinition skill = source[i];
+            if (skill == null)
+                continue;
+
+            bool isUnique = BattleSkillInfoFormatter.GetSkillClass(skill) == SkillClass.Unique;
+            if (uniqueOnly != isUnique)
+                continue;
+
+            AddSkillIfValid(result, skill, maxSkills, allowUnique: true);
+        }
+    }
+
+    private List<SkillDefinition> BuildConvertedUnitRandomSkillCandidates(UnitDefinition unitDefinition, List<SkillDefinition> alreadySelected)
+    {
+        List<SkillDefinition> candidates = new List<SkillDefinition>();
+        if (unitDefinition == null)
+            return candidates;
+
+        if (convertedUnitSkillPoolTable != null)
+        {
+            AddCandidateSkills(candidates, convertedUnitSkillPoolTable.GetClassSkills(unitDefinition.rangeType), alreadySelected);
+            AddCandidateSkills(candidates, convertedUnitSkillPoolTable.commonSkills, alreadySelected);
+        }
+
+        AddCandidateSkills(candidates, unitDefinition.extraLearnableSkills, alreadySelected);
+        return candidates;
+    }
+
+    private void AddCandidateSkills(List<SkillDefinition> candidates, IEnumerable<SkillDefinition> source, List<SkillDefinition> alreadySelected)
+    {
+        if (candidates == null || source == null)
+            return;
+
+        foreach (SkillDefinition skill in source)
+        {
+            if (skill == null || skill.isBasicAttack)
+                continue;
+            if (BattleSkillInfoFormatter.GetSkillClass(skill) == SkillClass.Unique)
+                continue;
+            if (ContainsSkill(candidates, skill) || ContainsSkill(alreadySelected, skill))
+                continue;
+
+            candidates.Add(skill);
+        }
+    }
+
+    private bool AddSkillIfValid(List<SkillDefinition> list, SkillDefinition skill, int maxSkills, bool allowUnique)
+    {
+        if (list == null || skill == null || list.Count >= maxSkills)
+            return false;
+        if (skill.isBasicAttack)
+            return false;
+        if (!allowUnique && BattleSkillInfoFormatter.GetSkillClass(skill) == SkillClass.Unique)
+            return false;
+        if (ContainsSkill(list, skill))
+            return false;
+
+        list.Add(skill);
+        return true;
+    }
+
+    private bool ContainsSkill(List<SkillDefinition> list, SkillDefinition skill)
+    {
+        if (list == null || skill == null)
+            return false;
+
+        for (int i = 0; i < list.Count; i++)
+        {
+            if (list[i] == skill)
+                return true;
+        }
+
+        return false;
     }
 
     public WorldRestResult PreviewRestForActiveParty(
@@ -644,21 +809,106 @@ public class WorldRunManager : MonoBehaviour
         for (int i = runtime.members.Count - 1; i >= 0; i--)
         {
             PartyMemberData member = runtime.members[i];
-            if (member != null && member.persistentCurrentHP == 0)
-            {
-                runtime.members.RemoveAt(i);
-                removed++;
-            }
+            if (member == null || member.persistentCurrentHP != 0)
+                continue;
+
+            if (member.unitDefinition != null && member.unitDefinition.isMainPlayerCharacter)
+                continue;
+
+            ClearEquipmentAssignmentsForMember(member.instanceId);
+            runtime.members.RemoveAt(i);
+            removed++;
         }
 
+        int movedToGraveyard = 0;
+        if (persistentProfileController == null)
+            persistentProfileController = UnityEngine.Object.FindFirstObjectByType<PersistentProfileController>();
+        if (persistentProfileController != null)
+            movedToGraveyard = persistentProfileController.MoveDeadNonMainRosterUnitsToGraveyard();
+
         if (removed > 0)
-        {
             NormalizeRuntimePartySlots(runtime.members);
+
+        if (removed > 0 || movedToGraveyard > 0)
+        {
             RaiseStorageChanged();
             RequestAutoSaveAll();
         }
 
-        return removed;
+        return Mathf.Max(removed, movedToGraveyard);
+    }
+
+    public void RestoreRosterUnitsForNewWorld()
+    {
+        if (persistentProfileController == null)
+            persistentProfileController = UnityEngine.Object.FindFirstObjectByType<PersistentProfileController>();
+
+        BattlePartyRuntimeState runtime = GetOrCreatePlayerPartyRuntimeState();
+        List<string> currentPartyIds = new List<string>();
+        if (runtime != null && runtime.members != null)
+        {
+            List<PartyMemberData> ordered = new List<PartyMemberData>();
+            for (int i = 0; i < runtime.members.Count; i++)
+                if (runtime.members[i] != null)
+                    ordered.Add(runtime.members[i]);
+            ordered.Sort((a, b) => a.startSlotIndex.CompareTo(b.startSlotIndex));
+            for (int i = 0; i < ordered.Count; i++)
+                currentPartyIds.Add(ordered[i].instanceId);
+        }
+
+        if (persistentProfileController != null)
+        {
+            persistentProfileController.RestoreRosterUnitsForNewWorld();
+            persistentProfileController.RebuildActivePartyFromSavedIds(currentPartyIds);
+        }
+    }
+
+    private void ClearEquipmentAssignmentsForMember(string memberInstanceId)
+    {
+        if (string.IsNullOrWhiteSpace(memberInstanceId))
+            return;
+
+        WorldRunTransientState state = GetOrCreateWorldRunState();
+        if (state == null || state.partyEquipmentAssignments == null)
+            return;
+
+        for (int i = state.partyEquipmentAssignments.Count - 1; i >= 0; i--)
+        {
+            PartyEquipmentAssignmentData data = state.partyEquipmentAssignments[i];
+            if (data == null || data.memberInstanceId != memberInstanceId)
+                continue;
+
+            ConsumeWorldInventoryItem(data.slot0Item, 1);
+            ConsumeWorldInventoryItem(data.slot1Item, 1);
+            state.partyEquipmentAssignments.RemoveAt(i);
+        }
+    }
+
+    private bool ConsumeWorldInventoryItem(ItemDefinition item, int amount)
+    {
+        if (item == null || amount <= 0)
+            return false;
+
+        WorldRunTransientState state = GetOrCreateWorldRunState();
+        if (state == null || state.inventory == null)
+            return false;
+
+        int remaining = Mathf.Max(1, amount);
+        for (int i = state.inventory.Count - 1; i >= 0 && remaining > 0; i--)
+        {
+            InventoryStackData stack = state.inventory[i];
+            if (stack == null || stack.item != item || stack.amount <= 0)
+                continue;
+
+            int used = Mathf.Min(stack.amount, remaining);
+            stack.amount -= used;
+            remaining -= used;
+
+            if (stack.amount <= 0)
+                state.inventory.RemoveAt(i);
+        }
+
+        return remaining <= 0;
     }
 
     private void NormalizeRuntimePartySlots(List<PartyMemberData> members)
@@ -710,7 +960,7 @@ public class WorldRunManager : MonoBehaviour
             if (item == null)
                 continue;
 
-            state.AddPrisonerFromItem(item, 1, item.prisonerSourceUnitDefinition);
+            state.AddPrisonerFromItem(item, 1, item.GetConvertedAllyUnitDefinition());
             addedAny = true;
         }
 
@@ -908,8 +1158,29 @@ public class WorldRunManager : MonoBehaviour
             AddPartyExperienceToAllMembers(summary.totalSettlementExpAward);
 
         RemoveDeadPartyMembersFromActiveParty();
-        ResetWorldRunStateForNewWorld();
-        RequestAutoSaveAll();
+        RestoreRosterUnitsForNewWorld();
+        ClearRuntimeWorldAfterSettlement();
+
+        // 결산이 끝난 월드는 승리/패배 여부와 무관하게 더 이상 이어하기 대상이 아니다.
+        // 프로필(소울, 경험치, 묘지, 회복된 로스터)만 저장하고 active world save는 삭제한다.
+        saveCoordinator?.SaveProfile();
+        saveCoordinator?.ClearSavedWorldRun();
+        RaiseStorageChanged();
+        RaiseWorldStateChanged();
+    }
+
+    private void ClearRuntimeWorldAfterSettlement()
+    {
+        MapData = null;
+        CurrentTile = null;
+        SelectedTile = null;
+        previousTileBeforeArrival = null;
+        revealController = null;
+        movementController = null;
+        currentWorldRunState = WorldRunTransientState.CreateForNewWorld(playerPartyTemplate);
+
+        if (selectedTileInfoPanel != null)
+            selectedTileInfoPanel.HidePanel();
     }
 
     public bool TryRestoreAdjacentFactionTileAsBattle(WorldTileData failedTile)
@@ -1160,14 +1431,16 @@ public class WorldRunManager : MonoBehaviour
             unitDefinition = prisoner.sourceUnit,
             unitViewDefinition = prisoner.sourceUnitViewDefinition,
             isExchangeable = prisoner.isExchangeable,
+            isConvertedFromPrisoner = true,
             isNft = prisoner.isExchangeable || (prisoner.sourceUnit != null && prisoner.sourceUnit.isNftUnit),
-            currentLevel = Mathf.Max(1, prisoner.capturedLevel),
+            currentLevel = 1,
             originalLevel = Mathf.Max(1, prisoner.capturedLevel),
             currentExp = 0,
             levelGrowthMaxHp = 0,
             levelGrowthDmg = 0,
             promotionRank = 1,
-            statVariance = new UnitInstanceStatVariance(),
+            statVariance = RollConvertedUnitVariance(prisoner.sourceUnit != null ? prisoner.sourceUnit.varianceRules : null),
+            learnedSkills = RollConvertedUnitLearnedSkills(prisoner.sourceUnit),
             persistentCurrentHP = -1
         };
 
@@ -1397,6 +1670,95 @@ public class WorldRunManager : MonoBehaviour
             RaiseWorldStateChanged();
     }
 
+    public bool ShouldSaveAsInterruptedArrival()
+    {
+        return IsUnresolvedArrivalTile(CurrentTile);
+    }
+
+    public WorldTileData GetSafeCurrentTileForSave()
+    {
+        if (!ShouldSaveAsInterruptedArrival())
+            return CurrentTile;
+
+        if (previousTileBeforeArrival != null && previousTileBeforeArrival.IsPlayerOwned)
+            return previousTileBeforeArrival;
+
+        WorldTileData adjacent = FindAdjacentPlayerOwnedTile(CurrentTile);
+        if (adjacent != null)
+            return adjacent;
+
+        return MapData != null ? MapData.GetStartTile() : CurrentTile;
+    }
+
+    public bool ShouldRevealTileForInterruptedSave(WorldTileData tile)
+    {
+        return ShouldTileBeVisibleFromPlayerTerritory(tile);
+    }
+
+    private bool IsUnresolvedArrivalTile(WorldTileData tile)
+    {
+        if (tile == null || tile.isPlayerStart)
+            return false;
+
+        if (tile.IsPlayerOwned)
+            return false;
+
+        return tile.ShouldTriggerEventOnArrival;
+    }
+
+    private WorldTileData FindAdjacentPlayerOwnedTile(WorldTileData tile)
+    {
+        if (MapData == null || tile == null)
+            return null;
+
+        List<WorldTileData> neighbors = MapData.GetNeighbors(tile);
+        for (int i = 0; i < neighbors.Count; i++)
+        {
+            WorldTileData neighbor = neighbors[i];
+            if (neighbor != null && neighbor.IsPlayerOwned)
+                return neighbor;
+        }
+
+        return null;
+    }
+
+    private bool ShouldTileBeVisibleFromPlayerTerritory(WorldTileData tile)
+    {
+        if (tile == null)
+            return false;
+
+        if (tile.IsPlayerOwned || tile.isPlayerStart)
+            return true;
+
+        if (MapData == null)
+            return tile.revealed;
+
+        List<WorldTileData> neighbors = MapData.GetNeighbors(tile);
+        for (int i = 0; i < neighbors.Count; i++)
+        {
+            WorldTileData neighbor = neighbors[i];
+            if (neighbor != null && neighbor.IsPlayerOwned)
+                return true;
+        }
+
+        return false;
+    }
+
+    private void NormalizeRevealedTilesToPlayerFrontier()
+    {
+        if (MapData == null || MapData.tiles == null)
+            return;
+
+        for (int i = 0; i < MapData.tiles.Count; i++)
+        {
+            WorldTileData tile = MapData.tiles[i];
+            if (tile == null)
+                continue;
+
+            tile.revealed = ShouldTileBeVisibleFromPlayerTerritory(tile);
+        }
+    }
+
     public void StartNewWorldFromSetup(WorldGenerationSettings templateSettings, string difficultyId, int radius)
     {
         if (templateSettings == null)
@@ -1450,7 +1812,22 @@ public class WorldRunManager : MonoBehaviour
         if (CurrentTile == null)
             CurrentTile = MapData.GetStartTile();
 
-        SelectedTile = MapData.GetTileById(saveData.selectedTileId);
+        if (IsUnresolvedArrivalTile(CurrentTile))
+        {
+            WorldTileData interruptedTile = CurrentTile;
+            WorldTileData safeTile = FindAdjacentPlayerOwnedTile(interruptedTile);
+            if (safeTile == null)
+                safeTile = MapData.GetStartTile();
+
+            CurrentTile = safeTile;
+            SelectedTile = null;
+            previousTileBeforeArrival = safeTile;
+            NormalizeRevealedTilesToPlayerFrontier();
+        }
+        else
+        {
+            SelectedTile = MapData.GetTileById(saveData.selectedTileId);
+        }
 
         if (selectedTileInfoPanel != null)
         {
@@ -1819,7 +2196,10 @@ public class WorldRunManager : MonoBehaviour
                     : null;
 
                 if (unit == null && prisonerItem != null)
-                    unit = prisonerItem.prisonerSourceUnitDefinition;
+                    unit = prisonerItem.GetConvertedAllyUnitDefinition();
+
+                if (view == null && prisonerItem != null)
+                    view = prisonerItem.GetConvertedAllyUnitViewDefinition();
 
                 if (unit == null && prisonerItem == null)
                     continue;

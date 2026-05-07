@@ -60,7 +60,7 @@ public class BattleActionController : MonoBehaviour
             BattleUnitView targetView = viewManager.GetView(clickedTarget);
             if (actorView != null && targetView != null)
                 yield return StartCoroutine(actorView.PlayAttackMove(
-                    targetView.transform.position,
+                    targetView.AnchoredPosition,
                     battleManager.AttackMoveRatio,
                     battleManager.AttackMoveMaxDistance,
                     battleManager.AttackMoveDuration));

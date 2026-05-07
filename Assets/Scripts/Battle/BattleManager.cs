@@ -416,7 +416,10 @@ public class BattleManager : MonoBehaviour
                 fallbackUnit = fallbackUnit,
                 fallbackView = unit.ViewDefinition,
                 capturedLevel = Mathf.Max(1, unit.CurrentLevel),
-                isExchangeable = unit.IsNftUnit
+                isExchangeable = unit.IsNftUnit,
+                learnedSkills = unit.MemberData != null && unit.MemberData.learnedSkills != null
+                    ? new List<SkillDefinition>(unit.MemberData.learnedSkills)
+                    : new List<SkillDefinition>()
             });
         }
         else

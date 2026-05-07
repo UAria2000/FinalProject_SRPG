@@ -52,6 +52,14 @@ public class SelectedTileInfoPanel : MonoBehaviour
         }
     }
 
+    private void Update()
+    {
+        if (!gameObject.activeInHierarchy)
+            return;
+
+        RefreshMoveButtonState();
+    }
+
     public void ShowTile(WorldTileData tile)
     {
         currentTile = tile;
@@ -84,14 +92,21 @@ public class SelectedTileInfoPanel : MonoBehaviour
 
         RefreshEnemyPreview(tile, isCombatTile, isUnknownTile);
 
-        if (moveButton != null && runManager != null)
-            moveButton.interactable = runManager.CanMoveTo(tile);
+        RefreshMoveButtonState();
     }
 
     public void HidePanel()
     {
         currentTile = null;
         gameObject.SetActive(false);
+    }
+
+    public void RefreshMoveButtonState()
+    {
+        if (moveButton == null)
+            return;
+
+        moveButton.interactable = runManager != null && !runManager.IsBusy && runManager.CanMoveTo(currentTile);
     }
 
     private void ApplyUnknownTileView()
@@ -197,7 +212,7 @@ public class SelectedTileInfoPanel : MonoBehaviour
 
     private void HandleMoveButtonClicked()
     {
-        if (runManager == null)
+        if (runManager == null || runManager.IsBusy)
             return;
 
         if (runManager.TryMoveToSelectedTile())

@@ -164,7 +164,7 @@ public class BattleUnit
     {
         get
         {
-            float baseValue = ApplyPromotionToFloat(Mathf.Max(0f, BaseHIT + GetVariance().hitDeltaX10 + (EquipmentHitBonusX10 * 0.1f)));
+            float baseValue = ApplyPromotionToFloat(Mathf.Max(0f, BaseHIT + GetVariance().hitDelta + EquipmentHitBonus));
             return ApplyPercentTimedModifierToFloat(baseValue, StatModifierType.HIT);
         }
     }
@@ -173,7 +173,7 @@ public class BattleUnit
     {
         get
         {
-            float baseValue = ApplyPromotionToFloat(Mathf.Max(0f, BaseAC + GetVariance().acDeltaX10 + (EquipmentAcBonusX10 * 0.1f)));
+            float baseValue = ApplyPromotionToFloat(Mathf.Max(0f, BaseAC + GetVariance().acDelta + EquipmentAcBonus));
             return ApplyPercentTimedModifierToFloat(baseValue, StatModifierType.AC, -FrostStatPenaltyPercent);
         }
     }
@@ -228,8 +228,8 @@ public class BattleUnit
     private int EquipmentDmgBonus { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.DMG); } }
     private int EquipmentSpdBonus { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.SPD); } }
     private int EquipmentIdtBonus { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.IDT); } }
-    private int EquipmentHitBonusX10 { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.HITX10); } }
-    private int EquipmentAcBonusX10 { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.ACX10); } }
+    private int EquipmentHitBonus { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.HIT); } }
+    private int EquipmentAcBonus { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.AC); } }
     private int EquipmentCriBonus { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.CRI); } }
     private int EquipmentCrdBonus { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.CRD); } }
     private int EquipmentAllResistBonus { get { return SumEquipmentIntBonus(EquipmentIntBonusKind.AllResist); } }
@@ -245,8 +245,8 @@ public class BattleUnit
         DMG,
         SPD,
         IDT,
-        HITX10,
-        ACX10,
+        HIT,
+        AC,
         CRI,
         CRD,
         AllResist,
@@ -325,11 +325,11 @@ public class BattleUnit
                 case EquipmentIntBonusKind.IDT:
                     total += item.equipmentIdtBonus;
                     break;
-                case EquipmentIntBonusKind.HITX10:
-                    total += item.equipmentHitBonusX10;
+                case EquipmentIntBonusKind.HIT:
+                    total += item.equipmentHitBonus;
                     break;
-                case EquipmentIntBonusKind.ACX10:
-                    total += item.equipmentAcBonusX10;
+                case EquipmentIntBonusKind.AC:
+                    total += item.equipmentAcBonus;
                     break;
                 case EquipmentIntBonusKind.CRI:
                     total += item.equipmentCriBonus;

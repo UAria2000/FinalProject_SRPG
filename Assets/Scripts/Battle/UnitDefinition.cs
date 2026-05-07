@@ -34,9 +34,9 @@ public class UnitDefinition : ScriptableObject
     [Tooltip("레벨업 1회당 증가할 DMG 범위. 레벨업 시 범위 내 정수 1개가 무작위로 선택된다.")]
     public Vector2Int dmgGrowthPerLevel = new Vector2Int(1, 3);
 
-    [Tooltip("실스탯. UI는 x10")]
+    [Tooltip("명중 수치. UI에도 이 값 그대로 표시합니다.")]
     public float hit = 9f;
-    [Tooltip("실스탯. UI는 x10")]
+    [Tooltip("회피 수치. UI에도 이 값 그대로 표시합니다.")]
     public float ac = 5f;
     public int cri = 10;
     public int crd = 150;
@@ -52,6 +52,12 @@ public class UnitDefinition : ScriptableObject
     [Header("Battle")]
     public SkillDefinition basicAttack;
     public StatVarianceRules varianceRules = new StatVarianceRules();
+
+    [Header("Skill Learning")]
+    [Tooltip("전환/생성 시 무작위 스킬보다 먼저 지급할 고정 스킬입니다. Unique 스킬은 항상 가장 먼저 지급되며, 총 스킬 수 한도에 포함됩니다.")]
+    public List<SkillDefinition> fixedStartingSkills = new List<SkillDefinition>();
+    [Tooltip("기본 클래스 풀 + 공통 풀 외에 이 유닛만 무작위 후보로 추가할 스킬입니다. Unique 스킬은 무작위 후보에서는 제외됩니다.")]
+    public List<SkillDefinition> extraLearnableSkills = new List<SkillDefinition>();
 
     [Header("Enemy Equipment")]
     [Tooltip("무작위 적 생성 시 실제 장착 슬롯에 들어갈 수 있는 장비 후보. 최대 2개까지 장착합니다.")]

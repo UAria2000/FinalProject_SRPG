@@ -190,27 +190,31 @@ public class BattleInputController : MonoBehaviour
 
         BattleUnit clickedUnit = clickedView.Unit;
 
+        switch (battleManager.InputMode)
+        {
+            case BattleInputMode.WaitingForSkillTarget:
+                HandleSkillTargetClick(clickedUnit);
+                battleManager.RefreshAllUI();
+                return;
+            case BattleInputMode.WaitingForMoveTarget:
+                HandleMoveTargetClick(clickedUnit);
+                battleManager.RefreshAllUI();
+                return;
+            case BattleInputMode.WaitingForItemTarget:
+                HandleItemTargetClick(clickedUnit);
+                battleManager.RefreshAllUI();
+                return;
+            case BattleInputMode.WaitingForCaptureTarget:
+                HandleCaptureTargetClick(clickedUnit);
+                battleManager.RefreshAllUI();
+                return;
+        }
+
         if (battleManager.PresentationController != null)
             battleManager.PresentationController.SelectUnitForInfo(clickedUnit);
 
         if (uiController != null)
             uiController.HandleCurrentActorClicked(clickedUnit);
-
-        switch (battleManager.InputMode)
-        {
-            case BattleInputMode.WaitingForSkillTarget:
-                HandleSkillTargetClick(clickedUnit);
-                break;
-            case BattleInputMode.WaitingForMoveTarget:
-                HandleMoveTargetClick(clickedUnit);
-                break;
-            case BattleInputMode.WaitingForItemTarget:
-                HandleItemTargetClick(clickedUnit);
-                break;
-            case BattleInputMode.WaitingForCaptureTarget:
-                HandleCaptureTargetClick(clickedUnit);
-                break;
-        }
 
         battleManager.RefreshAllUI();
     }

@@ -12,7 +12,9 @@ public class WorldMapDragPan : MonoBehaviour
 
     [Header("Optional Popup Lock")]
     [SerializeField] private WorldQuestController questController;
+    [SerializeField] private WorldEventController eventController;
     [SerializeField] private bool autoFindQuestController = true;
+    [SerializeField] private bool autoFindEventController = true;
 
     [Header("Pan")]
     [SerializeField] private float dragThreshold = 12f;
@@ -109,6 +111,9 @@ public class WorldMapDragPan : MonoBehaviour
         if (autoFindQuestController && questController == null)
             questController = UnityEngine.Object.FindFirstObjectByType<WorldQuestController>();
 
+        if (autoFindEventController && eventController == null)
+            eventController = UnityEngine.Object.FindFirstObjectByType<WorldEventController>();
+
         if (suppressClickFrames > 0)
             suppressClickFrames--;
 
@@ -128,6 +133,9 @@ public class WorldMapDragPan : MonoBehaviour
             return true;
 
         if (questController != null && questController.IsPopupOpen)
+            return true;
+
+        if (eventController != null && eventController.IsBusy)
             return true;
 
         return false;

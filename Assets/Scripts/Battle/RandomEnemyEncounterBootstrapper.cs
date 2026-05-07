@@ -374,8 +374,8 @@ public class RandomEnemyEncounterBootstrapper : MonoBehaviour
         variance.dmgDelta = RollRange(rules.dmgRange);
         variance.spdDelta = RollRange(rules.spdRange);
         variance.idtDelta = RollRange(rules.idtRange);
-        variance.hitDeltaX10 = RollRange(rules.hitRangeX10);
-        variance.acDeltaX10 = RollRange(rules.acRangeX10);
+        variance.hitDelta = RollRange(rules.hitRange);
+        variance.acDelta = RollRange(rules.acRange);
         variance.criDelta = RollRange(rules.criRange);
         variance.crdDelta = RollRange(rules.crdRange);
         variance.burnResistDelta = RollRange(rules.burnResistRange);

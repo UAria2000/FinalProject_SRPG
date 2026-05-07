@@ -59,6 +59,16 @@ public static class SaveDataMapper
             }
         }
 
+        if (profile.graveyardUnits != null)
+        {
+            for (int i = 0; i < profile.graveyardUnits.Count; i++)
+            {
+                RosterUnitSaveData unit = RosterUnitSaveData.FromPersistent(profile.graveyardUnits[i], profileController.PromotionBonusPercentPerRank);
+                if (unit != null)
+                    save.graveyardUnits.Add(unit);
+            }
+        }
+
         if (worldRunManager != null)
         {
             IReadOnlyList<PartyMemberData> orderedParty = worldRunManager.GetDisplayOrderedPartyMembers();
@@ -97,16 +107,29 @@ public static class SaveDataMapper
 
         save.hasActiveWorld = true;
         save.mapRadius = worldRunManager.MapData.radius;
-        save.currentTileId = worldRunManager.CurrentTile != null ? worldRunManager.CurrentTile.tileId : -1;
-        save.selectedTileId = worldRunManager.SelectedTile != null ? worldRunManager.SelectedTile.tileId : -1;
+
+        bool interruptedArrival = worldRunManager.ShouldSaveAsInterruptedArrival();
+        WorldTileData safeCurrentTile = interruptedArrival
+            ? worldRunManager.GetSafeCurrentTileForSave()
+            : worldRunManager.CurrentTile;
+
+        save.currentTileId = safeCurrentTile != null ? safeCurrentTile.tileId : -1;
+        save.selectedTileId = interruptedArrival
+            ? -1
+            : (worldRunManager.SelectedTile != null ? worldRunManager.SelectedTile.tileId : -1);
         save.difficultyId = worldRunManager.Settings != null ? worldRunManager.Settings.difficulty.ToString() : string.Empty;
 
         IReadOnlyList<WorldTileData> tiles = worldRunManager.MapData.Tiles;
         for (int i = 0; i < tiles.Count; i++)
         {
             WorldTileSaveData tile = WorldTileSaveData.FromRuntime(tiles[i]);
-            if (tile != null)
-                save.tiles.Add(tile);
+            if (tile == null)
+                continue;
+
+            if (interruptedArrival)
+                tile.revealed = worldRunManager.ShouldRevealTileForInterruptedSave(tiles[i]);
+
+            save.tiles.Add(tile);
         }
 
         WorldRunTransientState state = worldRunManager.CurrentWorldRunState;
@@ -222,6 +245,9 @@ public static class SaveDataMapper
             return;
 
         profile.rosterUnits.Clear();
+        if (profile.graveyardUnits == null)
+            profile.graveyardUnits = new List<PersistentRosterUnitData>();
+        profile.graveyardUnits.Clear();
         profile.nextObtainedOrder = saveData.nextObtainedOrder > 0 ? saveData.nextObtainedOrder : 1;
 
         if (profile.accountCurrencies == null)
@@ -241,6 +267,19 @@ public static class SaveDataMapper
                 PersistentRosterUnitData runtime = ToPersistentRosterUnit(saveData.rosterUnits[i], resolver);
                 if (runtime != null)
                     profile.rosterUnits.Add(runtime);
+            }
+        }
+
+        if (saveData.graveyardUnits != null)
+        {
+            for (int i = 0; i < saveData.graveyardUnits.Count; i++)
+            {
+                PersistentRosterUnitData runtime = ToPersistentRosterUnit(saveData.graveyardUnits[i], resolver);
+                if (runtime != null)
+                {
+                    runtime.persistentCurrentHP = 0;
+                    profile.graveyardUnits.Add(runtime);
+                }
             }
         }
 
@@ -269,6 +308,7 @@ public static class SaveDataMapper
         runtime.unitViewDefinition = resolver.FindUnitViewDefinition(data.unitViewDefinitionName);
         runtime.isExchangeable = data.isExchangeable;
         runtime.isFavorite = data.isFavorite;
+        runtime.isConvertedFromPrisoner = data.isConvertedFromPrisoner;
         runtime.isNft = data.isNft || (unitDef != null && unitDef.isNftUnit);
         runtime.unitRankOverride = Mathf.Clamp(data.unitRankOverride, 0, 9);
         runtime.currentLevel = Mathf.Max(1, data.level);

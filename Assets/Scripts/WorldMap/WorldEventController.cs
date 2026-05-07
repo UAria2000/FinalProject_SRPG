@@ -60,6 +60,7 @@ public class WorldEventController : MonoBehaviour
 
     public bool IsBusy =>
         popupOpen ||
+        (eventPopupUI != null && eventPopupUI.IsOpen) ||
         (questController != null && questController.IsPopupOpen) ||
         (battleBridge != null && battleBridge.IsBattleRunning);
 

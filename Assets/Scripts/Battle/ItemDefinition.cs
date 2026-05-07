@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public enum MainUIItemCategory
 {
@@ -52,10 +53,12 @@ public class ItemDefinition : ScriptableObject
     public int equipmentSpdBonus = 0;
     [Tooltip("장비 착용 중 적용되는 IDT 고정 보너스(%)")]
     public int equipmentIdtBonus = 0;
-    [Tooltip("장비 착용 중 적용되는 HIT 표시값 보너스. 예: 10 입력 시 UI HIT +10, 전투 실스탯 +1.0")]
-    public int equipmentHitBonusX10 = 0;
-    [Tooltip("장비 착용 중 적용되는 AC 표시값 보너스. 예: 10 입력 시 UI AC +10, 전투 실스탯 +1.0")]
-    public int equipmentAcBonusX10 = 0;
+    [FormerlySerializedAs("equipmentHitBonusX10")]
+    [Tooltip("장비 착용 중 적용되는 HIT 고정 보너스")]
+    public int equipmentHitBonus = 0;
+    [FormerlySerializedAs("equipmentAcBonusX10")]
+    [Tooltip("장비 착용 중 적용되는 AC 고정 보너스")]
+    public int equipmentAcBonus = 0;
     [Tooltip("장비 착용 중 적용되는 CRI 고정 보너스(%)")]
     public int equipmentCriBonus = 0;
     [Tooltip("장비 착용 중 적용되는 CRD 고정 보너스(%)")]
@@ -75,12 +78,28 @@ public class ItemDefinition : ScriptableObject
     [Range(0f, 100f)] public float equipmentStartShieldPercentOfMaxHP = 0f;
 
     [Header("Prisoner Item")]
-    [Tooltip("체크 시 이 아이템은 포획 보상용 포로 아이템으로 취급된다. 전투 종료 후 월드 포로 데이터로 변환된다.")]
+    [Tooltip("체크 시 이 아이템은 포획 보상용 포로 아이템으로 취급된다. 현재 임시 플로우에서는 전투 결과창에서 즉시 아군 유닛으로 전환된다.")]
     public bool isPrisonerItem = false;
-    [Tooltip("이 포로 아이템이 타락 완료 후 생성할 유닛 정의. 비워두면 포로로 변환할 수 없다.")]
-    public UnitDefinition prisonerSourceUnitDefinition;
-    [Tooltip("포로 UI에서 이 아이템 아이콘을 초상화로 우선 사용한다.")]
+
+    [FormerlySerializedAs("prisonerSourceUnitDefinition")]
+    [Tooltip("포획 후 즉시 생성할 아군용 유닛 정의. 예: Priest 포로 아이템 -> DarkPriest UnitDefinition. 비워두면 안전장치로 포획된 적 유닛 정의를 사용한다.")]
+    public UnitDefinition convertedAllyUnitDefinition;
+
+    [Tooltip("포획 후 즉시 생성할 아군용 유닛의 뷰 정의. 비워두면 안전장치로 포획된 적의 뷰를 사용한다.")]
+    public UnitViewDefinition convertedAllyUnitViewDefinition;
+
+    [Tooltip("포로 UI에서 이 아이템 아이콘을 초상화로 우선 사용한다. 현재 임시 플로우에서는 결과창 포획 아이콘에도 이 아이콘을 사용한다.")]
     public bool useItemIconAsPrisonerPortrait = true;
+
+    public UnitDefinition GetConvertedAllyUnitDefinition(UnitDefinition fallbackUnit = null)
+    {
+        return convertedAllyUnitDefinition != null ? convertedAllyUnitDefinition : fallbackUnit;
+    }
+
+    public UnitViewDefinition GetConvertedAllyUnitViewDefinition(UnitViewDefinition fallbackView = null)
+    {
+        return convertedAllyUnitViewDefinition != null ? convertedAllyUnitViewDefinition : fallbackView;
+    }
 
     [Header("Effects")]
     public List<BattleEffectBlock> effects = new List<BattleEffectBlock>();

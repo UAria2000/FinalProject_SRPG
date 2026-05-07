@@ -413,10 +413,10 @@ public class EnemyInfoPanel : MonoBehaviour
     private void RefreshStats(BattleUnit enemy)
     {
         if (dmgValueText != null) dmgValueText.text = enemy.DMG.ToString();
-        if (hitValueText != null) hitValueText.text = Mathf.RoundToInt(enemy.HIT * 10f).ToString();
-        if (acValueText != null) acValueText.text = Mathf.RoundToInt(enemy.AC * 10f).ToString();
+        if (hitValueText != null) hitValueText.text = Mathf.RoundToInt(enemy.HIT).ToString();
+        if (acValueText != null) acValueText.text = Mathf.RoundToInt(enemy.AC).ToString();
         if (idtValueText != null) idtValueText.text = BattleStatFormatter.FormatPercent(enemy.IDT);
-        if (criValueText != null) criValueText.text = enemy.CRI.ToString();
+        if (criValueText != null) criValueText.text = BattleStatFormatter.FormatPercent(enemy.CRI);
         if (crdValueText != null) crdValueText.text = enemy.CRD.ToString();
         if (spdValueText != null) spdValueText.text = enemy.SPD.ToString();
 
@@ -556,16 +556,16 @@ public class EnemyInfoPanel : MonoBehaviour
             selectedSkillDescriptionText.text = skill.description;
 
         if (selectedSkillPowerText != null)
-            selectedSkillPowerText.text = BattleSkillInfoFormatter.GetPowerText(skill);
+            selectedSkillPowerText.text = BattleSkillInfoFormatter.GetPowerValueText(skill);
 
         if (selectedSkillAccuracyText != null)
-            selectedSkillAccuracyText.text = BattleSkillInfoFormatter.GetSuccessText(skill);
+            selectedSkillAccuracyText.text = BattleSkillInfoFormatter.GetSuccessValueText(skill);
 
         if (selectedSkillCooldownText != null)
-            selectedSkillCooldownText.text = BattleSkillInfoFormatter.GetCooldownText(skill);
+            selectedSkillCooldownText.text = BattleSkillInfoFormatter.GetCooldownValueText(skill);
 
         if (selectedSkillEffectText != null)
-            selectedSkillEffectText.text = BattleSkillInfoFormatter.GetEffectText(skill);
+            selectedSkillEffectText.text = BattleSkillInfoFormatter.GetEffectValueText(skill);
 
         RefreshPositionHexes(skill);
     }

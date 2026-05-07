@@ -42,10 +42,20 @@ public class BattleUnitView : MonoBehaviour
 
     private RectTransform rectTransform;
     private bool currentlyUsingFinishedVisual;
+    private Sprite bodyOverrideSprite;
 
     public BattleUnit Unit { get; private set; }
     public RectTransform HoverAnchor => hoverAnchor != null ? hoverAnchor : rectTransform;
     public RectTransform ClickableArea => clickableArea;
+    public Vector2 AnchoredPosition
+    {
+        get
+        {
+            if (rectTransform == null)
+                rectTransform = GetComponent<RectTransform>();
+            return rectTransform != null ? rectTransform.anchoredPosition : Vector2.zero;
+        }
+    }
 
     private void Awake()
     {
@@ -242,7 +252,9 @@ public class BattleUnitView : MonoBehaviour
             return;
 
         Sprite sprite = null;
-        if (Unit != null && Unit.ViewDefinition != null)
+        if (!useDeadBattleSprite && bodyOverrideSprite != null)
+            sprite = bodyOverrideSprite;
+        if (sprite == null && Unit != null && Unit.ViewDefinition != null)
             sprite = Unit.ViewDefinition.GetBattleSprite(useDeadBattleSprite);
         if (sprite == null && Unit != null)
             sprite = Unit.BattleSprite;
@@ -271,47 +283,84 @@ public class BattleUnitView : MonoBehaviour
             finishedGrayOverlayImage.gameObject.SetActive(false);
     }
 
-    public void SetPositionInstant(Vector3 worldPosition)
+    public void SetBodySpriteOverride(Sprite overrideSprite)
     {
-        if (rectTransform == null)
-            rectTransform = GetComponent<RectTransform>();
-        rectTransform.position = worldPosition;
+        bodyOverrideSprite = overrideSprite;
+        ApplyBodySprite(Unit != null && Unit.IsDead);
     }
 
-    public IEnumerator MoveToPosition(Vector3 worldPosition, float duration)
+    public void ClearBodySpriteOverride()
+    {
+        if (bodyOverrideSprite == null)
+            return;
+
+        bodyOverrideSprite = null;
+        ApplyBodySprite(Unit != null && Unit.IsDead);
+    }
+
+    public void SetPositionInstant(Vector2 anchoredPosition)
+    {
+        if (rectTransform == null)
+            rectTransform = GetComponent<RectTransform>();
+        if (rectTransform != null)
+            rectTransform.anchoredPosition = anchoredPosition;
+    }
+
+    public void SetPositionInstant(Vector3 anchoredPosition)
+    {
+        SetPositionInstant(new Vector2(anchoredPosition.x, anchoredPosition.y));
+    }
+
+    public IEnumerator MoveToPosition(Vector2 anchoredPosition, float duration)
     {
         if (rectTransform == null)
             rectTransform = GetComponent<RectTransform>();
 
-        Vector3 start = rectTransform.position;
+        if (rectTransform == null)
+            yield break;
+
+        Vector2 start = rectTransform.anchoredPosition;
         float elapsed = 0f;
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
-            rectTransform.position = Vector3.Lerp(start, worldPosition, Mathf.Clamp01(elapsed / duration));
+            rectTransform.anchoredPosition = Vector2.Lerp(start, anchoredPosition, Mathf.Clamp01(elapsed / duration));
             yield return null;
         }
-        rectTransform.position = worldPosition;
+        rectTransform.anchoredPosition = anchoredPosition;
     }
 
-    public IEnumerator PlayAttackMove(Vector3 targetWorldPosition, float moveRatio, float maxDistance, float duration)
+    public IEnumerator MoveToPosition(Vector3 anchoredPosition, float duration)
+    {
+        yield return MoveToPosition(new Vector2(anchoredPosition.x, anchoredPosition.y), duration);
+    }
+
+    public IEnumerator PlayAttackMove(Vector2 targetAnchoredPosition, float moveRatio, float maxDistance, float duration, Sprite temporaryBodySprite = null)
     {
         if (rectTransform == null)
             rectTransform = GetComponent<RectTransform>();
 
-        Vector3 originalPos = rectTransform.position;
-        Vector3 dir = targetWorldPosition - originalPos;
-        float distance = dir.magnitude;
-        if (distance > 0.001f) dir.Normalize();
-        float moveDistance = Mathf.Min(distance * moveRatio, maxDistance);
-        Vector3 attackPos = originalPos + dir * moveDistance;
+        if (rectTransform == null)
+            yield break;
 
-        float half = duration * 0.5f;
+        bool usedTemporarySprite = temporaryBodySprite != null;
+        if (usedTemporarySprite)
+            SetBodySpriteOverride(temporaryBodySprite);
+
+        Vector2 originalPos = rectTransform.anchoredPosition;
+        Vector2 dir = targetAnchoredPosition - originalPos;
+        float distance = dir.magnitude;
+        if (distance > 0.001f)
+            dir.Normalize();
+        float moveDistance = Mathf.Min(distance * moveRatio, maxDistance);
+        Vector2 attackPos = originalPos + dir * moveDistance;
+
+        float half = Mathf.Max(0.01f, duration * 0.5f);
         float elapsed = 0f;
         while (elapsed < half)
         {
             elapsed += Time.deltaTime;
-            rectTransform.position = Vector3.Lerp(originalPos, attackPos, Mathf.Clamp01(elapsed / half));
+            rectTransform.anchoredPosition = Vector2.Lerp(originalPos, attackPos, Mathf.Clamp01(elapsed / half));
             yield return null;
         }
 
@@ -319,10 +368,18 @@ public class BattleUnitView : MonoBehaviour
         while (elapsed < half)
         {
             elapsed += Time.deltaTime;
-            rectTransform.position = Vector3.Lerp(attackPos, originalPos, Mathf.Clamp01(elapsed / half));
+            rectTransform.anchoredPosition = Vector2.Lerp(attackPos, originalPos, Mathf.Clamp01(elapsed / half));
             yield return null;
         }
 
-        rectTransform.position = originalPos;
+        rectTransform.anchoredPosition = originalPos;
+
+        if (usedTemporarySprite)
+            ClearBodySpriteOverride();
+    }
+
+    public IEnumerator PlayAttackMove(Vector3 targetAnchoredPosition, float moveRatio, float maxDistance, float duration)
+    {
+        yield return PlayAttackMove(new Vector2(targetAnchoredPosition.x, targetAnchoredPosition.y), moveRatio, maxDistance, duration);
     }
 }

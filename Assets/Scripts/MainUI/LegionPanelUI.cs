@@ -635,7 +635,7 @@ public class LegionPanelUI : MainUIPanelBase, IDropHandler
     private List<PersistentRosterUnitData> BuildFilteredUnits()
     {
         List<PersistentRosterUnitData> units = persistentProfileController != null
-            ? persistentProfileController.GetRosterUnits().Where(u => u != null).ToList()
+            ? persistentProfileController.GetRosterUnits().Where(u => u != null && !persistentProfileController.IsDeadUnit(u)).ToList()
             : new List<PersistentRosterUnitData>();
 
         units = units.Where(PassesFilter).ToList();
@@ -712,7 +712,7 @@ public class LegionPanelUI : MainUIPanelBase, IDropHandler
         if (unit == null)
             return false;
 
-        if (unit.unitDefinition != null && !unit.unitDefinition.showInLegion)
+        if (unit.unitDefinition != null && !unit.unitDefinition.showInLegion && !unit.isConvertedFromPrisoner)
             return false;
 
         bool nftFilterActive = filterExchangeableOnly || filterNftOnly;

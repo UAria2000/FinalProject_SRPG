@@ -54,8 +54,13 @@ public static class BattleSkillInfoFormatter
 
     public static string GetPowerText(SkillDefinition skill)
     {
+        return "위력: " + GetPowerValueText(skill);
+    }
+
+    public static string GetPowerValueText(SkillDefinition skill)
+    {
         if (skill == null || skill.effects == null || skill.effects.Count == 0)
-            return "위력: -";
+            return "-";
 
         List<string> entries = new List<string>();
         for (int i = 0; i < skill.effects.Count; i++)
@@ -78,7 +83,7 @@ public static class BattleSkillInfoFormatter
             }
         }
 
-        return entries.Count > 0 ? "위력: " + string.Join(" / ", entries) : "위력: -";
+        return entries.Count > 0 ? string.Join(" / ", entries) : "-";
     }
 
     public static string GetSuccessText(SkillDefinition skill)
@@ -86,8 +91,17 @@ public static class BattleSkillInfoFormatter
         if (skill == null)
             return "성공률: -";
 
+        string label = skill.resolutionMode == SkillResolutionMode.Attack || skill.HasDamageEffect() ? "명중률" : "성공률";
+        return label + ": " + GetSuccessValueText(skill);
+    }
+
+    public static string GetSuccessValueText(SkillDefinition skill)
+    {
+        if (skill == null)
+            return "-";
+
         if (skill.resolutionMode == SkillResolutionMode.Attack || skill.HasDamageEffect())
-            return string.Format("명중률: {0}%", FormatPercentNumber(skill.accuracyCoefficientPercent));
+            return string.Format("{0}%", FormatPercentNumber(skill.accuracyCoefficientPercent));
 
         float success = 100f;
         bool found = false;
@@ -104,21 +118,31 @@ public static class BattleSkillInfoFormatter
             }
         }
 
-        return found ? string.Format("성공률: {0}%", FormatPercentNumber(success)) : "성공률: 100%";
+        return found ? string.Format("{0}%", FormatPercentNumber(success)) : "100%";
     }
 
     public static string GetCooldownText(SkillDefinition skill)
     {
-        if (skill == null)
-            return "쿨타임: -";
+        return "쿨타임: " + GetCooldownValueText(skill);
+    }
 
-        return skill.cooldownTurns > 0 ? string.Format("쿨타임: {0}턴", skill.cooldownTurns) : "쿨타임: 없음";
+    public static string GetCooldownValueText(SkillDefinition skill)
+    {
+        if (skill == null)
+            return "-";
+
+        return skill.cooldownTurns > 0 ? string.Format("{0}턴", skill.cooldownTurns) : "없음";
     }
 
     public static string GetEffectText(SkillDefinition skill)
     {
+        return "효과: " + GetEffectValueText(skill);
+    }
+
+    public static string GetEffectValueText(SkillDefinition skill)
+    {
         if (skill == null)
-            return "효과: -";
+            return "-";
 
         List<string> entries = new List<string>();
 
@@ -165,7 +189,7 @@ public static class BattleSkillInfoFormatter
         if (skill.disableAfterUseInBattle)
             AddEffectEntry(entries, "전투당 1회");
 
-        return entries.Count > 0 ? "효과: " + string.Join(", ", entries) : "효과: -";
+        return entries.Count > 0 ? string.Join(", ", entries) : "-";
     }
 
     private static string FormatEffectBlock(BattleEffectBlock block)

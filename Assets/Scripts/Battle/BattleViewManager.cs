@@ -28,7 +28,7 @@ public class BattleViewManager : MonoBehaviour
 
         BattleUnitView view = Instantiate(prefab, viewRoot);
         view.Initialize(unit, GetSlotLabel(unit.Team, unit.SlotIndex));
-        view.SetPositionInstant(GetAnchorPosition(unit.Team, unit.SlotIndex));
+        view.SetPositionInstant(GetAnchorAnchoredPosition(unit.Team, unit.SlotIndex));
 
         view.ConfigureClickHandling(inputController);
 
@@ -72,6 +72,25 @@ public class BattleViewManager : MonoBehaviour
         }
     }
 
+    public Vector2 GetAnchorAnchoredPosition(TeamType team, int slotIndex)
+    {
+        RectTransform[] anchors = team == TeamType.Ally ? allyAnchors : enemyAnchors;
+        if (anchors == null || slotIndex < 0 || slotIndex >= anchors.Length || anchors[slotIndex] == null)
+            return Vector2.zero;
+
+        RectTransform anchor = anchors[slotIndex];
+        if (viewRoot != null && anchor.parent == viewRoot)
+            return anchor.anchoredPosition;
+
+        if (viewRoot != null)
+        {
+            Vector3 local = viewRoot.InverseTransformPoint(anchor.position);
+            return new Vector2(local.x, local.y);
+        }
+
+        return anchor.anchoredPosition;
+    }
+
     public Vector3 GetAnchorPosition(TeamType team, int slotIndex)
     {
         RectTransform[] anchors = team == TeamType.Ally ? allyAnchors : enemyAnchors;
@@ -108,7 +127,7 @@ public class BattleViewManager : MonoBehaviour
             BattleUnit unit = units[i];
             BattleUnitView view = GetView(unit);
             if (view == null) continue;
-            routines.Add(view.MoveToPosition(GetAnchorPosition(team, unit.SlotIndex), duration));
+            routines.Add(view.MoveToPosition(GetAnchorAnchoredPosition(team, unit.SlotIndex), duration));
         }
     }
 
@@ -120,7 +139,7 @@ public class BattleViewManager : MonoBehaviour
         {
             BattleUnitView view = GetView(units[i]);
             if (view != null)
-                view.SetPositionInstant(GetAnchorPosition(team, units[i].SlotIndex));
+                view.SetPositionInstant(GetAnchorAnchoredPosition(team, units[i].SlotIndex));
         }
     }
 

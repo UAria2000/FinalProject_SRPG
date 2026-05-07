@@ -119,10 +119,10 @@ public class UnitInstanceStatVariance
     public int spdDelta;
     public int idtDelta;
 
-    [Tooltip("실스탯 단위. UI는 x10 표시")]
-    public int hitDeltaX10;
-    [Tooltip("실스탯 단위. UI는 x10 표시")]
-    public int acDeltaX10;
+    [FormerlySerializedAs("hitDeltaX10")]
+    public int hitDelta;
+    [FormerlySerializedAs("acDeltaX10")]
+    public int acDelta;
 
     public int criDelta;
     public int crdDelta;
@@ -142,8 +142,8 @@ public class UnitInstanceStatVariance
             dmgDelta = dmgDelta,
             spdDelta = spdDelta,
             idtDelta = idtDelta,
-            hitDeltaX10 = hitDeltaX10,
-            acDeltaX10 = acDeltaX10,
+            hitDelta = hitDelta,
+            acDelta = acDelta,
             criDelta = criDelta,
             crdDelta = crdDelta,
             burnResistDelta = burnResistDelta,
@@ -162,8 +162,10 @@ public class StatVarianceRules
     public Vector2Int dmgRange = Vector2Int.zero;
     public Vector2Int spdRange = Vector2Int.zero;
     public Vector2Int idtRange = Vector2Int.zero;
-    public Vector2Int hitRangeX10 = Vector2Int.zero;
-    public Vector2Int acRangeX10 = Vector2Int.zero;
+    [FormerlySerializedAs("hitRangeX10")]
+    public Vector2Int hitRange = Vector2Int.zero;
+    [FormerlySerializedAs("acRangeX10")]
+    public Vector2Int acRange = Vector2Int.zero;
     public Vector2Int criRange = Vector2Int.zero;
     public Vector2Int crdRange = Vector2Int.zero;
     [FormerlySerializedAs("poisonResistRange")]

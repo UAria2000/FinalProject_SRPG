@@ -118,7 +118,36 @@ public class BattleResultPartyCardUI : MonoBehaviour
             return;
 
         float t = Mathf.Clamp01(normalizedTime);
-        float value = Mathf.Lerp(startNormalized, endNormalized, t);
+
+        float value;
+        int displayExp;
+        int need;
+
+        if (boundData.DidLevelUp)
+        {
+            if (t < 0.5f)
+            {
+                float firstT = Mathf.Clamp01(t / 0.5f);
+                need = Mathf.Max(1, boundData.expToNextBefore);
+                value = Mathf.Lerp(startNormalized, 1f, firstT);
+                displayExp = Mathf.RoundToInt(Mathf.Lerp(boundData.expBefore, need, firstT));
+            }
+            else
+            {
+                float secondT = Mathf.Clamp01((t - 0.5f) / 0.5f);
+                need = Mathf.Max(1, boundData.expToNextAfter);
+                value = Mathf.Lerp(0f, endNormalized, secondT);
+                displayExp = Mathf.RoundToInt(Mathf.Lerp(0f, boundData.expAfter, secondT));
+            }
+        }
+        else
+        {
+            value = Mathf.Lerp(startNormalized, endNormalized, t);
+            displayExp = Mathf.RoundToInt(Mathf.Lerp(boundData.expBefore, boundData.expAfter, t));
+            need = Mathf.Max(1, boundData.expToNextAfter);
+        }
+
+        value = Mathf.Clamp01(value);
 
         if (expSlider != null)
         {
@@ -129,9 +158,6 @@ public class BattleResultPartyCardUI : MonoBehaviour
 
         if (expFillImage != null)
             expFillImage.fillAmount = value;
-
-        int displayExp = Mathf.RoundToInt(Mathf.Lerp(boundData.expBefore, boundData.expAfter, t));
-        int need = Mathf.Max(1, boundData.expToNextAfter);
 
         int clampedDisplayExp = Mathf.Clamp(displayExp, 0, need);
 

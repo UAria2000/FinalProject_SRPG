@@ -142,8 +142,8 @@ public struct LegionEquipmentBonusSummary
     public int dmg;
     public int spd;
     public int idt;
-    public int hitX10;
-    public int acX10;
+    public int hit;
+    public int ac;
     public int cri;
     public int crd;
 

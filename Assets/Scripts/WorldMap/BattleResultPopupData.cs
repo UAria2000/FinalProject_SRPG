@@ -44,6 +44,8 @@ public class BattleResultPartyMemberSnapshot
         }
     }
 
+    public bool DidLevelUp => levelAfter > levelBefore;
+
     public Sprite GetPortraitSprite()
     {
         if (unitViewDefinition == null)

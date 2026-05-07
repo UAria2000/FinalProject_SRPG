@@ -92,11 +92,7 @@ public class BattlePresentationController : MonoBehaviour
 
         if (canPlayerAct)
         {
-            if (actingAlly != lastAutoShownActingAlly)
-            {
-                battleManager.SelectedAllyInfoUnit = actingAlly;
-                lastAutoShownActingAlly = actingAlly;
-            }
+            lastAutoShownActingAlly = actingAlly;
         }
         else
         {
