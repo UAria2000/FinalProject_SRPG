@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -17,6 +18,7 @@ public class WorldBattleBridge : MonoBehaviour
     [SerializeField] private bool waitOneFrameAfterBattleRootActivation = true;
 
     [Header("UI")]
+    [SerializeField] private BattleResultPopupUI battleResultPopupUI;
     [SerializeField] private BattleRewardPopupUI battleRewardPopupUI;
     [SerializeField] private BattleOutcomeMessageUI outcomeMessageUI;
     [SerializeField] private WorldSettlementPopupUI worldSettlementPopupUI;
@@ -129,8 +131,17 @@ public class WorldBattleBridge : MonoBehaviour
 
     private bool PrepareEnemyParty(WorldTileData tile, FactionBattleConfig config)
     {
+        int mainLevel = runManager != null ? runManager.GetMainCharacterLevelForEnemyScaling() : 1;
+        WorldDifficulty difficulty = settings != null ? settings.difficulty : WorldDifficulty.Normal;
+
         if (tile.eventType == WorldTileEventType.Boss && config.bossPartyDefinition != null)
         {
+            if (encounterBootstrapper != null)
+            {
+                encounterBootstrapper.GenerateAndApplyEnemyPartyFromPartyDefinition(config.bossPartyDefinition, mainLevel, difficulty);
+                return true;
+            }
+
             battleManager.SetEnemyPartyDefinition(config.bossPartyDefinition);
             return true;
         }
@@ -139,7 +150,7 @@ public class WorldBattleBridge : MonoBehaviour
         if (table == null || encounterBootstrapper == null)
             return false;
 
-        encounterBootstrapper.GenerateAndApplyEnemyPartyFromTable(table);
+        encounterBootstrapper.GenerateAndApplyEnemyPartyFromTable(table, mainLevel, difficulty);
         return true;
     }
 
@@ -179,101 +190,25 @@ public class WorldBattleBridge : MonoBehaviour
     {
         isBattleRunning = false;
 
-        switch (result)
+        yield return StartCoroutine(ShowBattleResultRoutine(result));
+
+        if (screenFader != null)
+            yield return screenFader.FadeOut(battleExitFadeOutDuration);
+
+        SetWorldBattleRoots(false);
+
+        if (runManager != null)
+            runManager.RemoveDeadPartyMembersFromActiveParty();
+
+        bool openSettlementAfterReturn = result == BattleResultType.WorldFailure;
+
+        if (pendingTile != null && runManager != null)
         {
-            case BattleResultType.Victory:
-                yield return StartCoroutine(ShowVictoryRewardRoutine());
-                break;
-
-            case BattleResultType.Flee:
-                if (outcomeMessageUI != null)
-                {
-                    bool waiting = true;
-                    outcomeMessageUI.Open("전투에서 도주했습니다.", "확인", () => waiting = false);
-                    while (waiting) yield return null;
-                }
-                yield return StartCoroutine(ReturnToWorldAfterDefeatRoutine(true, false));
-                break;
-
-            case BattleResultType.WorldFailure:
-                if (outcomeMessageUI != null)
-                {
-                    bool waitingFail = true;
-                    outcomeMessageUI.Open("메인 캐릭터가 사망했습니다. 월드 정복 실패", "확인", () => waitingFail = false);
-                    while (waitingFail) yield return null;
-                }
-                yield return StartCoroutine(ReturnToWorldAfterDefeatRoutine(true, true));
-                break;
-
-            default:
-                yield return StartCoroutine(ReturnToWorldAfterDefeatRoutine(true, false));
-                break;
-        }
-    }
-
-    private IEnumerator ShowVictoryRewardRoutine()
-    {
-        BattleRewardSummary summary = battleManager != null ? battleManager.CurrentBattleRewardSummary : null;
-
-        if (summary != null && questController != null)
-        {
-            int defeatedCount = summary.defeatedEnemyUnits != null ? summary.defeatedEnemyUnits.Count : 0;
-            if (defeatedCount > 0)
-                questController.NotifyEnemyKilled(defeatedCount);
-        }
-
-        if (summary != null && runManager != null)
-        {
-            runManager.AddWorldSoul(summary.soulReward);
-            runManager.AddPartyExperienceToAllMembers(summary.expReward);
-            runManager.AddLootToWorldInventory(summary.droppedItems);
-
-            if (summary.capturedPrisonerRewards != null && summary.capturedPrisonerRewards.Count > 0)
-                runManager.AddCapturedPrisonerRewards(summary.capturedPrisonerRewards);
-            else if (summary.capturedPrisonerItems != null && summary.capturedPrisonerItems.Count > 0)
-                runManager.AddCapturedPrisonerItems(summary.capturedPrisonerItems);
+            if (result == BattleResultType.Victory)
+                runManager.ResolveCombatVictory(pendingTile);
             else
-                runManager.AddCapturedPrisoners(summary.capturedPrisoners);
-
-            runManager.RemoveDeadPartyMembersFromActiveParty();
+                runManager.ResolveCombatDefeat(pendingTile, true);
         }
-
-        if (battleRewardPopupUI != null && summary != null)
-        {
-            bool waiting = true;
-            battleRewardPopupUI.Open(summary, () => waiting = false);
-            while (waiting) yield return null;
-        }
-
-        if (screenFader != null)
-            yield return screenFader.FadeOut(battleExitFadeOutDuration);
-
-        SetWorldBattleRoots(false);
-
-        if (runManager != null)
-            runManager.RemoveDeadPartyMembersFromActiveParty();
-
-        if (pendingTile != null && runManager != null)
-            runManager.ResolveCombatVictory(pendingTile);
-
-        pendingTile = null;
-
-        if (screenFader != null)
-            yield return screenFader.FadeIn(battleExitFadeInDuration);
-    }
-
-    private IEnumerator ReturnToWorldAfterDefeatRoutine(bool returnToStartTile, bool openSettlementAfterReturn)
-    {
-        if (screenFader != null)
-            yield return screenFader.FadeOut(battleExitFadeOutDuration);
-
-        SetWorldBattleRoots(false);
-
-        if (runManager != null)
-            runManager.RemoveDeadPartyMembersFromActiveParty();
-
-        if (pendingTile != null && runManager != null)
-            runManager.ResolveCombatDefeat(pendingTile, returnToStartTile);
 
         pendingTile = null;
 
@@ -282,6 +217,212 @@ public class WorldBattleBridge : MonoBehaviour
 
         if (openSettlementAfterReturn)
             yield return StartCoroutine(OpenSettlementRoutine(false));
+    }
+
+    private IEnumerator ShowBattleResultRoutine(BattleResultType result)
+    {
+        BattleRewardSummary summary = battleManager != null ? battleManager.CurrentBattleRewardSummary : null;
+        BattleResultPopupData popupData = BuildAndGrantBattleResultData(summary, result);
+
+        if (battleResultPopupUI != null)
+        {
+            bool waiting = true;
+            battleResultPopupUI.Open(popupData, () => waiting = false);
+            while (waiting) yield return null;
+            yield break;
+        }
+
+        if (battleRewardPopupUI != null && summary != null)
+        {
+            bool waiting = true;
+            battleRewardPopupUI.Open(summary, () => waiting = false);
+            while (waiting) yield return null;
+            yield break;
+        }
+
+        if (outcomeMessageUI != null)
+        {
+            bool waiting = true;
+            outcomeMessageUI.Open(popupData != null ? popupData.GetTitleOrDefault() : GetResultTitle(result), "전투완료", () => waiting = false);
+            while (waiting) yield return null;
+        }
+    }
+
+    private BattleResultPopupData BuildAndGrantBattleResultData(BattleRewardSummary summary, BattleResultType result)
+    {
+        if (summary == null)
+            summary = new BattleRewardSummary();
+
+        summary.resultType = result;
+        ApplyRewardBonuses(summary);
+
+        int totalExp = Mathf.Max(0, summary.expReward);
+        int livingCount = runManager != null ? runManager.CountLivingActivePartyMembers() : 0;
+        int perLivingExp = livingCount > 0 ? totalExp / livingCount : 0;
+
+        BattleResultPopupData data = new BattleResultPopupData
+        {
+            resultType = result,
+            title = GetResultTitle(result),
+            soulReward = Mathf.Max(0, summary.soulReward),
+            expRewardTotal = totalExp,
+            expRewardPerLivingUnit = perLivingExp,
+            defeatedOrCapturedEnemyCount = summary.DefeatedOrCapturedEnemyCount,
+            baseSoulReward = summary.baseSoulReward,
+            baseExpReward = summary.baseExpReward,
+            totalBonusPercent = summary.rewardBonusPercent,
+            worldSizeBonusPercent = summary.worldSizeBonusPercent,
+            combatTypeBonusPercent = summary.combatTypeBonusPercent,
+        };
+
+        if (summary.capturedPrisonerRewards != null)
+        {
+            for (int i = 0; i < summary.capturedPrisonerRewards.Count && i < 4; i++)
+                data.capturedPrisoners.Add(summary.capturedPrisonerRewards[i]);
+        }
+
+        List<BattleResultPartyMemberSnapshot> snapshots = CapturePartySnapshotsBefore(perLivingExp);
+
+        if (summary.DefeatedOrCapturedEnemyCount > 0 && questController != null)
+            questController.NotifyEnemyKilled(summary.DefeatedOrCapturedEnemyCount);
+
+        if (runManager != null)
+        {
+            runManager.AddWorldSoul(summary.soulReward);
+            runManager.ConvertCapturedPrisonerRewardsToRoster(summary.capturedPrisonerRewards);
+
+            if (perLivingExp > 0)
+                runManager.AddPartyExperienceToAllMembers(perLivingExp);
+        }
+
+        RefreshPartySnapshotsAfter(snapshots);
+
+        for (int i = 0; i < snapshots.Count && i < 4; i++)
+            data.partyMembers.Add(snapshots[i]);
+
+        return data;
+    }
+
+    private void ApplyRewardBonuses(BattleRewardSummary summary)
+    {
+        if (summary == null)
+            return;
+
+        int sizeBonus = settings != null ? settings.GetBattleRewardSizeBonusPercent() : 0;
+        int combatBonus = settings != null && pendingTile != null ? settings.GetBattleRewardCombatBonusPercent(pendingTile.eventType) : 0;
+        int totalBonus = Mathf.Max(0, sizeBonus) + Mathf.Max(0, combatBonus);
+
+        summary.worldSizeBonusPercent = Mathf.Max(0, sizeBonus);
+        summary.combatTypeBonusPercent = Mathf.Max(0, combatBonus);
+        summary.ApplyRewardBonus(totalBonus);
+    }
+
+    private List<BattleResultPartyMemberSnapshot> CapturePartySnapshotsBefore(int perLivingExp)
+    {
+        List<BattleResultPartyMemberSnapshot> snapshots = new List<BattleResultPartyMemberSnapshot>();
+        BattlePartyRuntimeState runtime = runManager != null ? runManager.GetOrCreatePlayerPartyRuntimeState() : null;
+        if (runtime == null || runtime.members == null)
+            return snapshots;
+
+        List<PartyMemberData> ordered = new List<PartyMemberData>();
+        for (int i = 0; i < runtime.members.Count; i++)
+        {
+            if (runtime.members[i] != null)
+                ordered.Add(runtime.members[i]);
+        }
+
+        ordered.Sort((a, b) => a.startSlotIndex.CompareTo(b.startSlotIndex));
+
+        for (int i = 0; i < ordered.Count && i < 4; i++)
+        {
+            PartyMemberData member = ordered[i];
+            bool isDead = member.persistentCurrentHP == 0;
+            int level = Mathf.Max(1, member.currentLevel);
+            int expToNext = LegionFormula.GetExpToNextLevel(level);
+
+            snapshots.Add(new BattleResultPartyMemberSnapshot
+            {
+                memberData = member,
+                unitDefinition = member.unitDefinition,
+                unitViewDefinition = member.unitViewDefinition,
+                displayName = member.GetDisplayName(),
+                isDead = isDead,
+                isExchangeable = member.isExchangeable,
+                isNft = member.isNft || member.isExchangeable || (member.unitDefinition != null && member.unitDefinition.isNftUnit),
+                promotionRank = member.promotionRank,
+                levelBefore = level,
+                levelAfter = level,
+                originalLevel = Mathf.Max(1, member.originalLevel),
+                expBefore = Mathf.Max(0, member.currentExp),
+                expAfter = Mathf.Max(0, member.currentExp),
+                expToNextBefore = expToNext,
+                expToNextAfter = expToNext,
+                gainedExp = isDead ? 0 : Mathf.Max(0, perLivingExp),
+            });
+        }
+
+        return snapshots;
+    }
+
+    private void RefreshPartySnapshotsAfter(List<BattleResultPartyMemberSnapshot> snapshots)
+    {
+        if (snapshots == null || snapshots.Count == 0 || runManager == null)
+            return;
+
+        BattlePartyRuntimeState runtime = runManager.GetOrCreatePlayerPartyRuntimeState();
+        if (runtime == null || runtime.members == null)
+            return;
+
+        for (int i = 0; i < snapshots.Count; i++)
+        {
+            BattleResultPartyMemberSnapshot snapshot = snapshots[i];
+            if (snapshot == null || snapshot.memberData == null)
+                continue;
+
+            PartyMemberData after = FindRuntimeMemberByInstanceId(runtime, snapshot.memberData.instanceId);
+            if (after == null)
+                after = snapshot.memberData;
+
+            snapshot.memberData = after;
+            snapshot.levelAfter = Mathf.Max(1, after.currentLevel);
+            snapshot.expAfter = Mathf.Max(0, after.currentExp);
+            snapshot.expToNextAfter = LegionFormula.GetExpToNextLevel(snapshot.levelAfter);
+            snapshot.originalLevel = Mathf.Max(1, after.originalLevel);
+            snapshot.promotionRank = after.promotionRank;
+            snapshot.isExchangeable = after.isExchangeable;
+            snapshot.isNft = after.isNft || after.isExchangeable || (after.unitDefinition != null && after.unitDefinition.isNftUnit);
+        }
+    }
+
+    private PartyMemberData FindRuntimeMemberByInstanceId(BattlePartyRuntimeState runtime, string instanceId)
+    {
+        if (runtime == null || runtime.members == null || string.IsNullOrWhiteSpace(instanceId))
+            return null;
+
+        for (int i = 0; i < runtime.members.Count; i++)
+        {
+            PartyMemberData member = runtime.members[i];
+            if (member != null && member.instanceId == instanceId)
+                return member;
+        }
+
+        return null;
+    }
+
+    private string GetResultTitle(BattleResultType result)
+    {
+        switch (result)
+        {
+            case BattleResultType.Victory:
+                return "전투 승리";
+            case BattleResultType.Flee:
+                return "전투 이탈";
+            case BattleResultType.Defeat:
+            case BattleResultType.WorldFailure:
+                return "전투 패배";
+            default:
+                return "전투 결과";
+        }
     }
 
     private IEnumerator OpenSettlementRoutine(bool wasVictory)

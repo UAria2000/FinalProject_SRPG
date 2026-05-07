@@ -15,7 +15,7 @@ MonoBehaviour:
   itemId: item_bladedancer_captured
   itemName: "\uBD99\uC7A1\uD78C \uAC80\uBB34\uD76C"
   description: "\uBD99\uC7A1\uD78C \uAC80\uBB34\uD76C"
-  icon: {fileID: 21300000, guid: 9cddc543e1ed9434082ef2e355f6b48f, type: 3}
+  icon: {fileID: 21300000, guid: aee40a0df76d811449f3690985770327, type: 3}
   targetTeam: 1
   targetScope: 0
   itemTier: 1
@@ -28,6 +28,7 @@ MonoBehaviour:
   equipmentMaxHpBonus: 0
   equipmentDmgBonus: 0
   equipmentSpdBonus: 0
+  equipmentIdtBonus: 0
   equipmentHitBonusX10: 0
   equipmentAcBonusX10: 0
   equipmentCriBonus: 0

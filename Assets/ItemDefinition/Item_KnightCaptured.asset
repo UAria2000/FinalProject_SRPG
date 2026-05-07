@@ -15,7 +15,7 @@ MonoBehaviour:
   itemId: item_knight_captured
   itemName: "\uBD99\uC7A1\uD78C \uAE30\uC0AC"
   description: 
-  icon: {fileID: 21300000, guid: 45f1e23bf66ddf740b8c4e703c41dba4, type: 3}
+  icon: {fileID: 21300000, guid: ceacd74548d125242ae9e3483668763a, type: 3}
   targetTeam: 1
   targetScope: 0
   itemTier: 1
@@ -25,6 +25,21 @@ MonoBehaviour:
   consumeTurnOnUse: 1
   mainUICategory: 2
   canAssignToSharedConsumableSlot: 0
+  equipmentMaxHpBonus: 0
+  equipmentDmgBonus: 0
+  equipmentSpdBonus: 0
+  equipmentIdtBonus: 0
+  equipmentHitBonusX10: 0
+  equipmentAcBonusX10: 0
+  equipmentCriBonus: 0
+  equipmentCrdBonus: 0
+  equipmentAllResistBonus: 0
+  equipmentBurnResistBonus: 0
+  equipmentBleedResistBonus: 0
+  equipmentStunResistBonus: 0
+  equipmentFrostResistBonus: 0
+  equipmentBlindResistBonus: 0
+  equipmentStartShieldPercentOfMaxHP: 0
   isPrisonerItem: 1
   prisonerSourceUnitDefinition: {fileID: 11400000, guid: 592fc88aebc95f14da1c15df923601fc, type: 2}
   useItemIconAsPrisonerPortrait: 1

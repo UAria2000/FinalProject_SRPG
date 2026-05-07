@@ -354,6 +354,146 @@ public class WorldRunManager : MonoBehaviour
     public int GainPartyExperience(int amount) => AddPartyExperienceToAllMembers(amount);
     public int AddPartyExp(int amount) => AddPartyExperienceToAllMembers(amount);
 
+
+    public int GetMainCharacterLevelForEnemyScaling()
+    {
+        if (persistentProfileController == null)
+            persistentProfileController = UnityEngine.Object.FindFirstObjectByType<PersistentProfileController>();
+
+        int found = 0;
+        BattlePartyRuntimeState runtime = GetOrCreatePlayerPartyRuntimeState();
+        if (runtime != null && runtime.members != null)
+        {
+            for (int i = 0; i < runtime.members.Count; i++)
+            {
+                PartyMemberData member = runtime.members[i];
+                if (member == null || member.unitDefinition == null)
+                    continue;
+
+                if (member.unitDefinition.isMainPlayerCharacter)
+                    found = Mathf.Max(found, member.currentLevel);
+            }
+        }
+
+        if (found > 0)
+            return Mathf.Max(1, found);
+
+        if (persistentProfileController != null)
+        {
+            IReadOnlyList<PersistentRosterUnitData> roster = persistentProfileController.GetRosterUnits();
+            if (roster != null)
+            {
+                for (int i = 0; i < roster.Count; i++)
+                {
+                    PersistentRosterUnitData unit = roster[i];
+                    if (unit == null || unit.unitDefinition == null)
+                        continue;
+
+                    if (unit.unitDefinition.isMainPlayerCharacter)
+                        found = Mathf.Max(found, unit.currentLevel);
+                }
+            }
+        }
+
+        if (found > 0)
+            return Mathf.Max(1, found);
+
+        if (runtime != null && runtime.members != null)
+        {
+            for (int i = 0; i < runtime.members.Count; i++)
+            {
+                PartyMemberData member = runtime.members[i];
+                if (member != null)
+                    found = Mathf.Max(found, member.currentLevel);
+            }
+        }
+
+        return Mathf.Max(1, found > 0 ? found : 1);
+    }
+
+    public int CountLivingActivePartyMembers()
+    {
+        BattlePartyRuntimeState runtime = GetOrCreatePlayerPartyRuntimeState();
+        if (runtime == null || runtime.members == null)
+            return 0;
+
+        int count = 0;
+        for (int i = 0; i < runtime.members.Count; i++)
+        {
+            PartyMemberData member = runtime.members[i];
+            if (member == null)
+                continue;
+
+            if (member.persistentCurrentHP == 0)
+                continue;
+
+            count++;
+        }
+
+        return count;
+    }
+
+    public List<PersistentRosterUnitData> ConvertCapturedPrisonerRewardsToRoster(IReadOnlyList<CapturedPrisonerRewardEntry> prisonerRewards)
+    {
+        List<PersistentRosterUnitData> created = new List<PersistentRosterUnitData>();
+        if (prisonerRewards == null || prisonerRewards.Count == 0)
+            return created;
+
+        if (persistentProfileController == null)
+            persistentProfileController = UnityEngine.Object.FindFirstObjectByType<PersistentProfileController>();
+
+        if (persistentProfileController == null)
+            return created;
+
+        for (int i = 0; i < prisonerRewards.Count; i++)
+        {
+            CapturedPrisonerRewardEntry reward = prisonerRewards[i];
+            if (reward == null)
+                continue;
+
+            UnitDefinition sourceUnit = reward.fallbackUnit;
+            if (sourceUnit == null && reward.prisonerItem != null)
+                sourceUnit = reward.prisonerItem.prisonerSourceUnitDefinition;
+
+            if (sourceUnit == null)
+                continue;
+
+            int level = Mathf.Max(1, reward.capturedLevel);
+            PersistentRosterUnitData rosterUnit = new PersistentRosterUnitData
+            {
+                instanceId = Guid.NewGuid().ToString("N"),
+                instanceDisplayNameOverride = string.Empty,
+                fixedEpitaph = string.Empty,
+                unitDefinition = sourceUnit,
+                unitViewDefinition = reward.fallbackView,
+                isExchangeable = reward.isExchangeable,
+                isNft = reward.isExchangeable || sourceUnit.isNftUnit,
+                currentLevel = level,
+                originalLevel = level,
+                currentExp = 0,
+                levelGrowthMaxHp = 0,
+                levelGrowthDmg = 0,
+                promotionRank = 1,
+                statVariance = new UnitInstanceStatVariance(),
+                learnedSkills = new List<SkillDefinition>(),
+                battleLootDrops = new List<ItemDropDefinition>(),
+                persistentCurrentHP = -1
+            };
+
+            rosterUnit.EnsureDefaults();
+            persistentProfileController.AddRosterUnit(rosterUnit);
+            created.Add(rosterUnit);
+        }
+
+        if (created.Count > 0)
+        {
+            RaiseStorageChanged();
+            RequestAutoSaveAll();
+        }
+
+        return created;
+    }
+
     public WorldRestResult PreviewRestForActiveParty(
         WorldRestHealMode healMode,
         float percentOfMaxHp,

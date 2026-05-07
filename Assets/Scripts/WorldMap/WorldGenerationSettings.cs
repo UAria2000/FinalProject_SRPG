@@ -174,6 +174,26 @@ public class WorldGenerationSettings : ScriptableObject
         }
     }
 
+
+    public int GetBattleRewardSizeBonusPercent()
+    {
+        // radius 3은 초소형 테스트맵으로 취급한다. 실제 보상 기준은 4/5/6이다.
+        if (radius <= 4)
+            return 0;
+        if (radius == 5)
+            return 50;
+        return 100;
+    }
+
+    public int GetBattleRewardCombatBonusPercent(WorldTileEventType eventType)
+    {
+        if (eventType == WorldTileEventType.EliteBattle)
+            return 20;
+        if (eventType == WorldTileEventType.Boss)
+            return 50;
+        return 0;
+    }
+
     private FactionPresentation GetFactionPresentation(FactionType faction)
     {
         for (int i = 0; i < factionPresentations.Count; i++)

@@ -16,6 +16,7 @@ public class WorldMapHoverPressButtonUI : MonoBehaviour,
     [Header("Sprites")]
     [SerializeField] private Sprite normalSprite;
     [SerializeField] private Sprite hoverSprite;
+    [SerializeField] private Sprite pressedSprite;
 
     [Header("Pressed Feel")]
     [SerializeField] private Vector2 pressedOffset = new Vector2(3f, -3f);
@@ -83,7 +84,11 @@ public class WorldMapHoverPressButtonUI : MonoBehaviour,
     {
         if (targetImage != null)
         {
-            targetImage.sprite = isHovered && hoverSprite != null ? hoverSprite : normalSprite;
+            if (isPressed && pressedSprite != null)
+                targetImage.sprite = pressedSprite;
+            else
+                targetImage.sprite = isHovered && hoverSprite != null ? hoverSprite : normalSprite;
+
             targetImage.color = isPressed ? pressedColor : originalColor;
         }
 

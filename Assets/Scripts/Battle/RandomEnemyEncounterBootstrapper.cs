@@ -14,6 +14,10 @@ public class RandomEnemyEncounterBootstrapper : MonoBehaviour
 
     private PartyDefinition runtimeGeneratedEnemyParty;
 
+    private bool useDynamicLevelScaling;
+    private int dynamicReferenceLevel = 1;
+    private WorldDifficulty dynamicDifficulty = WorldDifficulty.Normal;
+
     private void Awake()
     {
         if (generateOnAwake)
@@ -30,10 +34,54 @@ public class RandomEnemyEncounterBootstrapper : MonoBehaviour
         encounterTable = table;
     }
 
+    public void ConfigureDynamicLevelScaling(int mainCharacterLevel, WorldDifficulty difficulty)
+    {
+        useDynamicLevelScaling = true;
+        dynamicReferenceLevel = Mathf.Max(1, mainCharacterLevel);
+        dynamicDifficulty = difficulty;
+    }
+
+    public void ClearDynamicLevelScaling()
+    {
+        useDynamicLevelScaling = false;
+        dynamicReferenceLevel = 1;
+        dynamicDifficulty = WorldDifficulty.Normal;
+    }
+
     public void GenerateAndApplyEnemyPartyFromTable(EnemyEncounterTable table)
     {
         encounterTable = table;
         GenerateAndApplyEnemyParty();
+    }
+
+    public void GenerateAndApplyEnemyPartyFromTable(EnemyEncounterTable table, int mainCharacterLevel, WorldDifficulty difficulty)
+    {
+        ConfigureDynamicLevelScaling(mainCharacterLevel, difficulty);
+        GenerateAndApplyEnemyPartyFromTable(table);
+    }
+
+    public void GenerateAndApplyEnemyPartyFromPartyDefinition(PartyDefinition sourceParty, int mainCharacterLevel, WorldDifficulty difficulty)
+    {
+        if (battleManager == null)
+            battleManager = GetComponent<BattleManager>();
+
+        if (battleManager == null)
+        {
+            Debug.LogWarning("[RandomEnemyEncounterBootstrapper] BattleManager reference is missing.");
+            return;
+        }
+
+        ConfigureDynamicLevelScaling(mainCharacterLevel, difficulty);
+        PartyDefinition generated = GenerateRuntimeEnemyPartyFromDefinition(sourceParty);
+        if (generated == null)
+            return;
+
+        DestroyRuntimeGeneratedParty();
+        runtimeGeneratedEnemyParty = generated;
+        battleManager.SetEnemyPartyDefinition(runtimeGeneratedEnemyParty);
+
+        if (logGeneratedParty)
+            Debug.Log(BuildPartySummary(runtimeGeneratedEnemyParty));
     }
 
     [ContextMenu("Generate And Apply Enemy Party")]
@@ -85,12 +133,7 @@ public class RandomEnemyEncounterBootstrapper : MonoBehaviour
             return null;
         }
 
-        PartyDefinition party = ScriptableObject.CreateInstance<PartyDefinition>();
-        party.name = "RuntimeEnemyParty";
-        party.partyName = "Random Encounter";
-        party.members = new List<PartyMemberData>();
-        party.inventory = new List<InventoryStackData>();
-
+        PartyDefinition party = CreateRuntimePartyAsset("RuntimeEnemyParty", "Random Encounter");
         List<EnemyEncounterEntry> drawPool = new List<EnemyEncounterEntry>(validEntries);
 
         for (int slot = 0; slot < enemyCount; slot++)
@@ -117,6 +160,60 @@ public class RandomEnemyEncounterBootstrapper : MonoBehaviour
             return null;
         }
 
+        return party;
+    }
+
+    public PartyDefinition GenerateRuntimeEnemyPartyFromDefinition(PartyDefinition sourceParty)
+    {
+        if (sourceParty == null || sourceParty.members == null || sourceParty.members.Count == 0)
+        {
+            Debug.LogWarning("[RandomEnemyEncounterBootstrapper] Source boss party is empty.");
+            return null;
+        }
+
+        PartyDefinition party = CreateRuntimePartyAsset("RuntimeBossParty", sourceParty.partyName);
+
+        for (int i = 0; i < sourceParty.members.Count && party.members.Count < 4; i++)
+        {
+            PartyMemberData source = sourceParty.members[i];
+            if (source == null || source.unitDefinition == null)
+                continue;
+
+            PartyMemberData member = source.CloneRuntime();
+            member.startSlotIndex = Mathf.Clamp(source.startSlotIndex, 0, 3);
+            int level = RollLevel(null);
+            member.currentLevel = level;
+            member.originalLevel = level;
+            member.currentExp = 0;
+            member.levelGrowthMaxHp = 0;
+            member.levelGrowthDmg = 0;
+            RollLevelGrowthTotals(member, member.unitDefinition, level);
+            member.instanceId = BuildInstanceId(member.unitDefinition, member.startSlotIndex);
+            member.isExchangeable = RollCapturableEnemyNft(member.unitDefinition);
+            member.isNft = member.isExchangeable;
+
+            if (member.equippedItems == null || member.equippedItems.Count == 0)
+                member.equippedItems = RollEnemyEquipment(member.unitDefinition);
+
+            party.members.Add(member);
+        }
+
+        if (party.members.Count == 0)
+        {
+            Destroy(party);
+            return null;
+        }
+
+        return party;
+    }
+
+    private PartyDefinition CreateRuntimePartyAsset(string assetName, string partyName)
+    {
+        PartyDefinition party = ScriptableObject.CreateInstance<PartyDefinition>();
+        party.name = assetName;
+        party.partyName = string.IsNullOrWhiteSpace(partyName) ? assetName : partyName;
+        party.members = new List<PartyMemberData>();
+        party.inventory = new List<InventoryStackData>();
         return party;
     }
 
@@ -184,17 +281,73 @@ public class RandomEnemyEncounterBootstrapper : MonoBehaviour
         member.learnedSkills = CopySkills(entry.learnedSkills);
         member.isExchangeable = RollCapturableEnemyNft(entry.unitDefinition);
         member.isNft = member.isExchangeable;
-        member.equippedItems = RollEnemyEquipment(entry);
+        member.equippedItems = RollEnemyEquipment(entry.unitDefinition);
         return member;
     }
 
     private int RollLevel(EnemyEncounterEntry entry)
     {
+        if (useDynamicLevelScaling)
+            return RollDynamicLevel();
+
         if (entry == null)
             return 1;
 
         int min = Mathf.Max(1, Mathf.Min(entry.minLevel, entry.maxLevel));
         int max = Mathf.Max(min, Mathf.Max(entry.minLevel, entry.maxLevel));
+        return UnityEngine.Random.Range(min, max + 1);
+    }
+
+    private int RollDynamicLevel()
+    {
+        int reference = Mathf.Max(1, dynamicReferenceLevel);
+        int minOffset;
+        int maxOffset;
+
+        if (reference < 100)
+        {
+            switch (dynamicDifficulty)
+            {
+                case WorldDifficulty.Easy:
+                    minOffset = -20;
+                    maxOffset = 0;
+                    break;
+                case WorldDifficulty.Hard:
+                    minOffset = 10;
+                    maxOffset = 20;
+                    break;
+                default:
+                    minOffset = -10;
+                    maxOffset = 10;
+                    break;
+            }
+        }
+        else
+        {
+            float minPercent;
+            float maxPercent;
+            switch (dynamicDifficulty)
+            {
+                case WorldDifficulty.Easy:
+                    minPercent = -0.20f;
+                    maxPercent = 0f;
+                    break;
+                case WorldDifficulty.Hard:
+                    minPercent = 0f;
+                    maxPercent = 0.20f;
+                    break;
+                default:
+                    minPercent = -0.10f;
+                    maxPercent = 0.10f;
+                    break;
+            }
+
+            minOffset = Mathf.RoundToInt(reference * minPercent);
+            maxOffset = Mathf.RoundToInt(reference * maxPercent);
+        }
+
+        int min = Mathf.Max(1, reference + Mathf.Min(minOffset, maxOffset));
+        int max = Mathf.Max(min, reference + Mathf.Max(minOffset, maxOffset));
         return UnityEngine.Random.Range(min, max + 1);
     }
 
@@ -248,15 +401,15 @@ public class RandomEnemyEncounterBootstrapper : MonoBehaviour
         return UnityEngine.Random.Range(0f, 100f) < Mathf.Clamp(definition.capturableEnemyNftChancePercent, 0f, 100f);
     }
 
-    private List<ItemDefinition> RollEnemyEquipment(EnemyEncounterEntry entry)
+    private List<ItemDefinition> RollEnemyEquipment(UnitDefinition definition)
     {
         List<ItemDefinition> result = new List<ItemDefinition>();
-        if (entry == null || entry.unitDefinition == null || entry.unitDefinition.randomEnemyEquipment == null)
+        if (definition == null || definition.randomEnemyEquipment == null)
             return result;
 
-        for (int i = 0; i < entry.unitDefinition.randomEnemyEquipment.Count && result.Count < 2; i++)
+        for (int i = 0; i < definition.randomEnemyEquipment.Count && result.Count < 2; i++)
         {
-            ItemDropDefinition roll = entry.unitDefinition.randomEnemyEquipment[i];
+            ItemDropDefinition roll = definition.randomEnemyEquipment[i];
             if (roll == null || roll.item == null)
                 continue;
 
@@ -318,7 +471,9 @@ public class RandomEnemyEncounterBootstrapper : MonoBehaviour
                 sb.Append(", ");
 
             sb.Append(member.GetDisplayName());
-            sb.Append("@slot ");
+            sb.Append("@Lv ");
+            sb.Append(member.currentLevel);
+            sb.Append(" slot ");
             sb.Append(member.startSlotIndex);
         }
 

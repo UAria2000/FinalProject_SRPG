@@ -394,43 +394,15 @@ public class BattleManager : MonoBehaviour
 
     public void RegisterDefeatedEnemy(BattleUnit unit)
     {
-        if (unit == null || unit.Definition == null)
-            return;
-
-        currentBattleRewardSummary.defeatedEnemyUnits.Add(unit.Definition);
-
-        int enemyLevel = Mathf.Max(1, unit.CurrentLevel);
-        currentBattleRewardSummary.soulReward += LegionFormula.GetScaledEnemySoulReward(
-            unit.Definition,
-            enemyLevel,
-            soulRewardIncreasePercentPerEnemyLevel);
-
-        currentBattleRewardSummary.expReward += LegionFormula.GetEnemyExpReward(
-            unit.Definition,
-            enemyLevel,
-            soulRewardIncreasePercentPerEnemyLevel,
-            expRewardPercentOfScaledSoulReward);
-
-        int remainingDropSlots = Mathf.Max(0, maxEquipmentDropsPerBattle - currentBattleRewardSummary.droppedItems.Count);
-        if (remainingDropSlots <= 0 || unit.MemberData == null || unit.MemberData.battleLootDrops == null)
-            return;
-
-        for (int i = 0; i < unit.MemberData.battleLootDrops.Count && currentBattleRewardSummary.droppedItems.Count < maxEquipmentDropsPerBattle; i++)
-        {
-            ItemDropDefinition drop = unit.MemberData.battleLootDrops[i];
-            if (drop == null || drop.item == null)
-                continue;
-
-            float chance = drop.dropChancePercent > 0f ? drop.dropChancePercent : defaultEquipmentDropChancePercent;
-            if (UnityEngine.Random.Range(0f, 100f) < chance)
-                currentBattleRewardSummary.droppedItems.Add(drop.item);
-        }
+        RegisterEnemyReward(unit, false);
     }
 
     public void RegisterCapturedEnemy(BattleUnit unit)
     {
         if (unit == null || unit.Definition == null)
             return;
+
+        RegisterEnemyReward(unit, true);
 
         ItemDefinition prisonerItem = unit.Definition.captureRewardItem;
         UnitDefinition fallbackUnit = unit.Definition;
@@ -452,6 +424,34 @@ public class BattleManager : MonoBehaviour
             // 구버전 호환: 포로 아이템이 연결되지 않은 적은 기존 방식으로만 기록한다.
             currentBattleRewardSummary.capturedPrisoners.Add(fallbackUnit);
         }
+    }
+
+    private void RegisterEnemyReward(BattleUnit unit, bool captured)
+    {
+        if (unit == null || unit.Definition == null)
+            return;
+
+        int enemyLevel = Mathf.Max(1, unit.CurrentLevel);
+        int soulReward = LegionFormula.GetScaledEnemySoulReward(
+            unit.Definition,
+            enemyLevel,
+            soulRewardIncreasePercentPerEnemyLevel);
+
+        int expReward = LegionFormula.GetEnemyExpReward(
+            unit.Definition,
+            enemyLevel,
+            soulRewardIncreasePercentPerEnemyLevel,
+            expRewardPercentOfScaledSoulReward);
+
+        currentBattleRewardSummary.AddEnemyReward(new BattleRewardEnemyEntry
+        {
+            unitDefinition = unit.Definition,
+            unitViewDefinition = unit.ViewDefinition,
+            level = enemyLevel,
+            baseSoulReward = soulReward,
+            baseExpReward = expReward,
+            captured = captured
+        });
     }
 
     public void GrantCurrentBattleRewardsToInventory(List<InventoryStackData> inventory)
