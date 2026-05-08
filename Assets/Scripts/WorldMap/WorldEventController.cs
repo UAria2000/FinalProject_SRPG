@@ -18,10 +18,12 @@ public class WorldEventController : MonoBehaviour
     [SerializeField] private string treasureSuffix = "\n\n보물을 발견했습니다.";
 
     [Header("Treasure Event")]
-    [SerializeField] private string treasureConfirmText = "획득하기";
+    [SerializeField] private string treasureConfirmText = "확인";
     [SerializeField] private string treasureRewardHeaderText = "획득 예정 보상";
     [SerializeField] private string treasureEmptyText = "보물 후보 아이템이 없습니다. Treasure Candidate Items를 설정해 주세요.";
-    [SerializeField] private string treasureNoRewardText = "획득 가능한 보상이 없습니다.";
+    [SerializeField] private string treasureNoRewardText = "획득 가능한 아이템이 없습니다.";
+    [Tooltip("{0} 자리에 지급 소울량이 들어갑니다. 예: {0} 소울")]
+    [SerializeField] private string treasureSoulTextFormat = "{0} 소울";
     [SerializeField] private List<ItemDefinition> treasureCandidateItems = new List<ItemDefinition>();
     [SerializeField] private List<WorldTreasureTierWeight> treasureTierWeights = new List<WorldTreasureTierWeight>
     {
@@ -29,13 +31,28 @@ public class WorldEventController : MonoBehaviour
         new WorldTreasureTierWeight { tier = ItemTier.Tier2, weight = 25f },
         new WorldTreasureTierWeight { tier = ItemTier.Tier3, weight = 5f },
     };
-    [SerializeField, Min(0)] private int treasureMinConsumableTypes = 0;
-    [SerializeField, Min(0)] private int treasureMaxConsumableTypes = 1;
-    [SerializeField, Min(0)] private int treasureMinEquipmentTypes = 0;
-    [SerializeField, Min(0)] private int treasureMaxEquipmentTypes = 3;
-    [SerializeField, Min(1)] private int treasureMinTotalItemTypes = 1;
-    [SerializeField, Min(1)] private int treasureMaxTotalItemTypes = 4;
+    [Tooltip("0~4개 아이템 드랍 개수를 뽑는 가중치입니다. 합이 100일 필요는 없습니다.")]
+    [SerializeField] private List<WorldTreasureDropCountWeight> treasureDropCountWeights = new List<WorldTreasureDropCountWeight>
+    {
+        new WorldTreasureDropCountWeight { dropCount = 0, weight = 10f },
+        new WorldTreasureDropCountWeight { dropCount = 1, weight = 35f },
+        new WorldTreasureDropCountWeight { dropCount = 2, weight = 30f },
+        new WorldTreasureDropCountWeight { dropCount = 3, weight = 20f },
+        new WorldTreasureDropCountWeight { dropCount = 4, weight = 5f },
+    };
     [SerializeField] private Vector2Int treasureConsumableAmountRange = new Vector2Int(1, 3);
+
+    [Header("Treasure Soul Reward")]
+    [SerializeField] private Vector2Int treasureBaseSoulRange = new Vector2Int(80, 150);
+    [Min(0)] [SerializeField] private int treasureSoulSizePercentSmall = 80;
+    [Min(0)] [SerializeField] private int treasureSoulSizePercentMedium = 100;
+    [Min(0)] [SerializeField] private int treasureSoulSizePercentLarge = 130;
+    [Min(0)] [SerializeField] private int treasureSoulDifficultyPercentEasy = 80;
+    [Min(0)] [SerializeField] private int treasureSoulDifficultyPercentNormal = 100;
+    [Min(0)] [SerializeField] private int treasureSoulDifficultyPercentHard = 130;
+
+    [Header("Graveyard Event")]
+    [SerializeField] private GraveyardPopupUI graveyardPopupUI;
 
     [Header("Rest Event")]
     [SerializeField] private string restConfirmText = "휴식하기";
@@ -71,6 +88,8 @@ public class WorldEventController : MonoBehaviour
 
         if (questController == null)
             questController = Object.FindFirstObjectByType<WorldQuestController>();
+        if (graveyardPopupUI == null)
+            graveyardPopupUI = Object.FindFirstObjectByType<GraveyardPopupUI>(FindObjectsInactive.Include);
 
         if (battleBridge != null)
             battleBridge.Initialize(manager, generationSettings);
@@ -86,6 +105,9 @@ public class WorldEventController : MonoBehaviour
 
         if (tile.eventType == WorldTileEventType.Quest)
             return TryOpenQuestEvent(tile);
+
+        if (tile.eventType == WorldTileEventType.Graveyard)
+            return TryOpenGraveyardEvent(tile);
 
         if (tile.eventType == WorldTileEventType.Rest)
             return TryOpenRestEvent(tile);
@@ -127,6 +149,26 @@ public class WorldEventController : MonoBehaviour
         return TryOpenSimpleEvent(tile);
     }
 
+
+    private bool TryOpenGraveyardEvent(WorldTileData tile)
+    {
+        if (graveyardPopupUI == null)
+        {
+            Debug.LogWarning("[WorldEventController] GraveyardPopupUI reference is missing.");
+            return TryOpenSimpleEvent(tile);
+        }
+
+        popupOpen = true;
+        string title = settings != null ? settings.GetEventDisplayName(tile.eventType) : "묘지";
+        string description = settings != null ? settings.GetEventDescription(tile.eventType) : string.Empty;
+
+        if (runManager != null)
+            runManager.ResolveMapEvent(tile, true, true, false);
+
+        graveyardPopupUI.Open(title, description, () => popupOpen = false);
+        return true;
+    }
+
     private bool TryOpenRestEvent(WorldTileData tile)
     {
         if (eventPopupUI == null)
@@ -159,6 +201,7 @@ public class WorldEventController : MonoBehaviour
 
         popupOpen = true;
         WorldTreasureResult treasure = GetOrCreateTreasureForTile(tile);
+        GrantTreasureSoulImmediately(treasure);
         string title = settings != null ? settings.GetEventDisplayName(tile.eventType) : tile.eventType.ToString();
         string body = BuildTreasureEventBody(tile, treasure);
 
@@ -206,79 +249,114 @@ public class WorldEventController : MonoBehaviour
     private WorldTreasureResult GenerateTreasureReward()
     {
         WorldTreasureResult result = new WorldTreasureResult();
+        result.soulAmount = RollTreasureSoulAmount();
 
-        List<ItemDefinition> consumables = BuildTreasureCandidateList(MainUIItemCategory.Consumable);
-        List<ItemDefinition> equipment = BuildTreasureCandidateList(MainUIItemCategory.Equipment);
+        List<ItemDefinition> pool = BuildTreasureCandidateList();
+        int dropCount = Mathf.Clamp(RollTreasureDropCount(), 0, 4);
 
-        int maxConsumable = Mathf.Clamp(treasureMaxConsumableTypes, 0, 1);
-        int minConsumable = Mathf.Clamp(treasureMinConsumableTypes, 0, maxConsumable);
-        int maxEquipment = Mathf.Clamp(treasureMaxEquipmentTypes, 0, 3);
-        int minEquipment = Mathf.Clamp(treasureMinEquipmentTypes, 0, maxEquipment);
-        int maxTotal = Mathf.Clamp(treasureMaxTotalItemTypes, 1, 4);
-        int minTotal = Mathf.Clamp(treasureMinTotalItemTypes, 1, maxTotal);
-
-        if (consumables.Count == 0)
+        for (int i = 0; i < dropCount; i++)
         {
-            minConsumable = 0;
-            maxConsumable = 0;
-        }
-
-        if (equipment.Count == 0)
-        {
-            minEquipment = 0;
-            maxEquipment = 0;
-        }
-
-        int consumableCount = maxConsumable > 0 ? Random.Range(minConsumable, maxConsumable + 1) : 0;
-        int equipmentCount = maxEquipment > 0 ? Random.Range(minEquipment, maxEquipment + 1) : 0;
-
-        int total = consumableCount + equipmentCount;
-        while (total < minTotal && total < maxTotal)
-        {
-            bool canAddConsumable = consumableCount < maxConsumable && consumables.Count > consumableCount;
-            bool canAddEquipment = equipmentCount < maxEquipment && equipment.Count > equipmentCount;
-
-            if (!canAddConsumable && !canAddEquipment)
+            ItemDefinition selected = PickWeightedTreasureItem(pool);
+            if (selected == null)
                 break;
 
-            if (canAddConsumable && canAddEquipment)
-            {
-                if (Random.value < 0.5f)
-                    consumableCount++;
-                else
-                    equipmentCount++;
-            }
-            else if (canAddConsumable)
-            {
-                consumableCount++;
-            }
-            else
-            {
-                equipmentCount++;
-            }
-
-            total = consumableCount + equipmentCount;
+            int amount = selected.mainUICategory == MainUIItemCategory.Consumable
+                ? RollTreasureConsumableAmount()
+                : 1;
+            result.Add(selected, amount);
         }
-
-        while (total > maxTotal)
-        {
-            if (equipmentCount > minEquipment)
-                equipmentCount--;
-            else if (consumableCount > minConsumable)
-                consumableCount--;
-            else
-                break;
-
-            total = consumableCount + equipmentCount;
-        }
-
-        AddRolledTreasureItems(result, consumables, consumableCount, true);
-        AddRolledTreasureItems(result, equipment, equipmentCount, false);
 
         return result;
     }
 
-    private List<ItemDefinition> BuildTreasureCandidateList(MainUIItemCategory category)
+    private int RollTreasureDropCount()
+    {
+        if (treasureDropCountWeights == null || treasureDropCountWeights.Count == 0)
+            return 0;
+
+        float total = 0f;
+        for (int i = 0; i < treasureDropCountWeights.Count; i++)
+        {
+            WorldTreasureDropCountWeight weight = treasureDropCountWeights[i];
+            if (weight != null && weight.weight > 0f)
+                total += weight.weight;
+        }
+
+        if (total <= 0f)
+            return 0;
+
+        float roll = Random.value * total;
+        float cursor = 0f;
+        int fallback = 0;
+        for (int i = 0; i < treasureDropCountWeights.Count; i++)
+        {
+            WorldTreasureDropCountWeight weight = treasureDropCountWeights[i];
+            if (weight == null || weight.weight <= 0f)
+                continue;
+
+            fallback = Mathf.Clamp(weight.dropCount, 0, 4);
+            cursor += weight.weight;
+            if (roll <= cursor)
+                return fallback;
+        }
+
+        return fallback;
+    }
+
+    private int RollTreasureSoulAmount()
+    {
+        int min = Mathf.Max(0, Mathf.Min(treasureBaseSoulRange.x, treasureBaseSoulRange.y));
+        int max = Mathf.Max(min, Mathf.Max(treasureBaseSoulRange.x, treasureBaseSoulRange.y));
+        int baseAmount = Random.Range(min, max + 1);
+        int totalPercent = 100 + (GetTreasureSoulSizePercent() - 100) + (GetTreasureSoulDifficultyPercent() - 100);
+        totalPercent = Mathf.Max(0, totalPercent);
+        return Mathf.Max(0, Mathf.RoundToInt(baseAmount * (totalPercent * 0.01f)));
+    }
+
+    private int GetTreasureSoulSizePercent()
+    {
+        int radius = settings != null ? settings.radius : 4;
+        if (radius <= 4)
+            return Mathf.Max(0, treasureSoulSizePercentSmall);
+        if (radius == 5)
+            return Mathf.Max(0, treasureSoulSizePercentMedium);
+        return Mathf.Max(0, treasureSoulSizePercentLarge);
+    }
+
+    private int GetTreasureSoulDifficultyPercent()
+    {
+        WorldDifficulty difficulty = settings != null ? settings.difficulty : WorldDifficulty.Normal;
+        switch (difficulty)
+        {
+            case WorldDifficulty.Easy: return Mathf.Max(0, treasureSoulDifficultyPercentEasy);
+            case WorldDifficulty.Hard: return Mathf.Max(0, treasureSoulDifficultyPercentHard);
+            default: return Mathf.Max(0, treasureSoulDifficultyPercentNormal);
+        }
+    }
+
+    private void GrantTreasureSoulImmediately(WorldTreasureResult treasure)
+    {
+        if (treasure == null || treasure.soulGranted || treasure.soulAmount <= 0 || runManager == null)
+            return;
+
+        runManager.AddWorldSoul(treasure.soulAmount);
+        treasure.soulGranted = true;
+    }
+
+    private string FormatTreasureSoulText(int amount)
+    {
+        string format = string.IsNullOrWhiteSpace(treasureSoulTextFormat) ? "{0} 소울" : treasureSoulTextFormat;
+        try
+        {
+            return string.Format(format, Mathf.Max(0, amount).ToString("N0"));
+        }
+        catch
+        {
+            return $"{Mathf.Max(0, amount):N0} 소울";
+        }
+    }
+
+    private List<ItemDefinition> BuildTreasureCandidateList()
     {
         List<ItemDefinition> result = new List<ItemDefinition>();
         if (treasureCandidateItems == null)
@@ -289,33 +367,11 @@ public class WorldEventController : MonoBehaviour
             ItemDefinition item = treasureCandidateItems[i];
             if (item == null)
                 continue;
-            if (item.mainUICategory != category)
-                continue;
-            if (result.Contains(item))
-                continue;
 
             result.Add(item);
         }
 
         return result;
-    }
-
-    private void AddRolledTreasureItems(WorldTreasureResult result, List<ItemDefinition> pool, int count, bool isConsumable)
-    {
-        if (result == null || pool == null || count <= 0)
-            return;
-
-        int safeCount = Mathf.Min(count, pool.Count);
-        for (int i = 0; i < safeCount; i++)
-        {
-            ItemDefinition selected = PickWeightedTreasureItem(pool);
-            if (selected == null)
-                break;
-
-            pool.Remove(selected);
-            int amount = isConsumable ? RollTreasureConsumableAmount() : 1;
-            result.Add(selected, amount);
-        }
     }
 
     private int RollTreasureConsumableAmount()
@@ -415,13 +471,27 @@ public class WorldEventController : MonoBehaviour
     {
         if (treasureCandidateItems == null || treasureCandidateItems.Count == 0)
         {
+            if (treasure != null && treasure.soulAmount > 0)
+            {
+                sb.Append(FormatTreasureSoulText(treasure.soulAmount));
+                return;
+            }
+
             sb.Append(string.IsNullOrWhiteSpace(treasureEmptyText) ? "보물 후보 아이템이 없습니다." : treasureEmptyText);
             return;
         }
 
-        if (treasure == null || !treasure.HasAnyReward)
+        if (treasure != null && treasure.soulAmount > 0)
         {
-            sb.Append(string.IsNullOrWhiteSpace(treasureNoRewardText) ? "획득 가능한 보상이 없습니다." : treasureNoRewardText);
+            sb.Append(FormatTreasureSoulText(treasure.soulAmount));
+            if (treasure.rewards != null && treasure.rewards.Count > 0)
+                sb.Append("\n");
+        }
+
+        if (treasure == null || treasure.rewards == null || treasure.rewards.Count == 0)
+        {
+            if (treasure == null || treasure.soulAmount <= 0)
+                sb.Append(string.IsNullOrWhiteSpace(treasureNoRewardText) ? "획득 가능한 아이템이 없습니다." : treasureNoRewardText);
             return;
         }
 

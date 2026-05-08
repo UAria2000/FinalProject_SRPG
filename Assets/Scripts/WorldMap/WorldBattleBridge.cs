@@ -30,6 +30,9 @@ public class WorldBattleBridge : MonoBehaviour
     [SerializeField] private float battleExitFadeOutDuration = 0.2f;
     [SerializeField] private float battleExitFadeInDuration = 0.2f;
 
+    [Header("Elite Battle")]
+    [SerializeField, Range(0, 100)] private int eliteEnemyAllStatsBuffPercent = 10;
+
     [Header("Scene Exit")]
     [SerializeField] private string titleSceneName = "Bootstrap";
 
@@ -126,6 +129,9 @@ public class WorldBattleBridge : MonoBehaviour
 
         battleManager.StartBattle();
 
+        if (tile != null && tile.eventType == WorldTileEventType.EliteBattle)
+            battleManager.ApplyElitePermanentBuffToEnemies(eliteEnemyAllStatsBuffPercent);
+
         if (screenFader != null)
             yield return screenFader.FadeIn(battleEnterFadeInDuration);
     }
@@ -147,7 +153,10 @@ public class WorldBattleBridge : MonoBehaviour
             return true;
         }
 
-        EnemyEncounterTable table = config.GetEncounterTable(tile.eventType, ResolveProgressTier(tile.nativeFaction));
+        WorldTileEventType encounterType = tile.eventType == WorldTileEventType.EliteBattle
+            ? WorldTileEventType.Battle
+            : tile.eventType;
+        EnemyEncounterTable table = config.GetEncounterTable(encounterType, ResolveProgressTier(tile.nativeFaction));
         if (table == null || encounterBootstrapper == null)
             return false;
 

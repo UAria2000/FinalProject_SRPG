@@ -13,8 +13,18 @@ public class WorldTreasureTierWeight
 }
 
 /// <summary>
+/// 보물 이벤트에서 드랍 개수를 뽑기 위한 가중치.
+/// </summary>
+[Serializable]
+public class WorldTreasureDropCountWeight
+{
+    [Range(0, 4)] public int dropCount = 0;
+    [Min(0f)] public float weight = 1f;
+}
+
+/// <summary>
 /// 보물 이벤트 1종 보상.
-/// 같은 item은 한 번만 들어가는 것을 기본으로 한다.
+/// 중복 드랍을 허용하므로 같은 item이 여러 엔트리로 들어갈 수 있다.
 /// </summary>
 [Serializable]
 public class WorldTreasureRewardItemEntry
@@ -41,9 +51,11 @@ public class WorldTreasureRewardItemEntry
 public class WorldTreasureResult
 {
     public List<WorldTreasureRewardItemEntry> rewards = new List<WorldTreasureRewardItemEntry>(4);
+    [Min(0)] public int soulAmount = 0;
+    public bool soulGranted = false;
 
     public int Count => rewards != null ? rewards.Count : 0;
-    public bool HasAnyReward => rewards != null && rewards.Count > 0;
+    public bool HasAnyReward => (rewards != null && rewards.Count > 0) || soulAmount > 0;
 
     public void Add(ItemDefinition item, int amount)
     {
@@ -52,16 +64,6 @@ public class WorldTreasureResult
 
         if (rewards == null)
             rewards = new List<WorldTreasureRewardItemEntry>(4);
-
-        for (int i = 0; i < rewards.Count; i++)
-        {
-            WorldTreasureRewardItemEntry existing = rewards[i];
-            if (existing != null && existing.item == item)
-            {
-                existing.amount += Mathf.Max(1, amount);
-                return;
-            }
-        }
 
         rewards.Add(new WorldTreasureRewardItemEntry
         {

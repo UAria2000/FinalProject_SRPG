@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e662b7d56d718594a8e435db9e994010, type: 3}
   m_Name: UV_Stalker
   m_EditorClassIdentifier: Assembly-CSharp::UnitViewDefinition
-  slotFaceSprite: {fileID: 21300000, guid: dfaa9222bf8e81a44884674190f825d4, type: 3}
-  bustPortraitSprite: {fileID: 21300000, guid: 9316c84b340c064479da916a1ec361dc, type: 3}
+  slotFaceSprite: {fileID: 21300000, guid: 11cb68e4a606e7d40914f57b6435d965, type: 3}
+  bustPortraitSprite: {fileID: 21300000, guid: baffa15388319ca418c363c576ab8a65, type: 3}
   deadSlotFaceSprite: {fileID: 21300000, guid: 99461f69de12b85489e256c5462f4fef, type: 3}
-  deadBustPortraitSprite: {fileID: 21300000, guid: 9316c84b340c064479da916a1ec361dc, type: 3}
-  battleSprite: {fileID: 21300000, guid: 8dbef2162bd4a7a4a85761d34a49b116, type: 3}
-  deadBattleSprite: {fileID: 21300000, guid: eadc82109ff8f9743a9a22c82ecaa2cb, type: 3}
+  deadBustPortraitSprite: {fileID: 21300000, guid: 3dbc23c05d112e04581f4c9237aa4b0a, type: 3}
+  battleSprite: {fileID: 21300000, guid: 5d1ca122e56388b4fa234e2eaf4cb952, type: 3}
+  deadBattleSprite: {fileID: 21300000, guid: fe7eeb0c50b54f045b4ca6042a4e57de, type: 3}
   viewPrefab: {fileID: 7130859592086966948, guid: edca2cd44571b8f4c80b0dfce99d6e95, type: 3}

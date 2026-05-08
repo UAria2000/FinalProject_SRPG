@@ -1112,18 +1112,29 @@ public class WorldRunManager : MonoBehaviour
 
     public bool GrantTreasureRewards(WorldTreasureResult treasure)
     {
-        if (treasure == null || treasure.rewards == null || treasure.rewards.Count == 0)
+        if (treasure == null)
             return false;
 
         bool grantedAny = false;
-        for (int i = 0; i < treasure.rewards.Count; i++)
-        {
-            WorldTreasureRewardItemEntry reward = treasure.rewards[i];
-            if (reward == null || reward.item == null || reward.amount <= 0)
-                continue;
 
-            if (AddStorageItem(reward.item, Mathf.Max(1, reward.amount)))
-                grantedAny = true;
+        if (!treasure.soulGranted && treasure.soulAmount > 0)
+        {
+            AddWorldSoul(treasure.soulAmount);
+            treasure.soulGranted = true;
+            grantedAny = true;
+        }
+
+        if (treasure.rewards != null)
+        {
+            for (int i = 0; i < treasure.rewards.Count; i++)
+            {
+                WorldTreasureRewardItemEntry reward = treasure.rewards[i];
+                if (reward == null || reward.item == null || reward.amount <= 0)
+                    continue;
+
+                if (AddStorageItem(reward.item, Mathf.Max(1, reward.amount)))
+                    grantedAny = true;
+            }
         }
 
         return grantedAny;

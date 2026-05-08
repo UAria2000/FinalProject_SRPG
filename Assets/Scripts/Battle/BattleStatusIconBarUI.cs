@@ -21,6 +21,7 @@ public class BattleStatusIconBarUI : MonoBehaviour
     [SerializeField] private Sprite stealthIcon;
     [SerializeField] private Sprite endTurnGuardIcon;
     [SerializeField] private Sprite shieldIcon;
+    [SerializeField] private Sprite eliteIcon;
 
     [Header("Ailment Icons")]
     [SerializeField] private Sprite stunIcon;
@@ -77,6 +78,9 @@ public class BattleStatusIconBarUI : MonoBehaviour
             AddSpecialState(unit, StatusEffectType.CounterStance, counterStanceIcon);
             AddSpecialState(unit, StatusEffectType.DuelArena, duelArenaIcon);
             AddSpecialState(unit, StatusEffectType.Stealth, stealthIcon);
+
+            if (unit.HasElitePermanentBuff)
+                AddEntry(eliteIcon, unit.ElitePermanentAllStatsBuffPercent, eliteIcon != null && unit.ElitePermanentAllStatsBuffPercent > 0);
 
             if (unit.HasEndTurnGuard)
                 AddEntry(endTurnGuardIcon, unit.EndTurnGuardPercent, endTurnGuardIcon != null && unit.EndTurnGuardPercent > 0);

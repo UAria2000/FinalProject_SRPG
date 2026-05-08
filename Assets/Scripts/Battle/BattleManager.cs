@@ -213,6 +213,19 @@ public class BattleManager : MonoBehaviour
         worldRunManager = manager;
     }
 
+    public void ApplyElitePermanentBuffToEnemies(int percent)
+    {
+        percent = Mathf.Max(0, percent);
+        if (percent <= 0 || EnemyFormation == null)
+            return;
+
+        List<BattleUnit> enemies = EnemyFormation.GetAliveUnits();
+        for (int i = 0; i < enemies.Count; i++)
+            enemies[i]?.ApplyElitePermanentBuff(percent);
+
+        RefreshAllUI();
+    }
+
     public int GetManaActionCost(BattleManaActionType actionType)
     {
         return WorldRunManager != null ? WorldRunManager.GetManaActionCost(actionType) : 0;

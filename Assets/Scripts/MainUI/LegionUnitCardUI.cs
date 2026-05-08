@@ -47,6 +47,11 @@ public class LegionUnitCardUI : MonoBehaviour, IPointerClickHandler, IBeginDragH
     [SerializeField] private TMP_Text levelText;
     [SerializeField] private TMP_Text nameText;
 
+    [Header("EXP")]
+    [SerializeField] private Image expFillImage;
+    [SerializeField] private Slider expSlider;
+    [SerializeField] private TMP_Text expPercentText;
+
     [Header("HP")]
     [SerializeField] private Image hpIconImage;
     [SerializeField] private Sprite hpAliveIconSprite;
@@ -139,6 +144,7 @@ public class LegionUnitCardUI : MonoBehaviour, IPointerClickHandler, IBeginDragH
         RefreshRange();
         RefreshTexts();
         RefreshHp();
+        RefreshExp();
     }
 
     public void OnPointerClick(PointerEventData eventData)
@@ -356,7 +362,31 @@ public class LegionUnitCardUI : MonoBehaviour, IPointerClickHandler, IBeginDragH
         }
     }
 
-    private bool IsForbiddenForDecompose(PersistentRosterUnitData unit)
+
+    private void RefreshExp()
+    {
+        if (boundUnit == null)
+            return;
+
+        int need = LegionFormula.GetExpToNextLevel(Mathf.Max(1, boundUnit.currentLevel));
+        int current = Mathf.Clamp(boundUnit.currentExp, 0, need);
+        float ratio = need > 0 ? Mathf.Clamp01(current / (float)need) : 0f;
+
+        if (expFillImage != null)
+            expFillImage.fillAmount = ratio;
+
+        if (expSlider != null)
+        {
+            expSlider.minValue = 0f;
+            expSlider.maxValue = 1f;
+            expSlider.value = ratio;
+        }
+
+        if (expPercentText != null)
+            expPercentText.text = $"{Mathf.RoundToInt(ratio * 100f)}%";
+    }
+
+        private bool IsForbiddenForDecompose(PersistentRosterUnitData unit)
     {
         if (unit == null)
             return true;

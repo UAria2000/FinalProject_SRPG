@@ -1,3 +1,4 @@
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -46,6 +47,9 @@ public class LegionDetailPanelUI : MonoBehaviour
     [SerializeField] private TMP_Text expText;
     [SerializeField] private TMP_Text expCurrentValueText;
     [SerializeField] private TMP_Text expMaxValueText;
+    [SerializeField] private Image expFillImage;
+    [SerializeField] private Slider expSlider;
+    [SerializeField, Min(0f)] private float expGaugeAnimationDuration = 0.8f;
 
     [Header("Rank")]
     [SerializeField] private Image rankImage;
@@ -172,6 +176,7 @@ public class LegionDetailPanelUI : MonoBehaviour
     private InfoViewMode viewMode = InfoViewMode.MainStats;
     private int selectedSkillIndex = -1;
     private bool buttonsBound;
+    private Coroutine expAnimationRoutine;
 
     private void Awake()
     {
@@ -180,6 +185,12 @@ public class LegionDetailPanelUI : MonoBehaviour
 
     private void OnDisable()
     {
+        if (expAnimationRoutine != null)
+        {
+            StopCoroutine(expAnimationRoutine);
+            expAnimationRoutine = null;
+        }
+
         ResetToInitialView();
         HideStatTooltip();
         skillTooltipUI?.Hide();
@@ -415,10 +426,80 @@ public class LegionDetailPanelUI : MonoBehaviour
 
         int need = LegionFormula.GetExpToNextLevel(boundUnit.currentLevel);
         int current = Mathf.Clamp(boundUnit.currentExp, 0, need);
+        float ratio = need > 0 ? Mathf.Clamp01(current / (float)need) : 0f;
 
         SetText(expText, $"{current}/{need}");
         SetText(expCurrentValueText, current.ToString("N0"));
         SetText(expMaxValueText, need.ToString("N0"));
+        SetExpGauge(ratio);
+    }
+
+    public void PlayLevelUpExpAnimation(int beforeLevel, int beforeExp, int beforeNeed, int afterLevel, int afterExp, int afterNeed)
+    {
+        if (!isActiveAndEnabled)
+            return;
+
+        if (expAnimationRoutine != null)
+            StopCoroutine(expAnimationRoutine);
+
+        expAnimationRoutine = StartCoroutine(ExpGaugeAnimationRoutine(beforeLevel, beforeExp, beforeNeed, afterLevel, afterExp, afterNeed));
+    }
+
+    private IEnumerator ExpGaugeAnimationRoutine(int beforeLevel, int beforeExp, int beforeNeed, int afterLevel, int afterExp, int afterNeed)
+    {
+        beforeNeed = Mathf.Max(1, beforeNeed);
+        afterNeed = Mathf.Max(1, afterNeed);
+        float before01 = Mathf.Clamp01(beforeExp / (float)beforeNeed);
+        float after01 = Mathf.Clamp01(afterExp / (float)afterNeed);
+        float duration = Mathf.Max(0.01f, expGaugeAnimationDuration);
+
+        if (afterLevel > beforeLevel)
+        {
+            yield return AnimateExpGauge(before01, 1f, duration * 0.5f);
+            SetExpGauge(0f);
+            yield return AnimateExpGauge(0f, after01, duration * 0.5f);
+        }
+        else
+        {
+            yield return AnimateExpGauge(before01, after01, duration);
+        }
+
+        RefreshExpTexts();
+        expAnimationRoutine = null;
+    }
+
+    private IEnumerator AnimateExpGauge(float from, float to, float duration)
+    {
+        if (duration <= 0f)
+        {
+            SetExpGauge(to);
+            yield break;
+        }
+
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            SetExpGauge(Mathf.Lerp(from, to, t));
+            yield return null;
+        }
+
+        SetExpGauge(to);
+    }
+
+    private void SetExpGauge(float ratio)
+    {
+        ratio = Mathf.Clamp01(ratio);
+        if (expFillImage != null)
+            expFillImage.fillAmount = ratio;
+
+        if (expSlider != null)
+        {
+            expSlider.minValue = 0f;
+            expSlider.maxValue = 1f;
+            expSlider.value = ratio;
+        }
     }
 
     private void RefreshRankImage()

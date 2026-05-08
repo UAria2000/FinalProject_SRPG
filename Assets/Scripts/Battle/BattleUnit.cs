@@ -14,6 +14,7 @@ public class BattleUnit
     private SkillDefinition pendingPassiveSkill;
     private BattleUnit duelLockedTarget;
     private int persistentBattleDmgModifierPercent;
+    private int elitePermanentAllStatsBuffPercent;
 
     private bool battleInfoLastWillRolled;
     private bool battleInfoHasLastWill;
@@ -136,13 +137,16 @@ public class BattleUnit
     public int BaseFrostResist { get { return Definition != null ? Definition.frostResist : 0; } }
     public int BaseBlindResist { get { return Definition != null ? Definition.blindResist : 0; } }
 
-    public int MaxHP { get { return ApplyPromotionToInt(Mathf.Max(1, BaseMaxHP + GetVariance().maxHpDelta + LevelGrowthMaxHP + EquipmentMaxHpBonus)); } }
+    public int MaxHP
+    {
+        get { return Mathf.Max(1, ApplyEliteBuffToInt(ApplyPromotionToInt(Mathf.Max(1, BaseMaxHP + GetVariance().maxHpDelta + LevelGrowthMaxHP + EquipmentMaxHpBonus)))); }
+    }
 
     public int DMG
     {
         get
         {
-            int baseValue = ApplyPromotionToInt(Mathf.Max(0, BaseDMG + GetVariance().dmgDelta + LevelGrowthDMG + EquipmentDmgBonus));
+            int baseValue = ApplyEliteBuffToInt(ApplyPromotionToInt(Mathf.Max(0, BaseDMG + GetVariance().dmgDelta + LevelGrowthDMG + EquipmentDmgBonus)));
             int totalModifierPercent = GetTimedModifierMagnitude(StatModifierType.DMG) + persistentBattleDmgModifierPercent;
             if (totalModifierPercent == 0)
                 return baseValue;
@@ -155,7 +159,7 @@ public class BattleUnit
     {
         get
         {
-            int baseValue = ApplyPromotionToInt(Mathf.Max(0, BaseSPD + GetVariance().spdDelta + EquipmentSpdBonus));
+            int baseValue = ApplyEliteBuffToInt(ApplyPromotionToInt(Mathf.Max(0, BaseSPD + GetVariance().spdDelta + EquipmentSpdBonus)));
             return ApplyPercentTimedModifierToInt(baseValue, StatModifierType.SPD, -FrostStatPenaltyPercent);
         }
     }
@@ -164,7 +168,7 @@ public class BattleUnit
     {
         get
         {
-            float baseValue = ApplyPromotionToFloat(Mathf.Max(0f, BaseHIT + GetVariance().hitDelta + EquipmentHitBonus));
+            float baseValue = ApplyEliteBuffToFloat(ApplyPromotionToFloat(Mathf.Max(0f, BaseHIT + GetVariance().hitDelta + EquipmentHitBonus)));
             return ApplyPercentTimedModifierToFloat(baseValue, StatModifierType.HIT);
         }
     }
@@ -173,7 +177,7 @@ public class BattleUnit
     {
         get
         {
-            float baseValue = ApplyPromotionToFloat(Mathf.Max(0f, BaseAC + GetVariance().acDelta + EquipmentAcBonus));
+            float baseValue = ApplyEliteBuffToFloat(ApplyPromotionToFloat(Mathf.Max(0f, BaseAC + GetVariance().acDelta + EquipmentAcBonus)));
             return ApplyPercentTimedModifierToFloat(baseValue, StatModifierType.AC, -FrostStatPenaltyPercent);
         }
     }
@@ -182,7 +186,7 @@ public class BattleUnit
     {
         get
         {
-            int baseValue = ApplyPromotionToInt(Mathf.Max(0, BaseCRI + GetVariance().criDelta + EquipmentCriBonus));
+            int baseValue = ApplyEliteBuffToInt(ApplyPromotionToInt(Mathf.Max(0, BaseCRI + GetVariance().criDelta + EquipmentCriBonus)));
             return ApplyPercentTimedModifierToInt(baseValue, StatModifierType.CRI);
         }
     }
@@ -191,7 +195,7 @@ public class BattleUnit
     {
         get
         {
-            int baseValue = ApplyPromotionToInt(Mathf.Max(0, BaseCRD + GetVariance().crdDelta + EquipmentCrdBonus));
+            int baseValue = ApplyEliteBuffToInt(ApplyPromotionToInt(Mathf.Max(0, BaseCRD + GetVariance().crdDelta + EquipmentCrdBonus)));
             return ApplyPercentTimedModifierToInt(baseValue, StatModifierType.CRD);
         }
     }
@@ -200,18 +204,18 @@ public class BattleUnit
     {
         get
         {
-            int baseValue = ApplyPromotionToInt(BaseIDT + GetVariance().idtDelta + EquipmentIdtBonus);
+            int baseValue = ApplyEliteBuffToInt(ApplyPromotionToInt(BaseIDT + GetVariance().idtDelta + EquipmentIdtBonus));
             baseValue = ApplyPercentTimedModifierToInt(baseValue, StatModifierType.IDT);
             int incomingDamageTakenPercent = GetTimedModifierMagnitude(StatModifierType.IncomingDamageTakenPercent);
             return baseValue - incomingDamageTakenPercent - BurnIdtPenaltyPercent;
         }
     }
 
-    public int BurnResist { get { return ApplyPromotionToInt(Mathf.Max(0, BaseBurnResist + GetVariance().burnResistDelta)) + EquipmentAllResistBonus + EquipmentBurnResistBonus; } }
-    public int BleedResist { get { return ApplyPromotionToInt(Mathf.Max(0, BaseBleedResist + GetVariance().bleedResistDelta)) + EquipmentAllResistBonus + EquipmentBleedResistBonus; } }
-    public int StunResist { get { return ApplyPromotionToInt(Mathf.Max(0, BaseStunResist + GetVariance().stunResistDelta)) + EquipmentAllResistBonus + EquipmentStunResistBonus; } }
-    public int FrostResist { get { return ApplyPromotionToInt(Mathf.Max(0, BaseFrostResist + GetVariance().frostResistDelta)) + EquipmentAllResistBonus + EquipmentFrostResistBonus; } }
-    public int BlindResist { get { return ApplyPromotionToInt(Mathf.Max(0, BaseBlindResist + GetVariance().blindResistDelta)) + EquipmentAllResistBonus + EquipmentBlindResistBonus; } }
+    public int BurnResist { get { return ApplyEliteBuffToInt(ApplyPromotionToInt(Mathf.Max(0, BaseBurnResist + GetVariance().burnResistDelta)) + EquipmentAllResistBonus + EquipmentBurnResistBonus); } }
+    public int BleedResist { get { return ApplyEliteBuffToInt(ApplyPromotionToInt(Mathf.Max(0, BaseBleedResist + GetVariance().bleedResistDelta)) + EquipmentAllResistBonus + EquipmentBleedResistBonus); } }
+    public int StunResist { get { return ApplyEliteBuffToInt(ApplyPromotionToInt(Mathf.Max(0, BaseStunResist + GetVariance().stunResistDelta)) + EquipmentAllResistBonus + EquipmentStunResistBonus); } }
+    public int FrostResist { get { return ApplyEliteBuffToInt(ApplyPromotionToInt(Mathf.Max(0, BaseFrostResist + GetVariance().frostResistDelta)) + EquipmentAllResistBonus + EquipmentFrostResistBonus); } }
+    public int BlindResist { get { return ApplyEliteBuffToInt(ApplyPromotionToInt(Mathf.Max(0, BaseBlindResist + GetVariance().blindResistDelta)) + EquipmentAllResistBonus + EquipmentBlindResistBonus); } }
 
     public int BurnStackCount { get { return GetStatusStackCount(StatusEffectType.Burn); } }
     public int BleedStackCount { get { return GetStatusStackCount(StatusEffectType.Bleed); } }
@@ -219,6 +223,33 @@ public class BattleUnit
     public int BurnIdtPenaltyPercent { get { return Mathf.Max(0, BurnStackCount * BattleStatusUtility.BurnIdtPenaltyPercentPerStack); } }
     public int FrostStatPenaltyPercent { get { return Mathf.Max(0, FrostStackCount * BattleStatusUtility.FrostAcSpdPenaltyPercentPerStack); } }
     public int BlindFinalHitPenaltyPercent { get { return HasStatus(StatusEffectType.Blind) ? BattleStatusUtility.BlindFinalHitChancePenaltyPercent : 0; } }
+
+    public bool HasElitePermanentBuff { get { return elitePermanentAllStatsBuffPercent > 0; } }
+    public int ElitePermanentAllStatsBuffPercent { get { return Mathf.Max(0, elitePermanentAllStatsBuffPercent); } }
+
+    public void ApplyElitePermanentBuff(int percent)
+    {
+        elitePermanentAllStatsBuffPercent = Mathf.Max(0, percent);
+        CurrentHP = MaxHP;
+    }
+
+    private int ApplyEliteBuffToInt(int value)
+    {
+        int percent = ElitePermanentAllStatsBuffPercent;
+        if (percent <= 0)
+            return value;
+
+        return Mathf.Max(0, Mathf.RoundToInt(value * (1f + percent / 100f)));
+    }
+
+    private float ApplyEliteBuffToFloat(float value)
+    {
+        int percent = ElitePermanentAllStatsBuffPercent;
+        if (percent <= 0)
+            return value;
+
+        return Mathf.Max(0f, value * (1f + percent / 100f));
+    }
 
     private int endTurnGuardPercent;
     private bool manaPreventDeathGuardActive;

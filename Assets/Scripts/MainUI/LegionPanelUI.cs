@@ -410,8 +410,22 @@ public class LegionPanelUI : MainUIPanelBase, IDropHandler
         if (selectedUnit == null || persistentProfileController == null)
             return;
 
-        persistentProfileController.TryLevelUp(selectedUnit);
+        int beforeLevel = Mathf.Max(1, selectedUnit.currentLevel);
+        int beforeExp = Mathf.Max(0, selectedUnit.currentExp);
+        int beforeNeed = LegionFormula.GetExpToNextLevel(beforeLevel);
+
+        if (!persistentProfileController.TryLevelUp(selectedUnit))
+        {
+            RefreshAll();
+            return;
+        }
+
+        int afterLevel = Mathf.Max(1, selectedUnit.currentLevel);
+        int afterExp = Mathf.Max(0, selectedUnit.currentExp);
+        int afterNeed = LegionFormula.GetExpToNextLevel(afterLevel);
+
         RefreshAll();
+        detailPanelUI?.PlayLevelUpExpAnimation(beforeLevel, beforeExp, beforeNeed, afterLevel, afterExp, afterNeed);
     }
 
     public void HandlePromoteClicked()
