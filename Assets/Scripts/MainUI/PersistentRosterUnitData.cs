@@ -177,6 +177,7 @@ public class PersistentProfileState
     public List<PersistentRosterUnitData> graveyardUnits = new List<PersistentRosterUnitData>();
     public PersistentAccountCurrencyState accountCurrencies = new PersistentAccountCurrencyState();
     public long nextObtainedOrder = 1;
+    public WorldSettlementResultState lastWorldSettlementResult = WorldSettlementResultState.None;
 
     public void EnsureDefaults()
     {

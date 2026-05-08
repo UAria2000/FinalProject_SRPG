@@ -150,6 +150,8 @@ public class BattleActionWheelUI : MonoBehaviour
     [SerializeField] private string noAmountLabel = "수량없음";
     [SerializeField] private string moveUnavailableLabel = "이동불가";
     [SerializeField] private string notImplementedLabel = "미구현";
+    [SerializeField] private string noManaLabel = "마나부족";
+    [SerializeField] private string manaUsedThisRoundLabel = "라운드 사용";
 
     [Header("Icons")]
     [SerializeField] private Sprite attackIcon;
@@ -485,6 +487,7 @@ public class BattleActionWheelUI : MonoBehaviour
                 SetSingleDepth(BattleActionWheelDepth.Attack);
                 break;
             case BattleInputMode.WaitingForCaptureTarget:
+            case BattleInputMode.WaitingForManaPreventDeathTarget:
                 SetSingleDepth(BattleActionWheelDepth.Mana);
                 break;
             case BattleInputMode.WaitingForMoveTarget:
@@ -557,8 +560,8 @@ public class BattleActionWheelUI : MonoBehaviour
         Dictionary<int, BattleActionWheelButtonViewData> actions = new Dictionary<int, BattleActionWheelButtonViewData>();
         actions[0] = MaybeCancelReplacement(BattleActionWheelDepth.Mana, 0) ?? MakeCaptureButton();
         actions[1] = MaybeCancelReplacement(BattleActionWheelDepth.Mana, 1) ?? MakeFleeButton();
-        actions[2] = MaybeCancelReplacement(BattleActionWheelDepth.Mana, 2) ?? MakeDisabledButton(preventDeathLabel, preventDeathIcon, notImplementedLabel);
-        actions[3] = MaybeCancelReplacement(BattleActionWheelDepth.Mana, 3) ?? MakeDisabledButton(teamBuffLabel, teamBuffIcon, notImplementedLabel);
+        actions[2] = MaybeCancelReplacement(BattleActionWheelDepth.Mana, 2) ?? MakePreventDeathButton();
+        actions[3] = MaybeCancelReplacement(BattleActionWheelDepth.Mana, 3) ?? MakeTeamBuffButton();
 
         ApplyActions(actions);
     }
@@ -589,6 +592,8 @@ public class BattleActionWheelUI : MonoBehaviour
                 return depth == BattleActionWheelDepth.Root && actionSlotIndex == 2;
             case BattleInputMode.WaitingForCaptureTarget:
                 return depth == BattleActionWheelDepth.Mana && actionSlotIndex == 0;
+            case BattleInputMode.WaitingForManaPreventDeathTarget:
+                return depth == BattleActionWheelDepth.Mana && actionSlotIndex == 2;
             default:
                 return false;
         }
@@ -761,25 +766,67 @@ public class BattleActionWheelUI : MonoBehaviour
 
     private BattleActionWheelButtonViewData MakeCaptureButton()
     {
-        bool canCore = canAcceptAction && battleManager != null && battleManager.IsMainPlayerCharacter(currentActor);
-        if (!canCore)
-            return MakeDisabledButton(captureLabel, captureIcon, conditionNotMetLabel);
-
         bool hasTarget = battleManager != null && battleManager.HasAnyCaptureTarget(currentActor);
         bool canCapture = battleManager != null && battleManager.CanActorUseCaptureCommand(currentActor);
-
-        if (!hasTarget || !canCapture)
-            return MakeDisabledButton(captureLabel, captureIcon, noTargetLabel);
-
-        return MakeButton(captureLabel, captureIcon, true, OnCapturePressed);
+        string reason = (!hasTarget || !canCapture) ? noTargetLabel : null;
+        return MakeManaActionButton(captureLabel, captureIcon, BattleManaActionType.Capture, hasTarget && canCapture, reason, OnCapturePressed);
     }
 
     private BattleActionWheelButtonViewData MakeFleeButton()
     {
-        bool usable = canAcceptAction && battleManager != null && battleManager.IsMainPlayerCharacter(currentActor);
-        return usable
-            ? MakeButton(fleeLabel, fleeIcon, true, OnFleePressed)
-            : MakeDisabledButton(fleeLabel, fleeIcon, conditionNotMetLabel);
+        return MakeManaActionButton(fleeLabel, fleeIcon, BattleManaActionType.Flee, true, null, OnFleePressed);
+    }
+
+    private BattleActionWheelButtonViewData MakePreventDeathButton()
+    {
+        bool hasTarget = battleManager != null && battleManager.AllyFormation != null && battleManager.AllyFormation.GetAliveUnits().Count > 0;
+        return MakeManaActionButton(preventDeathLabel, preventDeathIcon, BattleManaActionType.PreventDeath, hasTarget, hasTarget ? null : noTargetLabel, OnPreventDeathPressed);
+    }
+
+    private BattleActionWheelButtonViewData MakeTeamBuffButton()
+    {
+        bool hasAlly = battleManager != null && battleManager.AllyFormation != null && battleManager.AllyFormation.GetAliveUnits().Count > 0;
+        return MakeManaActionButton(teamBuffLabel, teamBuffIcon, BattleManaActionType.TeamBuff, hasAlly, hasAlly ? null : noTargetLabel, OnTeamBuffPressed);
+    }
+
+    private BattleActionWheelButtonViewData MakeManaActionButton(string label, Sprite icon, BattleManaActionType actionType, bool actionSpecificUsable, string actionSpecificReason, UnityAction onClick)
+    {
+        int cost = battleManager != null ? battleManager.GetManaActionCost(actionType) : 0;
+        string reason = actionSpecificReason;
+        bool usable = canAcceptAction && actionSpecificUsable;
+
+        if (usable && battleManager != null && !battleManager.CanUseManaActionThisRound())
+        {
+            usable = false;
+            reason = manaUsedThisRoundLabel;
+        }
+
+        if (usable && battleManager != null && !battleManager.HasManaForAction(actionType))
+        {
+            usable = false;
+            reason = noManaLabel;
+        }
+
+        if (!canAcceptAction)
+        {
+            usable = false;
+            reason = unusableLabel;
+        }
+
+        return new BattleActionWheelButtonViewData(
+            label,
+            icon,
+            true,
+            usable,
+            false,
+            BattleActionWheelButtonFrameType.Hex,
+            usable ? onClick : null,
+            0,
+            0,
+            reason,
+            !usable,
+            cost,
+            true);
     }
 
     private BattleActionWheelButtonViewData MakeButton(string label, Sprite icon, bool interactable, UnityAction onClick)
@@ -1002,6 +1049,22 @@ public class BattleActionWheelUI : MonoBehaviour
         battleManager?.OnFleeButtonPressed();
     }
 
+    private void OnPreventDeathPressed()
+    {
+        if (!canAcceptAction)
+            return;
+
+        battleManager?.OnManaPreventDeathButtonPressed();
+    }
+
+    private void OnTeamBuffPressed()
+    {
+        if (!canAcceptAction)
+            return;
+
+        battleManager?.OnManaTeamBuffButtonPressed();
+    }
+
     private void OnEndTurnPressed()
     {
         if (!canAcceptAction)
@@ -1076,8 +1139,22 @@ public class BattleActionWheelUI : MonoBehaviour
         wheelRoot.anchoredPosition = openAtLastPosition ? lastAnchoredPosition : initialAnchoredPosition;
     }
 
+    private void SyncManaValuesFromWorld()
+    {
+        if (worldRunManager == null)
+            worldRunManager = UnityEngine.Object.FindFirstObjectByType<WorldRunManager>();
+
+        if (worldRunManager == null)
+            return;
+
+        maxManaValue = Mathf.Max(0, worldRunManager.MaxMana);
+        currentManaValue = maxManaValue > 0 ? Mathf.Clamp(worldRunManager.CurrentMana, 0, maxManaValue) : Mathf.Max(0, worldRunManager.CurrentMana);
+    }
+
     private void RefreshManaGauge()
     {
+        SyncManaValuesFromWorld();
+
         if (manaGaugeFill != null)
         {
             float normalized = maxManaValue > 0 ? currentManaValue / (float)maxManaValue : 0f;

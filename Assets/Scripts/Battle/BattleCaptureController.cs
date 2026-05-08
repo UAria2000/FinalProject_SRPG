@@ -104,8 +104,7 @@ public class BattleCaptureController : MonoBehaviour
                actor.Team == TeamType.Ally &&
                battleManager != null &&
                battleManager.IsUnitInBattle(actor) &&
-               !actor.IsDead &&
-               IsMainPlayerCharacter(actor);
+               !actor.IsDead;
     }
 
     public bool CanActorUseCaptureCommand(BattleUnit actor)

@@ -1,0 +1,63 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c7d82bbe39798b41a6678e937734907, type: 3}
+  m_Name: UD_Stalker
+  m_EditorClassIdentifier: Assembly-CSharp::UnitDefinition
+  unitId: darkelf
+  unitName: "\uCD94\uC801\uC790"
+  rangeType: 2
+  isNftUnit: 0
+  showInLegion: 1
+  legionSortPriority: 0
+  legionCategoryLabel: 
+  maxHP: 100
+  dmg: 40
+  spd: 100
+  idt: 0
+  hpGrowthPerLevel: {x: 2, y: 4}
+  dmgGrowthPerLevel: {x: 1, y: 3}
+  hit: 65
+  ac: 60
+  cri: 20
+  crd: 150
+  burnResist: 15
+  bleedResist: 10
+  stunResist: 5
+  frostResist: 0
+  blindResist: 0
+  basicAttack: {fileID: 11400000, guid: 376c6f4bdaf10554087f1fa5b5c95a1c, type: 2}
+  varianceRules:
+    maxHpRange: {x: -10, y: 10}
+    dmgRange: {x: -5, y: 5}
+    spdRange: {x: -5, y: 5}
+    idtRange: {x: 0, y: 0}
+    hitRange: {x: -5, y: 5}
+    acRange: {x: -5, y: 5}
+    criRange: {x: -5, y: 5}
+    crdRange: {x: -10, y: 10}
+    burnResistRange: {x: -5, y: 5}
+    bleedResistRange: {x: -5, y: 5}
+    stunResistRange: {x: -5, y: 5}
+    frostResistRange: {x: 0, y: 0}
+    blindResistRange: {x: 0, y: 0}
+  fixedStartingSkills: []
+  extraLearnableSkills: []
+  randomEnemyEquipment: []
+  lastWillChancePercent: 30
+  lastWillTextTable: {fileID: 0}
+  isMainPlayerCharacter: 0
+  baseSoulReward: 0
+  canBeDecomposed: 1
+  decomposeShardReward: 1
+  canBeCaptured: 0
+  capturableEnemyNftChancePercent: 0
+  captureRewardItem: {fileID: 0}

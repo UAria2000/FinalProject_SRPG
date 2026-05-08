@@ -44,6 +44,9 @@ public class BattleManager : MonoBehaviour
     [SerializeField] private BattlePersistenceController persistenceController;
     [SerializeField] private BattlePresentationController presentationController;
 
+    [Header("World Mana")]
+    [SerializeField] private WorldRunManager worldRunManager;
+
     [Header("Enemy Skill Hover Targets")]
     [SerializeField] private GameObject[] enemySkillHoverTargets = new GameObject[4];
 
@@ -75,6 +78,7 @@ public class BattleManager : MonoBehaviour
     private bool waitingForPlayerAction;
     private bool battleStarted;
     private int currentRound;
+    private int lastManaActionRoundUsed = -1;
     private bool currentTurnSkippedByStatus;
     private bool allyDeadUnitPresentThisTurn;
     private bool enemyDeadUnitPresentThisTurn;
@@ -98,6 +102,7 @@ public class BattleManager : MonoBehaviour
     public BattleSkillGimmickController SkillGimmickController { get { return skillGimmickController; } }
     public BattlePresentationController PresentationController { get { return presentationController; } }
     public int CurrentRound { get { return currentRound; } }
+    public WorldRunManager WorldRunManager => worldRunManager != null ? worldRunManager : (worldRunManager = UnityEngine.Object.FindFirstObjectByType<WorldRunManager>());
 
     public TurnState CurrentState { get; private set; }
     public BattleResultType BattleResult { get; private set; }
@@ -203,8 +208,64 @@ public class BattleManager : MonoBehaviour
         allyRuntimeInventory = allyInventory;
     }
 
+    public void SetWorldRunManager(WorldRunManager manager)
+    {
+        worldRunManager = manager;
+    }
+
+    public int GetManaActionCost(BattleManaActionType actionType)
+    {
+        return WorldRunManager != null ? WorldRunManager.GetManaActionCost(actionType) : 0;
+    }
+
+    public bool CanUseManaActionThisRound()
+    {
+        return currentRound > 0 && lastManaActionRoundUsed != currentRound;
+    }
+
+    public bool HasManaForAction(BattleManaActionType actionType)
+    {
+        return WorldRunManager != null && WorldRunManager.HasManaForAction(actionType);
+    }
+
+    public bool CanUseManaAction(BattleManaActionType actionType)
+    {
+        return CurrentState == TurnState.PlayerInput &&
+               CurrentActingUnit != null &&
+               CurrentActingUnit.Team == TeamType.Ally &&
+               CanUseManaActionThisRound() &&
+               HasManaForAction(actionType);
+    }
+
+    public bool TrySpendManaForAction(BattleManaActionType actionType)
+    {
+        // Buttons are pressed while the battle is in PlayerInput, but the input controller
+        // immediately switches to ExecutingAction before the action coroutine starts.
+        // Therefore this method must not call CanUseManaAction(), because that method
+        // intentionally requires CurrentState == PlayerInput for UI/input gating.
+        // Runtime spending only validates the actor, round limit, and available mana.
+        if (CurrentActingUnit == null || CurrentActingUnit.Team != TeamType.Ally)
+            return false;
+
+        if (!CanUseManaActionThisRound())
+            return false;
+
+        if (WorldRunManager == null || !WorldRunManager.TrySpendMana(actionType))
+            return false;
+
+        lastManaActionRoundUsed = currentRound;
+        RefreshAllUI();
+        return true;
+    }
+
+    public int TeamBuffAllStatsPercent => WorldRunManager != null ? WorldRunManager.TeamBuffAllStatsPercent : 10;
+    public int TeamBuffDurationTurns => WorldRunManager != null ? WorldRunManager.TeamBuffDurationTurns : 2;
+
     private void Start()
     {
+        if (worldRunManager == null)
+            worldRunManager = UnityEngine.Object.FindFirstObjectByType<WorldRunManager>();
+
         if (flowController == null)
             flowController = GetOrAddComponent<BattleFlowController>();
         if (captureController == null)
@@ -533,6 +594,18 @@ public class BattleManager : MonoBehaviour
             inputController.HandleFleePressed();
     }
 
+    public void OnManaPreventDeathButtonPressed()
+    {
+        if (inputController != null)
+            inputController.HandleManaPreventDeathPressed();
+    }
+
+    public void OnManaTeamBuffButtonPressed()
+    {
+        if (inputController != null)
+            inputController.HandleManaTeamBuffPressed();
+    }
+
     public void OnEndTurnButtonPressed()
     {
         if (inputController != null)
@@ -620,6 +693,7 @@ public class BattleManager : MonoBehaviour
         battleEndEventSent = false;
         waitingForPlayerAction = false;
         currentRound = 0;
+        lastManaActionRoundUsed = -1;
         currentTurnSkippedByStatus = false;
         allyDeadUnitPresentThisTurn = false;
         enemyDeadUnitPresentThisTurn = false;

@@ -160,6 +160,41 @@ public class SaveCoordinator : MonoBehaviour
         LocalSaveService.DeleteWorldRun(accountId);
     }
 
+    public void ClearSavedWorldRunAsAbandoned()
+    {
+        if (HasSavedActiveWorld())
+            SetLastWorldSettlementResult(WorldSettlementResultState.Failure);
+
+        LocalSaveService.DeleteWorldRun(accountId);
+    }
+
+    public void SetLastWorldSettlementResult(WorldSettlementResultState result)
+    {
+        RebindSceneReferences();
+
+        if (persistentProfileController != null)
+        {
+            persistentProfileController.EnsureInitialized();
+            if (persistentProfileController.Profile != null)
+                persistentProfileController.Profile.lastWorldSettlementResult = result;
+            SaveProfile();
+            return;
+        }
+
+        AccountProfileSaveData data = LoadProfileData();
+        if (data == null)
+        {
+            data = new AccountProfileSaveData
+            {
+                accountId = accountId,
+                nickname = nickname,
+            };
+        }
+
+        data.lastWorldSettlementResult = result;
+        LocalSaveService.SaveProfile(data);
+    }
+
     public void QueueContinueWorld()
     {
         queuedContinueWorld = true;

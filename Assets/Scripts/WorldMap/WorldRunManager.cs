@@ -24,6 +24,14 @@ public class WorldRunManager : MonoBehaviour
     [SerializeField] private SkillLearnPoolTable convertedUnitSkillPoolTable;
     [SerializeField, Min(0)] private int convertedUnitRandomSkillCount = 3;
 
+    [Header("Mana Crystal")]
+    [SerializeField, Min(0)] private int captureManaCost = 10;
+    [SerializeField, Min(0)] private int fleeManaCost = 15;
+    [SerializeField, Min(0)] private int preventDeathManaCost = 20;
+    [SerializeField, Min(0)] private int teamBuffManaCost = 25;
+    [SerializeField, Min(0)] private int teamBuffAllStatsPercent = 10;
+    [SerializeField, Min(1)] private int teamBuffDurationTurns = 2;
+
     [Header("Persistent Currencies")]
     [SerializeField] private int persistentSoul;
     [SerializeField] private int persistentCash;
@@ -53,6 +61,10 @@ public class WorldRunManager : MonoBehaviour
     public WorldRunTransientState CurrentWorldRunState => currentWorldRunState;
     public int PersistentSoul => persistentSoul;
     public int PersistentCash => persistentCash;
+    public int CurrentMana => GetOrCreateWorldRunState() != null ? Mathf.Max(0, GetOrCreateWorldRunState().currentMana) : 0;
+    public int MaxMana => GetOrCreateWorldRunState() != null ? Mathf.Max(0, GetOrCreateWorldRunState().maxMana) : 0;
+    public int TeamBuffAllStatsPercent => Mathf.Max(0, teamBuffAllStatsPercent);
+    public int TeamBuffDurationTurns => Mathf.Max(1, teamBuffDurationTurns);
     public int RevealedEnemyPreviewCount => Mathf.Clamp(revealedEnemyPreviewCount, 0, 6);
     public string PlayerDisplayName => string.IsNullOrWhiteSpace(playerDisplayName) ? "플레이어" : playerDisplayName;
 
@@ -64,6 +76,7 @@ public class WorldRunManager : MonoBehaviour
 
     public event Action OnWorldStateChanged;
     public event Action OnStorageChanged;
+    public event Action OnManaChanged;
     public event Action<WorldTileData> OnTileSelectionChanged;
     public event Action<WorldTileData> OnCurrentTileChanged;
 
@@ -306,6 +319,65 @@ public class WorldRunManager : MonoBehaviour
     {
         WorldRunTransientState state = GetOrCreateWorldRunState();
         return state != null ? state.inventory : null;
+    }
+
+    public int GetManaActionCost(BattleManaActionType actionType)
+    {
+        switch (actionType)
+        {
+            case BattleManaActionType.Capture: return Mathf.Max(0, captureManaCost);
+            case BattleManaActionType.Flee: return Mathf.Max(0, fleeManaCost);
+            case BattleManaActionType.PreventDeath: return Mathf.Max(0, preventDeathManaCost);
+            case BattleManaActionType.TeamBuff: return Mathf.Max(0, teamBuffManaCost);
+            default: return 0;
+        }
+    }
+
+    public bool HasManaForAction(BattleManaActionType actionType)
+    {
+        return CurrentMana >= GetManaActionCost(actionType);
+    }
+
+    public bool TrySpendMana(BattleManaActionType actionType)
+    {
+        int cost = GetManaActionCost(actionType);
+        if (cost <= 0)
+            return true;
+
+        WorldRunTransientState state = GetOrCreateWorldRunState();
+        if (state == null || state.currentMana < cost)
+            return false;
+
+        state.currentMana = Mathf.Max(0, state.currentMana - cost);
+        RaiseManaChanged();
+        RequestAutoSaveAll();
+        return true;
+    }
+
+    public void AddMana(int amount)
+    {
+        if (amount <= 0)
+            return;
+
+        WorldRunTransientState state = GetOrCreateWorldRunState();
+        if (state == null)
+            return;
+
+        state.currentMana = Mathf.Clamp(state.currentMana + amount, 0, Mathf.Max(0, state.maxMana));
+        RaiseManaChanged();
+        RequestAutoSaveAll();
+    }
+
+    public void SetManaValues(int current, int max)
+    {
+        WorldRunTransientState state = GetOrCreateWorldRunState();
+        if (state == null)
+            return;
+
+        state.maxMana = Mathf.Max(0, max);
+        state.currentMana = state.maxMana > 0 ? Mathf.Clamp(current, 0, state.maxMana) : Mathf.Max(0, current);
+        RaiseManaChanged();
+        RequestAutoSaveAll();
     }
 
     public void AddPersistentSoul(int amount)
@@ -1159,6 +1231,16 @@ public class WorldRunManager : MonoBehaviour
 
         RemoveDeadPartyMembersFromActiveParty();
         RestoreRosterUnitsForNewWorld();
+
+        if (persistentProfileController == null)
+            persistentProfileController = UnityEngine.Object.FindFirstObjectByType<PersistentProfileController>();
+        if (persistentProfileController != null)
+        {
+            persistentProfileController.EnsureInitialized();
+            if (persistentProfileController.Profile != null)
+                persistentProfileController.Profile.lastWorldSettlementResult = summary.wasVictory ? WorldSettlementResultState.Victory : WorldSettlementResultState.Failure;
+        }
+
         ClearRuntimeWorldAfterSettlement();
 
         // 결산이 끝난 월드는 승리/패배 여부와 무관하게 더 이상 이어하기 대상이 아니다.
@@ -1260,14 +1342,36 @@ public class WorldRunManager : MonoBehaviour
 
     public void ResetWorldRunStateForNewWorld()
     {
+        int initialMaxMana = CalculateInitialMaxManaForNewWorld();
+
         if (currentWorldRunState == null)
             currentWorldRunState = WorldRunTransientState.CreateForNewWorld(playerPartyTemplate);
-        else
-            currentWorldRunState.ResetForNewWorld(playerPartyTemplate);
+
+        currentWorldRunState.ResetForNewWorld(playerPartyTemplate, initialMaxMana);
 
         RefreshConquestButtonState();
         RaiseStorageChanged();
+        RaiseManaChanged();
         RequestAutoSaveAll();
+    }
+
+    private int CalculateInitialMaxManaForNewWorld()
+    {
+        if (generationSettings == null)
+            return 0;
+
+        WorldSettlementResultState previousResult = WorldSettlementResultState.None;
+        if (persistentProfileController == null)
+            persistentProfileController = UnityEngine.Object.FindFirstObjectByType<PersistentProfileController>();
+
+        if (persistentProfileController != null)
+        {
+            persistentProfileController.EnsureInitialized();
+            if (persistentProfileController.Profile != null)
+                previousResult = persistentProfileController.Profile.lastWorldSettlementResult;
+        }
+
+        return generationSettings.CalculateMaxMana(previousResult);
     }
 
     public IReadOnlyList<InventoryStackData> GetStorageInventory()
@@ -2152,6 +2256,13 @@ public class WorldRunManager : MonoBehaviour
         state.partyEquipmentAssignments.Clear();
         state.worldEarnedSoulAlreadyGranted = 0;
         state.nextPrisonerSequence = 1;
+        state.maxMana = Mathf.Max(0, saveData.maxMana);
+        state.currentMana = state.maxMana > 0 ? Mathf.Clamp(saveData.currentMana, 0, state.maxMana) : Mathf.Max(0, saveData.currentMana);
+        if (state.maxMana <= 0)
+        {
+            state.maxMana = CalculateInitialMaxManaForNewWorld();
+            state.currentMana = state.maxMana;
+        }
 
         if (saveData.worldInventory != null)
         {
@@ -2263,6 +2374,7 @@ public class WorldRunManager : MonoBehaviour
         }
 
         RaiseStorageChanged();
+        RaiseManaChanged();
     }
     private bool HasInventoryItem(ItemDefinition item)
     {
@@ -2401,6 +2513,12 @@ public class WorldRunManager : MonoBehaviour
     private void RaiseStorageChanged()
     {
         OnStorageChanged?.Invoke();
+    }
+
+    private void RaiseManaChanged()
+    {
+        OnManaChanged?.Invoke();
+        OnWorldStateChanged?.Invoke();
     }
 
     private void MoveToTileInternal(WorldTileData tile, bool triggerArrivalEvent)

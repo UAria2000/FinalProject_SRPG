@@ -29,6 +29,8 @@ public readonly struct BattleActionWheelButtonViewData
     public readonly int cooldownTotal;
     public readonly string disabledReason;
     public readonly bool showUnusableDim;
+    public readonly int manaCost;
+    public readonly bool showManaCost;
 
     public BattleActionWheelButtonViewData(
         string label,
@@ -41,7 +43,9 @@ public readonly struct BattleActionWheelButtonViewData
         int cooldownRemaining = 0,
         int cooldownTotal = 0,
         string disabledReason = null,
-        bool showUnusableDim = false)
+        bool showUnusableDim = false,
+        int manaCost = 0,
+        bool showManaCost = false)
     {
         this.label = label;
         this.icon = icon;
@@ -54,6 +58,8 @@ public readonly struct BattleActionWheelButtonViewData
         this.cooldownTotal = Mathf.Max(0, cooldownTotal);
         this.disabledReason = disabledReason;
         this.showUnusableDim = showUnusableDim;
+        this.manaCost = Mathf.Max(0, manaCost);
+        this.showManaCost = showManaCost;
     }
 
     public static BattleActionWheelButtonViewData Empty()
@@ -100,6 +106,8 @@ public class BattleActionWheelButtonUI : MonoBehaviour
     [SerializeField] private Image frameImage;
     [SerializeField] private Image iconImage;
     [SerializeField] private TMP_Text labelText;
+    [Tooltip("마나 행동 비용을 별도 텍스트로 표시할 때 연결합니다.")]
+    [SerializeField] private TMP_Text costText;
 
     [Header("Frame Sprites - Optional")]
     [Tooltip("Frame Image에 적용할 기본 프레임 스프라이트. 비워두면 기존 스프라이트를 유지한다.")]
@@ -153,6 +161,7 @@ public class BattleActionWheelButtonUI : MonoBehaviour
         frameImage = FindImage("FrameImage");
         iconImage = FindImage("IconImage");
         labelText = FindText("Text");
+        costText = FindText("CostText");
 
         cooldownDimImage = FindImage("CooldownDim");
         cooldownText = FindText("CooldownText");
@@ -249,6 +258,13 @@ public class BattleActionWheelButtonUI : MonoBehaviour
             labelText.gameObject.SetActive(showLabel);
             labelText.text = showLabel ? data.label : string.Empty;
         }
+
+        if (costText != null)
+        {
+            bool showCost = !data.isEmpty && data.showManaCost;
+            costText.gameObject.SetActive(showCost);
+            costText.text = showCost ? data.manaCost.ToString() : string.Empty;
+        }
     }
 
     private void ApplyDisabledVisuals(BattleActionWheelButtonViewData data)
@@ -319,6 +335,9 @@ public class BattleActionWheelButtonUI : MonoBehaviour
 
         if (labelText == null)
             labelText = FindText("Text");
+
+        if (costText == null)
+            costText = FindText("CostText");
     }
 
     private void DisableChildRaycasts()

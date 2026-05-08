@@ -25,5 +25,8 @@ public class ActiveWorldRunSaveData
     public List<CapturedPrisonerSaveData> prisoners = new List<CapturedPrisonerSaveData>();
     public string sharedConsumableItemId;
 
+    public int currentMana;
+    public int maxMana;
+
     public List<WorldPartyMemberRuntimeSaveData> worldPartyMembers = new List<WorldPartyMemberRuntimeSaveData>();
 }

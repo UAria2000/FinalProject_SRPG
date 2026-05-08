@@ -39,6 +39,26 @@ public class WorldGenerationSettings : ScriptableObject
     public int difficultyBonusPercentHard = 20;
     public int worldVictoryBonusPercent = 20;
 
+
+    [Header("Mana Crystal")]
+    [Tooltip("월드 최대 마나 계산의 기준 정수값입니다. 중형/보통/이전결과 없음이면 이 값이 그대로 최대 마나가 됩니다.")]
+    [Min(0)] public int baseMaxMana = 100;
+    [Tooltip("radius 3 테스트맵과 radius 4 소형 월드의 마나 배율입니다.")]
+    [Min(0)] public int manaSizePercentSmall = 80;
+    [Tooltip("radius 5 중형 월드의 마나 배율입니다. 기본 100%입니다.")]
+    [Min(0)] public int manaSizePercentMedium = 100;
+    [Tooltip("radius 6 대형 월드의 마나 배율입니다.")]
+    [Min(0)] public int manaSizePercentLarge = 120;
+    [Min(0)] public int manaDifficultyPercentEasy = 120;
+    [Min(0)] public int manaDifficultyPercentNormal = 100;
+    [Min(0)] public int manaDifficultyPercentHard = 80;
+    [Tooltip("이전 월드 결과가 없을 때의 마나 배율입니다. 기본 100% = 보정 없음.")]
+    [Min(0)] public int manaPreviousNonePercent = 100;
+    [Tooltip("이전 월드 성공 후 다음 월드의 마나 배율입니다. 기본 100% = 보정 없음.")]
+    [Min(0)] public int manaPreviousVictoryPercent = 100;
+    [Tooltip("이전 월드 실패/중도삭제 후 다음 월드의 마나 배율입니다. 기본 50%.")]
+    [Min(0)] public int manaPreviousFailurePercent = 50;
+
     [Header("Rules")]
     public bool forbidBossNearCenter = true;
     public bool forbidEliteNearCenter = true;
@@ -192,6 +212,51 @@ public class WorldGenerationSettings : ScriptableObject
         if (eventType == WorldTileEventType.Boss)
             return 50;
         return 0;
+    }
+
+
+    public int CalculateMaxMana(WorldSettlementResultState previousResult)
+    {
+        int baseValue = Mathf.Max(0, baseMaxMana);
+        if (baseValue <= 0)
+            return 0;
+
+        int sizePercent = GetManaSizePercent();
+        int difficultyPercent = GetManaDifficultyPercent();
+        int previousPercent = GetManaPreviousResultPercent(previousResult);
+
+        int totalPercent = 100 + (sizePercent - 100) + (difficultyPercent - 100) + (previousPercent - 100);
+        totalPercent = Mathf.Max(0, totalPercent);
+        return Mathf.Max(0, Mathf.RoundToInt(baseValue * (totalPercent * 0.01f)));
+    }
+
+    public int GetManaSizePercent()
+    {
+        if (radius <= 4)
+            return Mathf.Max(0, manaSizePercentSmall);
+        if (radius == 5)
+            return Mathf.Max(0, manaSizePercentMedium);
+        return Mathf.Max(0, manaSizePercentLarge);
+    }
+
+    public int GetManaDifficultyPercent()
+    {
+        switch (difficulty)
+        {
+            case WorldDifficulty.Easy: return Mathf.Max(0, manaDifficultyPercentEasy);
+            case WorldDifficulty.Hard: return Mathf.Max(0, manaDifficultyPercentHard);
+            default: return Mathf.Max(0, manaDifficultyPercentNormal);
+        }
+    }
+
+    public int GetManaPreviousResultPercent(WorldSettlementResultState previousResult)
+    {
+        switch (previousResult)
+        {
+            case WorldSettlementResultState.Victory: return Mathf.Max(0, manaPreviousVictoryPercent);
+            case WorldSettlementResultState.Failure: return Mathf.Max(0, manaPreviousFailurePercent);
+            default: return Mathf.Max(0, manaPreviousNonePercent);
+        }
     }
 
     private FactionPresentation GetFactionPresentation(FactionType faction)

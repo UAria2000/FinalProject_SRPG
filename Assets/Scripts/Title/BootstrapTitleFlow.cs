@@ -335,7 +335,7 @@ public class BootstrapTitleFlow : MonoBehaviour
         if (saveCoordinator == null)
             return;
 
-        saveCoordinator.ClearSavedWorldRun();
+        saveCoordinator.ClearSavedWorldRunAsAbandoned();
         StartQueuedNewWorld();
     }
 

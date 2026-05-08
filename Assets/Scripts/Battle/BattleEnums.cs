@@ -39,7 +39,16 @@ public enum BattleInputMode
     WaitingForSkillTarget,
     WaitingForMoveTarget,
     WaitingForItemTarget,
-    WaitingForCaptureTarget
+    WaitingForCaptureTarget,
+    WaitingForManaPreventDeathTarget
+}
+
+public enum BattleManaActionType
+{
+    Capture = 0,
+    Flee = 1,
+    PreventDeath = 2,
+    TeamBuff = 3
 }
 
 public enum BottomContextType
@@ -147,6 +156,7 @@ public enum StatModifierType
     SPD,
     HIT,
     AC,
+    IDT,
     CRI,
     CRD,
     IncomingDamageTakenPercent,

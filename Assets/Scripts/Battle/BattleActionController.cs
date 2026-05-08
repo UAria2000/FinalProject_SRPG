@@ -297,20 +297,26 @@ public class BattleActionController : MonoBehaviour
             yield break;
         }
 
+        if (!battleManager.TrySpendManaForAction(BattleManaActionType.Capture))
+        {
+            battleManager.RefundCaptureAttempt(target);
+            battleManager.OnActionExecutionFinished(false);
+            yield break;
+        }
+
         int chancePercent = battleManager.GetCaptureChancePercent(target);
         bool success = Random.Range(0f, 100f) < chancePercent;
 
         if (!success)
         {
             logController.AppendBattleLog(logController.BuildCaptureFailureLog(actor, target, chancePercent));
-            battleManager.OnActionExecutionFinished(true);
+            battleManager.OnActionExecutionFinished(false);
             yield break;
         }
 
         ItemDefinition capturedItem;
         if (!battleManager.TryAddCapturedRewardToInventory(target, out capturedItem))
         {
-            battleManager.RefundCaptureAttempt(target);
             battleManager.OnActionExecutionFinished(false);
             yield break;
         }
@@ -330,37 +336,93 @@ public class BattleActionController : MonoBehaviour
 
         battleManager.NotifyUnitLeftBattle(target);
         yield return StartCoroutine(battleManager.HandleDeathsAndCompressionRoutine());
-        battleManager.OnActionExecutionFinished(true);
+
+        if (battleManager.EnemyFormation == null || !battleManager.EnemyFormation.HasLivingUnits())
+            battleManager.SetBattleResult(BattleResultType.Victory);
+
+        battleManager.OnActionExecutionFinished(false);
     }
 
     public IEnumerator ExecuteFlee(BattleUnit actor)
     {
         if (actor == null)
         {
-            battleManager.OnActionExecutionFinished(true);
+            battleManager.OnActionExecutionFinished(false);
             yield break;
         }
 
         battleManager.SetTurnState(TurnState.ExecutingAction);
 
-        BattleFormation ownFormation = actor.Team == TeamType.Ally
-            ? battleManager.AllyFormation
-            : battleManager.EnemyFormation;
-
-        int fleeChancePercent = BattleCalculator.CalculateFleeChancePercent(actor, battleManager.EnemyFormation);
-        bool success = Random.Range(0f, 100f) < fleeChancePercent;
-
-        if (success)
+        if (!battleManager.TrySpendManaForAction(BattleManaActionType.Flee))
         {
-            logController.AppendBattleLog(logController.BuildFleeSuccessLog(actor, fleeChancePercent));
-            battleManager.SetBattleResult(BattleResultType.Flee);
-        }
-        else
-        {
-            logController.AppendBattleLog(logController.BuildFleeFailureLog(actor, fleeChancePercent));
+            battleManager.OnActionExecutionFinished(false);
+            yield break;
         }
 
-        battleManager.OnActionExecutionFinished(true);
+        logController.AppendBattleLog(logController.BuildFleeSuccessLog(actor, 100));
+        battleManager.SetBattleResult(BattleResultType.Flee);
+        battleManager.OnActionExecutionFinished(false);
+    }
+
+    public IEnumerator ExecuteManaPreventDeath(BattleUnit actor, BattleUnit target)
+    {
+        if (actor == null || target == null)
+        {
+            battleManager.OnActionExecutionFinished(false);
+            yield break;
+        }
+
+        battleManager.SetTurnState(TurnState.ExecutingAction);
+
+        if (!battleManager.TrySpendManaForAction(BattleManaActionType.PreventDeath))
+        {
+            battleManager.OnActionExecutionFinished(false);
+            yield break;
+        }
+
+        target.ApplyManaPreventDeathGuard();
+        logController.AppendBattleLog($"{actor.Name}의 마나 행동 → {target.Name}: 생존 부여");
+        yield return null;
+        battleManager.OnActionExecutionFinished(false);
+    }
+
+    public IEnumerator ExecuteManaTeamBuff(BattleUnit actor)
+    {
+        if (actor == null)
+        {
+            battleManager.OnActionExecutionFinished(false);
+            yield break;
+        }
+
+        battleManager.SetTurnState(TurnState.ExecutingAction);
+
+        if (!battleManager.TrySpendManaForAction(BattleManaActionType.TeamBuff))
+        {
+            battleManager.OnActionExecutionFinished(false);
+            yield break;
+        }
+
+        int percent = Mathf.Max(0, battleManager.TeamBuffAllStatsPercent);
+        int duration = Mathf.Max(1, battleManager.TeamBuffDurationTurns);
+        List<BattleUnit> allies = battleManager.AllyFormation != null ? battleManager.AllyFormation.GetAliveUnits() : new List<BattleUnit>();
+        for (int i = 0; i < allies.Count; i++)
+        {
+            BattleUnit target = allies[i];
+            if (target == null)
+                continue;
+
+            target.TryApplyTimedModifier(StatModifierType.DMG, percent, duration);
+            target.TryApplyTimedModifier(StatModifierType.SPD, percent, duration);
+            target.TryApplyTimedModifier(StatModifierType.HIT, percent, duration);
+            target.TryApplyTimedModifier(StatModifierType.AC, percent, duration);
+            target.TryApplyTimedModifier(StatModifierType.IDT, percent, duration);
+            target.TryApplyTimedModifier(StatModifierType.CRI, percent, duration);
+            target.TryApplyTimedModifier(StatModifierType.CRD, percent, duration);
+        }
+
+        logController.AppendBattleLog($"{actor.Name}의 마나 행동: 아군 전체 능력치 {percent}% 증가 ({duration}턴)");
+        yield return null;
+        battleManager.OnActionExecutionFinished(false);
     }
 
     public IEnumerator ExecuteEndTurn(BattleUnit actor)

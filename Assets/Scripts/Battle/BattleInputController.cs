@@ -81,7 +81,7 @@ public class BattleInputController : MonoBehaviour
             return;
 
         BattleUnit actor = battleManager.CurrentActingUnit;
-        if (!battleManager.CanActorUseCaptureCommand(actor))
+        if (!battleManager.CanActorUseCaptureCommand(actor) || !battleManager.CanUseManaAction(BattleManaActionType.Capture))
             return;
 
         List<BattleUnit> validTargets = battleManager.GetValidCaptureTargets(actor);
@@ -106,13 +106,54 @@ public class BattleInputController : MonoBehaviour
         if (!CanAcceptPlayerInput())
             return;
 
-        if (!battleManager.IsMainPlayerCharacter(battleManager.CurrentActingUnit))
+        if (!battleManager.CanUseManaAction(BattleManaActionType.Flee))
             return;
 
         BeginActionExecutionLock();
 
         ClearUISelection();
         battleManager.StartManagedCoroutine(actionController.ExecuteFlee(battleManager.CurrentActingUnit));
+    }
+
+    public void HandleManaPreventDeathPressed()
+    {
+        if (!CanAcceptPlayerInput())
+            return;
+
+        if (!battleManager.CanUseManaAction(BattleManaActionType.PreventDeath))
+            return;
+
+        List<BattleUnit> validTargets = battleManager.AllyFormation != null
+            ? battleManager.AllyFormation.GetAliveUnits()
+            : new List<BattleUnit>();
+
+        if (validTargets.Count <= 0)
+            return;
+
+        battleManager.SelectedSkill = null;
+        battleManager.SelectedInventoryIndex = -1;
+        battleManager.SelectedSkillSlotIndex = -1;
+        battleManager.SetInputMode(BattleInputMode.WaitingForManaPreventDeathTarget);
+        battleManager.ShowTargetMarkers(validTargets);
+        uiController.HideTargetPreview();
+        uiController.HideSkillTooltip();
+        uiController.HideFleeTooltip();
+
+        ClearUISelection();
+        battleManager.RefreshAllUI();
+    }
+
+    public void HandleManaTeamBuffPressed()
+    {
+        if (!CanAcceptPlayerInput())
+            return;
+
+        if (!battleManager.CanUseManaAction(BattleManaActionType.TeamBuff))
+            return;
+
+        BeginActionExecutionLock();
+        ClearUISelection();
+        battleManager.StartManagedCoroutine(actionController.ExecuteManaTeamBuff(battleManager.CurrentActingUnit));
     }
 
     public void HandleEndTurnPressed()
@@ -206,6 +247,10 @@ public class BattleInputController : MonoBehaviour
                 return;
             case BattleInputMode.WaitingForCaptureTarget:
                 HandleCaptureTargetClick(clickedUnit);
+                battleManager.RefreshAllUI();
+                return;
+            case BattleInputMode.WaitingForManaPreventDeathTarget:
+                HandleManaPreventDeathTargetClick(clickedUnit);
                 battleManager.RefreshAllUI();
                 return;
         }
@@ -362,6 +407,19 @@ public class BattleInputController : MonoBehaviour
 
         BeginActionExecutionLock();
         battleManager.StartManagedCoroutine(actionController.ExecuteCapture(actor, clickedUnit));
+    }
+
+    private void HandleManaPreventDeathTargetClick(BattleUnit clickedUnit)
+    {
+        if (!CanAcceptTargetSelectionInput())
+            return;
+
+        if (clickedUnit == null || clickedUnit.Team != TeamType.Ally || clickedUnit.IsDead)
+            return;
+
+        BattleUnit actor = battleManager.CurrentActingUnit;
+        BeginActionExecutionLock();
+        battleManager.StartManagedCoroutine(actionController.ExecuteManaPreventDeath(actor, clickedUnit));
     }
 
     private void BeginActionExecutionLock()

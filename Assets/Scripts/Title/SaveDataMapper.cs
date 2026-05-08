@@ -30,6 +30,7 @@ public static class SaveDataMapper
             return save;
 
         save.nextObtainedOrder = profile.nextObtainedOrder;
+        save.lastWorldSettlementResult = profile.lastWorldSettlementResult;
 
         if (profile.accountCurrencies != null)
         {
@@ -172,6 +173,8 @@ public static class SaveDataMapper
             }
 
             save.sharedConsumableItemId = state.sharedConsumableItem != null ? state.sharedConsumableItem.itemId : string.Empty;
+            save.currentMana = Mathf.Max(0, state.currentMana);
+            save.maxMana = Mathf.Max(0, state.maxMana);
 
             if (state.partyEquipmentAssignments != null)
             {
@@ -249,6 +252,7 @@ public static class SaveDataMapper
             profile.graveyardUnits = new List<PersistentRosterUnitData>();
         profile.graveyardUnits.Clear();
         profile.nextObtainedOrder = saveData.nextObtainedOrder > 0 ? saveData.nextObtainedOrder : 1;
+        profile.lastWorldSettlementResult = saveData.lastWorldSettlementResult;
 
         if (profile.accountCurrencies == null)
             profile.accountCurrencies = new PersistentAccountCurrencyState();

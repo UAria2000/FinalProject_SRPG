@@ -116,8 +116,8 @@ MonoBehaviour:
     bossPartyDefinition: {fileID: 0}
     bossEncounterTable: {fileID: 11400000, guid: 681deb5fa980cc64ebe194a5a097874d, type: 2}
   conquestRequiredPercentSmall: 50
-  conquestRequiredPercentMedium: 55
-  conquestRequiredPercentLarge: 60
+  conquestRequiredPercentMedium: 75
+  conquestRequiredPercentLarge: 70
   conquestRequiredPercentXLarge: 65
   sizeBonusPercentSmall: 0
   sizeBonusPercentMedium: 10
@@ -127,5 +127,15 @@ MonoBehaviour:
   difficultyBonusPercentNormal: 10
   difficultyBonusPercentHard: 20
   worldVictoryBonusPercent: 20
+  baseMaxMana: 100
+  manaSizePercentSmall: 80
+  manaSizePercentMedium: 100
+  manaSizePercentLarge: 120
+  manaDifficultyPercentEasy: 120
+  manaDifficultyPercentNormal: 100
+  manaDifficultyPercentHard: 80
+  manaPreviousNonePercent: 100
+  manaPreviousVictoryPercent: 100
+  manaPreviousFailurePercent: 50
   forbidBossNearCenter: 1
   forbidEliteNearCenter: 1

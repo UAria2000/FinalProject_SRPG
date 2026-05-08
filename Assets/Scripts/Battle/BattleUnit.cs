@@ -201,6 +201,7 @@ public class BattleUnit
         get
         {
             int baseValue = ApplyPromotionToInt(BaseIDT + GetVariance().idtDelta + EquipmentIdtBonus);
+            baseValue = ApplyPercentTimedModifierToInt(baseValue, StatModifierType.IDT);
             int incomingDamageTakenPercent = GetTimedModifierMagnitude(StatModifierType.IncomingDamageTakenPercent);
             return baseValue - incomingDamageTakenPercent - BurnIdtPenaltyPercent;
         }
@@ -220,6 +221,7 @@ public class BattleUnit
     public int BlindFinalHitPenaltyPercent { get { return HasStatus(StatusEffectType.Blind) ? BattleStatusUtility.BlindFinalHitChancePenaltyPercent : 0; } }
 
     private int endTurnGuardPercent;
+    private bool manaPreventDeathGuardActive;
     public int EndTurnGuardPercent { get { return endTurnGuardPercent > 0 ? endTurnGuardPercent : 0; } }
     public bool HasEndTurnGuard { get { return endTurnGuardPercent > 0; } }
 
@@ -635,6 +637,7 @@ public class BattleUnit
     public void OnOwnTurnStart()
     {
         ClearEndTurnGuard();
+        ClearManaPreventDeathGuard();
 
         List<string> keys = new List<string>(skillCooldowns.Keys);
         for (int i = 0; i < keys.Count; i++)
@@ -663,6 +666,12 @@ public class BattleUnit
         CurrentShield -= shieldAbsorb;
         int hpDamage = amount - shieldAbsorb;
 
+        if (manaPreventDeathGuardActive && CurrentHP > 1 && hpDamage >= CurrentHP)
+        {
+            hpDamage = CurrentHP - 1;
+            manaPreventDeathGuardActive = false;
+        }
+
         CurrentHP = Mathf.Max(0, CurrentHP - hpDamage);
         return hpDamage;
     }
@@ -671,9 +680,29 @@ public class BattleUnit
     {
         amount = Mathf.Max(0, amount);
         int before = CurrentHP;
-        CurrentHP = Mathf.Max(0, CurrentHP - amount);
+        int hpDamage = amount;
+
+        if (manaPreventDeathGuardActive && before > 1 && hpDamage >= before)
+        {
+            hpDamage = before - 1;
+            manaPreventDeathGuardActive = false;
+        }
+
+        CurrentHP = Mathf.Max(0, CurrentHP - hpDamage);
         return before - CurrentHP;
     }
+
+    public void ApplyManaPreventDeathGuard()
+    {
+        manaPreventDeathGuardActive = true;
+    }
+
+    public void ClearManaPreventDeathGuard()
+    {
+        manaPreventDeathGuardActive = false;
+    }
+
+    public bool HasManaPreventDeathGuard => manaPreventDeathGuardActive;
 
     public int ApplyIncomingAttackDamageReduction(int amount)
     {

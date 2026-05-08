@@ -111,6 +111,7 @@ public class WorldBattleBridge : MonoBehaviour
             yield return null;
 
         BattlePartyRuntimeState allyState = runManager.GetOrCreatePlayerPartyRuntimeState();
+        battleManager.SetWorldRunManager(runManager);
         battleManager.SetAllyRuntimePartyState(allyState);
         battleManager.SetAllyRuntimeInventory(runManager.GetActiveWorldInventory());
 

@@ -8,6 +8,8 @@ public class WorldRunTransientState
     public List<PrisonerRuntimeData> prisoners = new List<PrisonerRuntimeData>();
     public ItemDefinition sharedConsumableItem;
     public int worldEarnedSoulAlreadyGranted;
+    public int currentMana;
+    public int maxMana;
     public long nextPrisonerSequence = 1;
     public List<PartyEquipmentAssignmentData> partyEquipmentAssignments = new List<PartyEquipmentAssignmentData>();
     public static WorldRunTransientState CreateForNewWorld(PartyDefinition playerPartyTemplate)
@@ -18,12 +20,14 @@ public class WorldRunTransientState
         return state;
     }
 
-    public void ResetForNewWorld(PartyDefinition playerPartyTemplate)
+    public void ResetForNewWorld(PartyDefinition playerPartyTemplate, int initialMaxMana = 0)
     {
         inventory = playerPartyTemplate != null ? playerPartyTemplate.CreateInventoryRuntime() : new List<InventoryStackData>();
         prisoners.Clear();
         sharedConsumableItem = null;
         worldEarnedSoulAlreadyGranted = 0;
+        maxMana = System.Math.Max(0, initialMaxMana);
+        currentMana = maxMana;
         nextPrisonerSequence = 1;
         partyEquipmentAssignments.Clear();
     }
