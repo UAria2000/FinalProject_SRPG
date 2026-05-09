@@ -13,30 +13,74 @@ public class WorldSettlementPopupUI : MonoBehaviour
     [SerializeField] private TMP_Text confirmText;
 
     private Action onConfirm;
+    private bool initialized;
+    private bool opening;
 
     private void Awake()
     {
+        EnsureInitialized();
+
+        // Open()이 비활성 Panel 오브젝트를 켜면서 Awake가 처음 호출되는 경우,
+        // 여기서 다시 닫아버리면 결산창이 열린 직후 먹통처럼 사라진다.
+        if (!opening)
+            CloseSilently();
+    }
+
+    private void EnsureInitialized()
+    {
+        if (initialized)
+            return;
+
+        initialized = true;
+
+        if (root == null)
+            root = gameObject;
+
+        if (confirmButton == null)
+            confirmButton = root != null ? root.GetComponentInChildren<Button>(true) : GetComponentInChildren<Button>(true);
+
         if (confirmButton != null)
         {
             confirmButton.onClick.RemoveAllListeners();
             confirmButton.onClick.AddListener(HandleConfirm);
         }
-        CloseSilently();
+        else
+        {
+            Debug.LogWarning("[WorldSettlementPopupUI] Confirm Button is not assigned.", this);
+        }
     }
 
     public void Open(WorldSettlementSummary summary, Action confirm)
     {
+        opening = true;
+
+        if (!gameObject.activeSelf)
+            gameObject.SetActive(true);
+
+        EnsureInitialized();
+
         onConfirm = confirm;
         if (titleText != null) titleText.text = summary != null && summary.wasVictory ? "월드 정산 - 승리" : "월드 정산 - 실패";
         if (confirmText != null) confirmText.text = "확인";
         if (bodyText != null) bodyText.text = BuildBody(summary);
-        if (root != null) root.SetActive(true); else gameObject.SetActive(true);
+
+        SetVisible(true);
+        opening = false;
     }
 
     public void CloseSilently()
     {
+        opening = false;
         onConfirm = null;
-        if (root != null) root.SetActive(false); else gameObject.SetActive(false);
+        SetVisible(false);
+    }
+
+    private void SetVisible(bool visible)
+    {
+        if (root != null)
+            root.SetActive(visible);
+        else
+            gameObject.SetActive(visible);
     }
 
     private void HandleConfirm()

@@ -890,7 +890,9 @@ public class LegionDetailPanelUI : MonoBehaviour
             FormatBreakdownValue(kind, breakdown.Total),
             FormatBreakdownValue(kind, breakdown.BaseValue),
             FormatSignedBreakdownValue(kind, breakdown.VarianceValue),
-            FormatSignedBreakdownValue(kind, breakdown.EquipmentValue));
+            FormatSignedBreakdownValue(kind, breakdown.EquipmentValue),
+            breakdown.VarianceValue,
+            breakdown.EquipmentValue);
     }
 
     public void HideStatTooltip()
@@ -909,8 +911,10 @@ public class LegionDetailPanelUI : MonoBehaviour
         switch (kind)
         {
             case LegionStatKind.Dmg:
-                result.BaseValue = def != null ? def.dmg : 0;
-                result.VarianceValue = var.dmgDelta + Mathf.Max(0, boundUnit != null ? boundUnit.levelGrowthDmg : 0);
+                // 레벨업으로 증가한 수치는 유닛 생성 시점의 개체 편차가 아니라
+                // 성장으로 누적된 기본 스탯으로 취급한다.
+                result.BaseValue = (def != null ? def.dmg : 0) + Mathf.Max(0, boundUnit != null ? boundUnit.levelGrowthDmg : 0);
+                result.VarianceValue = var.dmgDelta;
                 result.EquipmentValue = bonus.dmg;
                 break;
             case LegionStatKind.Hit:
@@ -1004,8 +1008,8 @@ public class LegionDetailPanelUI : MonoBehaviour
 
     private int GetMaxHp(PersistentRosterUnitData unit, out int baseHp, out int varianceHp, out int equipHp)
     {
-        baseHp = unit != null && unit.unitDefinition != null ? unit.unitDefinition.maxHP : 1;
-        varianceHp = unit != null && unit.statVariance != null ? unit.statVariance.maxHpDelta + Mathf.Max(0, unit.levelGrowthMaxHp) : Mathf.Max(0, unit != null ? unit.levelGrowthMaxHp : 0);
+        baseHp = (unit != null && unit.unitDefinition != null ? unit.unitDefinition.maxHP : 1) + Mathf.Max(0, unit != null ? unit.levelGrowthMaxHp : 0);
+        varianceHp = unit != null && unit.statVariance != null ? unit.statVariance.maxHpDelta : 0;
         LegionEquipmentBonusSummary bonus = profileController != null ? profileController.GetEquipmentBonusSummary(unit) : default;
         equipHp = bonus.maxHp;
 

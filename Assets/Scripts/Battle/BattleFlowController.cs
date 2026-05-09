@@ -103,6 +103,15 @@ public class BattleFlowController : MonoBehaviour
         for (int i = 0; i < deadEnemies.Count; i++)
             battleManager.RegisterDefeatedEnemy(deadEnemies[i]);
 
+        for (int i = 0; i < deadAllies.Count; i++)
+        {
+            if (battleManager.IsMainPlayerCharacter(deadAllies[i]))
+            {
+                battleManager.MarkMainPlayerDeadThisBattle();
+                break;
+            }
+        }
+
         List<BattleUnit> movedAllies = battleManager.AllyFormation.RemoveDeadAndCompress();
         List<BattleUnit> movedEnemies = battleManager.EnemyFormation.RemoveDeadAndCompress();
 
@@ -477,7 +486,8 @@ private void ClearInvalidDuelLocks()
         if (battleManager.BattleResult == BattleResultType.Flee)
             return;
 
-        bool mainAlive = captureController == null || captureController.IsMainPlayerAliveInBattle();
+        bool mainAlive = !battleManager.MainPlayerDeadThisBattle &&
+                         (captureController == null || captureController.IsMainPlayerAliveInBattle());
         if (!mainAlive)
         {
             battleManager.SetPendingWorldFailure(true);

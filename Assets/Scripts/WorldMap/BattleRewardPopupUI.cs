@@ -13,20 +13,49 @@ public class BattleRewardPopupUI : MonoBehaviour
     [SerializeField] private Button closeButton;
 
     private Action onClose;
+    private bool initialized;
+    private bool opening;
 
     private void Awake()
     {
+        EnsureInitialized();
+        if (!opening)
+            CloseSilently();
+    }
+
+    private void EnsureInitialized()
+    {
+        if (initialized)
+            return;
+
+        initialized = true;
+
+        if (root == null)
+            root = gameObject;
+
+        if (closeButton == null)
+            closeButton = root != null ? root.GetComponentInChildren<Button>(true) : GetComponentInChildren<Button>(true);
+
         if (closeButton != null)
         {
             closeButton.onClick.RemoveAllListeners();
             closeButton.onClick.AddListener(HandleClose);
         }
-
-        CloseSilently();
+        else
+        {
+            Debug.LogWarning("[BattleRewardPopupUI] Close Button is not assigned.", this);
+        }
     }
 
     public void Open(BattleRewardSummary summary, Action closeAction)
     {
+        opening = true;
+
+        if (!gameObject.activeSelf)
+            gameObject.SetActive(true);
+
+        EnsureInitialized();
+
         onClose = closeAction;
 
         if (titleText != null)
@@ -35,20 +64,23 @@ public class BattleRewardPopupUI : MonoBehaviour
         if (bodyText != null)
             bodyText.text = BuildBody(summary);
 
-        if (root != null)
-            root.SetActive(true);
-        else
-            gameObject.SetActive(true);
+        SetVisible(true);
+        opening = false;
     }
 
     public void CloseSilently()
     {
+        opening = false;
         onClose = null;
+        SetVisible(false);
+    }
 
+    private void SetVisible(bool visible)
+    {
         if (root != null)
-            root.SetActive(false);
+            root.SetActive(visible);
         else
-            gameObject.SetActive(false);
+            gameObject.SetActive(visible);
     }
 
     private void HandleClose()

@@ -11,29 +11,70 @@ public class BattleOutcomeMessageUI : MonoBehaviour
     [SerializeField] private Button confirmButton;
 
     private Action onConfirm;
+    private bool initialized;
+    private bool opening;
 
     private void Awake()
     {
+        EnsureInitialized();
+        if (!opening)
+            Close();
+    }
+
+    private void EnsureInitialized()
+    {
+        if (initialized)
+            return;
+
+        initialized = true;
+
+        if (root == null)
+            root = gameObject;
+
+        if (confirmButton == null)
+            confirmButton = root != null ? root.GetComponentInChildren<Button>(true) : GetComponentInChildren<Button>(true);
+
         if (confirmButton != null)
         {
             confirmButton.onClick.RemoveAllListeners();
             confirmButton.onClick.AddListener(HandleConfirm);
         }
-        Close();
+        else
+        {
+            Debug.LogWarning("[BattleOutcomeMessageUI] Confirm Button is not assigned.", this);
+        }
     }
 
     public void Open(string message, string confirmLabel, Action confirm)
     {
+        opening = true;
+
+        if (!gameObject.activeSelf)
+            gameObject.SetActive(true);
+
+        EnsureInitialized();
+
         onConfirm = confirm;
         if (messageText != null) messageText.text = message;
         if (confirmText != null) confirmText.text = string.IsNullOrWhiteSpace(confirmLabel) ? "확인" : confirmLabel;
-        if (root != null) root.SetActive(true); else gameObject.SetActive(true);
+
+        SetVisible(true);
+        opening = false;
     }
 
     public void Close()
     {
+        opening = false;
         onConfirm = null;
-        if (root != null) root.SetActive(false); else gameObject.SetActive(false);
+        SetVisible(false);
+    }
+
+    private void SetVisible(bool visible)
+    {
+        if (root != null)
+            root.SetActive(visible);
+        else
+            gameObject.SetActive(visible);
     }
 
     private void HandleConfirm()

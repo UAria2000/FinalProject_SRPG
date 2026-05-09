@@ -98,7 +98,10 @@ public class WorldBattleBridge : MonoBehaviour
     public void OpenSettlementFromWorldMap(bool wasVictory)
     {
         if (runManager == null)
+        {
+            Debug.LogWarning("[WorldBattleBridge] Cannot open settlement. WorldRunManager is missing.", this);
             return;
+        }
 
         StartCoroutine(OpenSettlementRoutine(wasVictory));
     }

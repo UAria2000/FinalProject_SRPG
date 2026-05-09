@@ -36,20 +36,52 @@ public class BattleResultPopupUI : MonoBehaviour
 
     private Action onClose;
     private Coroutine animationRoutine;
+    private bool initialized;
+    private bool opening;
 
     private void Awake()
     {
+        EnsureInitialized();
+
+        // Open()이 비활성 Panel 오브젝트를 켜면서 Awake가 처음 실행될 수 있다.
+        // 그 순간 CloseSilently()를 호출하면 콜백이 날아가 결과창이 먹통처럼 된다.
+        if (!opening)
+            CloseSilently();
+    }
+
+    private void EnsureInitialized()
+    {
+        if (initialized)
+            return;
+
+        initialized = true;
+
+        if (root == null)
+            root = gameObject;
+
+        if (closeButton == null)
+            closeButton = root != null ? root.GetComponentInChildren<Button>(true) : GetComponentInChildren<Button>(true);
+
         if (closeButton != null)
         {
             closeButton.onClick.RemoveAllListeners();
             closeButton.onClick.AddListener(HandleClose);
         }
-
-        CloseSilently();
+        else
+        {
+            Debug.LogWarning("[BattleResultPopupUI] Close Button is not assigned.", this);
+        }
     }
 
     public void Open(BattleResultPopupData data, Action closeAction)
     {
+        opening = true;
+
+        if (!gameObject.activeSelf)
+            gameObject.SetActive(true);
+
+        EnsureInitialized();
+
         onClose = closeAction;
 
         if (animationRoutine != null)
@@ -86,16 +118,23 @@ public class BattleResultPopupUI : MonoBehaviour
         BindCapturedPrisoners(data);
         BindPartyCards(data);
 
-        if (root != null)
-            root.SetActive(true);
-        else
-            gameObject.SetActive(true);
+        SetVisible(true);
+        opening = false;
 
-        animationRoutine = StartCoroutine(AnimateExperienceRoutine());
+        if (isActiveAndEnabled && gameObject.activeInHierarchy)
+        {
+            animationRoutine = StartCoroutine(AnimateExperienceRoutine());
+        }
+        else
+        {
+            Debug.LogWarning("[BattleResultPopupUI] Popup GameObject is inactive after Open(). EXP animation was skipped.", this);
+            UpdatePartyCardProgress(1f);
+        }
     }
 
     public void CloseSilently()
     {
+        opening = false;
         onClose = null;
 
         if (animationRoutine != null)
@@ -104,10 +143,15 @@ public class BattleResultPopupUI : MonoBehaviour
             animationRoutine = null;
         }
 
+        SetVisible(false);
+    }
+
+    private void SetVisible(bool visible)
+    {
         if (root != null)
-            root.SetActive(false);
+            root.SetActive(visible);
         else
-            gameObject.SetActive(false);
+            gameObject.SetActive(visible);
     }
 
     private void BindCapturedPrisoners(BattleResultPopupData data)

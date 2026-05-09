@@ -34,8 +34,8 @@ MonoBehaviour:
       dmgDelta: 1
       spdDelta: -1
       idtDelta: 0
-      hitDeltaX10: 2
-      acDeltaX10: 3
+      hitDelta: 2
+      acDelta: 3
       criDelta: -2
       crdDelta: 0
       burnResistDelta: -1
@@ -69,8 +69,8 @@ MonoBehaviour:
       dmgDelta: 0
       spdDelta: 0
       idtDelta: 0
-      hitDeltaX10: 0
-      acDeltaX10: 0
+      hitDelta: 0
+      acDelta: 0
       criDelta: 0
       crdDelta: 0
       burnResistDelta: 0
@@ -84,7 +84,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: bbecd59581b088c4393e6d8ebdec3d8c, type: 2}
     equippedItems: []
     battleLootDrops: []
-    persistentCurrentHP: 150
+    persistentCurrentHP: -1
   - unitDefinition: {fileID: 11400000, guid: f8f9adbf09c124c4f841e0510acbe903, type: 2}
     unitViewDefinition: {fileID: 11400000, guid: db5ea6affc7c81a4ab640be9675790dd, type: 2}
     startSlotIndex: 2
@@ -105,8 +105,8 @@ MonoBehaviour:
       dmgDelta: 0
       spdDelta: 0
       idtDelta: 0
-      hitDeltaX10: 0
-      acDeltaX10: 0
+      hitDelta: 0
+      acDelta: 0
       criDelta: 0
       crdDelta: 0
       burnResistDelta: 0
