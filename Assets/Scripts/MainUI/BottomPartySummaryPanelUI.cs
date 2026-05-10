@@ -191,7 +191,10 @@ public class BottomPartySummaryPanelUI : MonoBehaviour
         }
 
         if (sharedConsumableSlotUI != null)
-            sharedConsumableSlotUI.Bind(this, worldRunManager.GetSharedConsumableItem());
+            sharedConsumableSlotUI.Bind(
+                this,
+                worldRunManager.GetSharedConsumableItem(),
+                worldRunManager.GetSharedConsumableAmount());
     }
 
     public ItemDefinition GetAssignedEquipment(PartyMemberData member, int equipmentSlotIndex)

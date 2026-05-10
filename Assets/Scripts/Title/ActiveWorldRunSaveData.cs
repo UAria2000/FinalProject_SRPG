@@ -10,6 +10,7 @@ public class ActiveWorldRunSaveData
     public int worldSeed;
     public string difficultyId;
     public int mapRadius;
+    public int worldStartMainCharacterLevel;
     public long createdUnixTime;
 
     public int currentTileId = -1;

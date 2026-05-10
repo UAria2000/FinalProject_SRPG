@@ -2,6 +2,10 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
+
 [DisallowMultipleComponent]
 public class GameCursorManager : MonoBehaviour
 {
@@ -20,9 +24,11 @@ public class GameCursorManager : MonoBehaviour
     [Header("Options")]
     [SerializeField] private CursorMode cursorMode = CursorMode.Auto;
     [SerializeField] private bool persistAcrossScenes = true;
+    [SerializeField] private bool validateCursorTextures = true;
 
     private readonly HashSet<string> busyKeys = new HashSet<string>();
-    private bool mouseDown;
+
+    private bool pointerDown;
     private CursorVisualState currentState = CursorVisualState.Unset;
 
     private enum CursorVisualState
@@ -33,6 +39,8 @@ public class GameCursorManager : MonoBehaviour
         Busy
     }
 
+    private bool IsBusy => busyKeys.Count > 0;
+
     private void Awake()
     {
         if (instance != null && instance != this)
@@ -42,6 +50,7 @@ public class GameCursorManager : MonoBehaviour
         }
 
         instance = this;
+
         if (persistAcrossScenes)
             DontDestroyOnLoad(gameObject);
 
@@ -65,15 +74,11 @@ public class GameCursorManager : MonoBehaviour
 
     private void Update()
     {
-        if (Input.GetMouseButtonDown(0))
-        {
-            mouseDown = true;
-            RefreshCursor(false);
-        }
+        bool nextPointerDown = IsPrimaryPointerPressed();
 
-        if (Input.GetMouseButtonUp(0))
+        if (pointerDown != nextPointerDown)
         {
-            mouseDown = false;
+            pointerDown = nextPointerDown;
             RefreshCursor(false);
         }
 
@@ -97,6 +102,23 @@ public class GameCursorManager : MonoBehaviour
         instance.RefreshCursor(false);
     }
 
+    public static void SetBusy(bool busy)
+    {
+        SetBusy("Default", busy);
+    }
+
+    public static void ClearBusy(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+            key = "Default";
+
+        if (instance == null)
+            return;
+
+        instance.busyKeys.Remove(key);
+        instance.RefreshCursor(false);
+    }
+
     public static void ClearAllBusy()
     {
         if (instance == null)
@@ -106,13 +128,26 @@ public class GameCursorManager : MonoBehaviour
         instance.RefreshCursor(false);
     }
 
-    private bool IsBusy => busyKeys.Count > 0;
+    private bool IsPrimaryPointerPressed()
+    {
+#if ENABLE_INPUT_SYSTEM
+        if (Mouse.current != null)
+            return Mouse.current.leftButton.isPressed;
+
+        if (Pointer.current != null)
+            return Pointer.current.press.isPressed;
+
+        return false;
+#else
+        return false;
+#endif
+    }
 
     private void RefreshCursor(bool force)
     {
         CursorVisualState next = IsBusy
             ? CursorVisualState.Busy
-            : (mouseDown ? CursorVisualState.Click : CursorVisualState.Default);
+            : (pointerDown ? CursorVisualState.Click : CursorVisualState.Default);
 
         if (!force && next == currentState)
             return;
@@ -122,11 +157,19 @@ public class GameCursorManager : MonoBehaviour
         switch (next)
         {
             case CursorVisualState.Busy:
-                ApplyCursor(busyCursor != null ? busyCursor : defaultCursor, busyCursor != null ? busyHotspot : defaultHotspot);
+                ApplyCursor(
+                    busyCursor != null ? busyCursor : defaultCursor,
+                    busyCursor != null ? busyHotspot : defaultHotspot
+                );
                 break;
+
             case CursorVisualState.Click:
-                ApplyCursor(clickCursor != null ? clickCursor : defaultCursor, clickCursor != null ? clickHotspot : defaultHotspot);
+                ApplyCursor(
+                    clickCursor != null ? clickCursor : defaultCursor,
+                    clickCursor != null ? clickHotspot : defaultHotspot
+                );
                 break;
+
             case CursorVisualState.Default:
             default:
                 ApplyCursor(defaultCursor, defaultHotspot);
@@ -136,6 +179,44 @@ public class GameCursorManager : MonoBehaviour
 
     private void ApplyCursor(Texture2D texture, Vector2 hotspot)
     {
+        if (texture == null)
+        {
+            Cursor.SetCursor(null, Vector2.zero, cursorMode);
+            Cursor.visible = true;
+            return;
+        }
+
+        if (validateCursorTextures && !IsValidCursorTexture(texture))
+        {
+            Debug.LogWarning(
+                $"[GameCursorManager] Invalid cursor texture '{texture.name}'. " +
+                "Import Settings must be: Texture Type=Cursor, Read/Write=On, " +
+                "Alpha Is Transparency=On, Generate Mip Maps=Off, Compression=None, Format=RGBA32."
+            );
+
+            Cursor.SetCursor(null, Vector2.zero, cursorMode);
+            Cursor.visible = true;
+            return;
+        }
+
         Cursor.SetCursor(texture, hotspot, cursorMode);
+        Cursor.visible = true;
+    }
+
+    private bool IsValidCursorTexture(Texture2D texture)
+    {
+        if (texture == null)
+            return false;
+
+        if (!texture.isReadable)
+            return false;
+
+        if (texture.mipmapCount > 1)
+            return false;
+
+        if (texture.format != TextureFormat.RGBA32)
+            return false;
+
+        return true;
     }
 }

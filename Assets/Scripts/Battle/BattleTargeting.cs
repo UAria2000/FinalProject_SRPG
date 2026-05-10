@@ -78,6 +78,38 @@ public static class BattleTargeting
             return result;
         }
 
+        if (skill.targetScope == TargetScope.FrontTwo)
+        {
+            for (int i = 0; i < valid.Count; i++)
+            {
+                BattleUnit unit = valid[i];
+                if (unit != null && unit.SlotIndex <= 1)
+                    result.Add(unit);
+            }
+            return result;
+        }
+
+        if (skill.targetScope == TargetScope.CenteredThree)
+        {
+            if (clickedTarget == null || !valid.Contains(clickedTarget))
+                return result;
+
+            BattleFormation targetFormation = clickedTarget.Team == actor.Team ? allyFormation : enemyFormation;
+            if (targetFormation == null)
+                return result;
+
+            int center = clickedTarget.SlotIndex;
+            int start = center <= 1 ? 0 : 1;
+            int end = start + 2;
+            for (int slot = start; slot <= end; slot++)
+            {
+                BattleUnit unit = targetFormation.GetUnit(slot);
+                if (unit != null && !unit.IsDead && valid.Contains(unit))
+                    result.Add(unit);
+            }
+            return result;
+        }
+
         if (clickedTarget != null && valid.Contains(clickedTarget))
             result.Add(clickedTarget);
 
@@ -255,29 +287,30 @@ public static class BattleTargeting
         if (candidates == null || candidates.Count == 0 || targetFormation == null)
             return;
 
-        bool hasTauntingUnit = false;
+        BattleUnit latestTaunter = null;
+        int latestOrder = 0;
         List<BattleUnit> aliveUnits = targetFormation.GetAliveUnits();
 
         for (int i = 0; i < aliveUnits.Count; i++)
         {
             BattleUnit unit = aliveUnits[i];
-            if (unit != null &&
-                !unit.IsDead &&
-                !unit.HasActiveDuelLock &&
-                unit.HasStatus(StatusEffectType.Taunt))
+            if (unit == null || unit.IsDead || unit.HasActiveDuelLock || !unit.HasStatus(StatusEffectType.Taunt))
+                continue;
+
+            if (latestTaunter == null || unit.LastTauntApplyOrder >= latestOrder)
             {
-                hasTauntingUnit = true;
-                break;
+                latestTaunter = unit;
+                latestOrder = unit.LastTauntApplyOrder;
             }
         }
 
-        if (!hasTauntingUnit)
+        if (latestTaunter == null)
             return;
 
         for (int i = candidates.Count - 1; i >= 0; i--)
         {
             BattleUnit unit = candidates[i];
-            if (unit == null || !unit.HasStatus(StatusEffectType.Taunt))
+            if (unit != latestTaunter)
                 candidates.RemoveAt(i);
         }
     }

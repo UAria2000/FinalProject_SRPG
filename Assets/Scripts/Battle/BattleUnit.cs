@@ -12,9 +12,14 @@ public class BattleUnit
     private readonly List<ItemDefinition> equippedItems = new List<ItemDefinition>();
 
     private SkillDefinition pendingPassiveSkill;
+    private SkillDefinition pendingNextTurnFleeSkill;
     private BattleUnit duelLockedTarget;
     private int persistentBattleDmgModifierPercent;
+    private int persistentBattleHitModifierPercent;
+    private int persistentBattleIncomingDamageTakenPercent;
     private int elitePermanentAllStatsBuffPercent;
+    private static int globalTauntApplyOrder;
+    private int lastTauntApplyOrder;
 
     private bool battleInfoLastWillRolled;
     private bool battleInfoHasLastWill;
@@ -36,6 +41,7 @@ public class BattleUnit
         endTurnGuardPercent = 0;
         ApplyEquipmentBattleStartEffects();
         InitializeBattleInfoLastWill();
+        InitializeSkillCooldowns();
     }
 
     public TeamType Team { get; private set; }
@@ -107,6 +113,11 @@ public class BattleUnit
         get { return HasActiveDuelLock; }
     }
 
+    public bool IsForcedPositionMoveImmune
+    {
+        get { return Definition != null && Definition.forcePositionMoveImmune; }
+    }
+
     public bool HasStealth
     {
         get { return HasStatus(StatusEffectType.Stealth); }
@@ -169,7 +180,7 @@ public class BattleUnit
         get
         {
             float baseValue = ApplyEliteBuffToFloat(ApplyPromotionToFloat(Mathf.Max(0f, BaseHIT + GetVariance().hitDelta + EquipmentHitBonus)));
-            return ApplyPercentTimedModifierToFloat(baseValue, StatModifierType.HIT);
+            return ApplyPercentTimedModifierToFloat(baseValue, StatModifierType.HIT, persistentBattleHitModifierPercent);
         }
     }
 
@@ -206,8 +217,12 @@ public class BattleUnit
         {
             int baseValue = ApplyEliteBuffToInt(ApplyPromotionToInt(BaseIDT + GetVariance().idtDelta + EquipmentIdtBonus));
             baseValue = ApplyPercentTimedModifierToInt(baseValue, StatModifierType.IDT);
-            int incomingDamageTakenPercent = GetTimedModifierMagnitude(StatModifierType.IncomingDamageTakenPercent);
-            return baseValue - incomingDamageTakenPercent - BurnIdtPenaltyPercent;
+            int incomingDamageTakenPercent = GetTimedModifierMagnitude(StatModifierType.IncomingDamageTakenPercent) + persistentBattleIncomingDamageTakenPercent;
+            int finalIdt = baseValue - incomingDamageTakenPercent - BurnIdtPenaltyPercent;
+            int dragonProtectionIdt = GetDragonSoldierProtectionIdtFloor();
+            if (dragonProtectionIdt > finalIdt)
+                finalIdt = dragonProtectionIdt;
+            return finalIdt;
         }
     }
 
@@ -220,9 +235,12 @@ public class BattleUnit
     public int BurnStackCount { get { return GetStatusStackCount(StatusEffectType.Burn); } }
     public int BleedStackCount { get { return GetStatusStackCount(StatusEffectType.Bleed); } }
     public int FrostStackCount { get { return GetStatusStackCount(StatusEffectType.Frost); } }
+    public int HuntingStackCount { get { return GetStatusStackCount(StatusEffectType.Hunting); } }
+    public int LifeStealStackCount { get { return GetStatusStackCount(StatusEffectType.LifeSteal); } }
     public int BurnIdtPenaltyPercent { get { return Mathf.Max(0, BurnStackCount * BattleStatusUtility.BurnIdtPenaltyPercentPerStack); } }
     public int FrostStatPenaltyPercent { get { return Mathf.Max(0, FrostStackCount * BattleStatusUtility.FrostAcSpdPenaltyPercentPerStack); } }
     public int BlindFinalHitPenaltyPercent { get { return HasStatus(StatusEffectType.Blind) ? BattleStatusUtility.BlindFinalHitChancePenaltyPercent : 0; } }
+    public int LastTauntApplyOrder { get { return lastTauntApplyOrder; } }
 
     public bool HasElitePermanentBuff { get { return elitePermanentAllStatsBuffPercent > 0; } }
     public int ElitePermanentAllStatsBuffPercent { get { return Mathf.Max(0, elitePermanentAllStatsBuffPercent); } }
@@ -507,6 +525,23 @@ public class BattleUnit
         if (skill.activeGimmick == ActiveSkillGimmick.DelayedReinforcement && !IsConditionalSkillArmed(skill))
             return false;
 
+        if (skill.onlyUsableWhenAlone && !IsOnlyLivingUnitOnOwnTeam())
+            return false;
+
+        if (skill.requireOwnTeamLivingCountAtOrBelow &&
+            !IsOwnTeamLivingCountAtOrBelow(skill.maxOwnTeamLivingCountToUse))
+            return false;
+
+        if (skill.activeGimmick == ActiveSkillGimmick.ImmediateSummonInFront &&
+            !CanUseImmediateSummonInFront(skill))
+            return false;
+
+        if (skill.RequiresSelfStatusToUse() && !HasStatus(skill.requiredSelfStatusToUse))
+            return false;
+
+        if (skill.BlocksUseWhenSelfHasStatus() && HasStatus(skill.blockedSelfStatusToUse))
+            return false;
+
         if (!skill.CanBeUsedFromSlot(SlotIndex))
             return false;
 
@@ -633,6 +668,59 @@ public class BattleUnit
         SkillDefinition consumed = pendingPassiveSkill;
         pendingPassiveSkill = null;
         return consumed;
+    }
+
+    public bool HasPendingNextTurnFlee
+    {
+        get { return pendingNextTurnFleeSkill != null; }
+    }
+
+    public SkillDefinition PeekPendingNextTurnFleeSkill()
+    {
+        return pendingNextTurnFleeSkill;
+    }
+
+    public bool TryArmNextTurnFleeSkill(SkillDefinition skill)
+    {
+        if (skill == null || skill.castType != SkillCastType.Active)
+            return false;
+
+        if (pendingNextTurnFleeSkill != null)
+            return false;
+
+        pendingNextTurnFleeSkill = skill;
+        return true;
+    }
+
+    public SkillDefinition ConsumePendingNextTurnFleeSkill()
+    {
+        SkillDefinition consumed = pendingNextTurnFleeSkill;
+        pendingNextTurnFleeSkill = null;
+        return consumed;
+    }
+
+
+    private void InitializeSkillCooldowns()
+    {
+        ApplyInitialCooldown(BasicAttack);
+
+        if (memberData == null || memberData.learnedSkills == null)
+            return;
+
+        for (int i = 0; i < memberData.learnedSkills.Count; i++)
+            ApplyInitialCooldown(memberData.learnedSkills[i]);
+    }
+
+    private void ApplyInitialCooldown(SkillDefinition skill)
+    {
+        if (skill == null)
+            return;
+
+        int initialCooldown = skill.GetInitialCooldownTurns();
+        if (initialCooldown <= 0)
+            return;
+
+        skillCooldowns[GetSkillKey(skill)] = initialCooldown;
     }
 
     public int GetRemainingCooldown(SkillDefinition skill)
@@ -763,6 +851,28 @@ public class BattleUnit
         persistentBattleDmgModifierPercent += amount;
     }
 
+    public void AddPersistentBattleHitModifierPercent(int amount)
+    {
+        if (amount == 0)
+            return;
+
+        persistentBattleHitModifierPercent += amount;
+    }
+
+    public void AddPersistentBattleIncomingDamageTakenPercent(int amount)
+    {
+        if (amount == 0)
+            return;
+
+        persistentBattleIncomingDamageTakenPercent += amount;
+    }
+
+    public void ReviveWithHpPercent(float hpPercent)
+    {
+        int hp = Mathf.Max(1, Mathf.CeilToInt(MaxHP * Mathf.Clamp(hpPercent, 1f, 100f) * 0.01f));
+        CurrentHP = Mathf.Clamp(hp, 1, MaxHP);
+    }
+
     public void ApplyEndTurnGuard(int guardPercent)
     {
         endTurnGuardPercent = Mathf.Clamp(guardPercent, 0, 100);
@@ -771,6 +881,64 @@ public class BattleUnit
     public void ClearEndTurnGuard()
     {
         endTurnGuardPercent = 0;
+    }
+
+    private int GetDragonSoldierProtectionIdtFloor()
+    {
+        BattleFormation formation = GetOwnFormationFromActiveBattleManager();
+        if (formation == null)
+            return 0;
+
+        int best = 0;
+
+        // 형태 1: 드래곤 자신에게 보호 패시브가 있고, 패시브에 용아병 UnitDefinition이 연결된 경우.
+        SkillDefinition selfPassiveSkill;
+        if (TryGetPassiveSkillByGimmick(PassiveSkillGimmick.DragonIdt99WhileDragonSoldierAlive, out selfPassiveSkill) && selfPassiveSkill != null)
+        {
+            UnitDefinition soldierDefinition = selfPassiveSkill.GetDragonSoldierUnitDefinition();
+            if (soldierDefinition != null && HasLivingAllyWithDefinition(formation, soldierDefinition, this))
+                best = Mathf.Max(best, selfPassiveSkill.GetDragonSoldierProtectionIdtPercent());
+        }
+
+        // 형태 2: 용아병 쪽에 숭배 패시브가 있고, linkedBossUnitDefinition으로 드래곤을 가리키는 경우.
+        List<BattleUnit> allies = formation.GetAliveUnits();
+        for (int i = 0; i < allies.Count; i++)
+        {
+            BattleUnit ally = allies[i];
+            if (ally == null || ally == this || ally.IsDead)
+                continue;
+
+            SkillDefinition auraSkill;
+            if (!ally.TryGetPassiveSkillByGimmick(PassiveSkillGimmick.DragonIdt99WhileDragonSoldierAlive, out auraSkill) || auraSkill == null)
+                continue;
+
+            UnitDefinition linkedBoss = auraSkill.GetLinkedBossUnitDefinition();
+            if (linkedBoss != null && linkedBoss != Definition)
+                continue;
+
+            best = Mathf.Max(best, auraSkill.GetDragonSoldierProtectionIdtPercent());
+        }
+
+        return best;
+    }
+
+    private bool HasLivingAllyWithDefinition(BattleFormation formation, UnitDefinition definition, BattleUnit exceptUnit)
+    {
+        if (formation == null || definition == null)
+            return false;
+
+        List<BattleUnit> allies = formation.GetAliveUnits();
+        for (int i = 0; i < allies.Count; i++)
+        {
+            BattleUnit ally = allies[i];
+            if (ally == null || ally == exceptUnit || ally.IsDead)
+                continue;
+
+            if (ally.Definition == definition)
+                return true;
+        }
+
+        return false;
     }
 
     public bool TryApplyTimedModifier(StatModifierType statType, int magnitude, int duration)
@@ -784,24 +952,13 @@ public class BattleUnit
             if (existing.statModifierType != statType)
                 continue;
 
-            int newAbs = Mathf.Abs(magnitude);
-            int oldAbs = Mathf.Abs(existing.magnitude);
+            existing.magnitude += magnitude;
+            existing.remainingTurns = duration;
 
-            if (newAbs > oldAbs)
-            {
-                existing.magnitude = magnitude;
-                existing.remainingTurns = duration;
-                return true;
-            }
+            if (existing.magnitude == 0)
+                timedModifiers.RemoveAt(i);
 
-            if (newAbs == oldAbs)
-            {
-                existing.magnitude = magnitude;
-                existing.remainingTurns = Mathf.Max(existing.remainingTurns, duration);
-                return true;
-            }
-
-            return false;
+            return true;
         }
 
         BattleTimedModifierInstance instance = new BattleTimedModifierInstance();
@@ -988,6 +1145,9 @@ public class BattleUnit
         if (statusType == StatusEffectType.None || duration <= 0)
             return;
 
+        if (statusType == StatusEffectType.Taunt)
+            lastTauntApplyOrder = ++globalTauntApplyOrder;
+
         BattleStatusInstance existing = FindStatusInstance(statusType);
         if (existing != null)
         {
@@ -1022,6 +1182,9 @@ public class BattleUnit
 
         if (statusType == StatusEffectType.DuelArena)
             duelLockedTarget = null;
+
+        if (statusType == StatusEffectType.Taunt)
+            lastTauntApplyOrder = 0;
     }
 
     public bool HasStatus(StatusEffectType statusType)
@@ -1039,6 +1202,51 @@ public class BattleUnit
     public int GetResistance(StatusEffectType statusType)
     {
         return BattleStatusUtility.GetResistance(this, statusType);
+    }
+
+    private bool IsOnlyLivingUnitOnOwnTeam()
+    {
+        BattleFormation formation = GetOwnFormationFromActiveBattleManager();
+        if (formation == null)
+            return false;
+
+        List<BattleUnit> aliveUnits = formation.GetAliveUnits();
+        return aliveUnits.Count == 1 && aliveUnits[0] == this;
+    }
+
+    private bool IsOwnTeamLivingCountAtOrBelow(int maxLivingCount)
+    {
+        BattleFormation formation = GetOwnFormationFromActiveBattleManager();
+        if (formation == null)
+            return false;
+
+        return formation.GetAliveUnits().Count <= Mathf.Clamp(maxLivingCount, 1, 4);
+    }
+
+    private bool CanUseImmediateSummonInFront(SkillDefinition skill)
+    {
+        if (skill == null || skill.summonUnitDefinition == null)
+            return false;
+
+        BattleFormation formation = GetOwnFormationFromActiveBattleManager();
+        if (formation == null || !formation.Contains(this))
+            return false;
+
+        int maxLiving = Mathf.Clamp(skill.maxLivingAlliesForSummon, 1, 4);
+        if (formation.GetAliveUnits().Count > maxLiving)
+            return false;
+
+        int insertSlot = Mathf.Clamp(SlotIndex - 1, 0, 3);
+        return formation.CanInsertUnitAt(insertSlot);
+    }
+
+    private BattleFormation GetOwnFormationFromActiveBattleManager()
+    {
+        BattleManager manager = Object.FindFirstObjectByType<BattleManager>();
+        if (manager == null)
+            return null;
+
+        return Team == TeamType.Ally ? manager.AllyFormation : manager.EnemyFormation;
     }
 
     private string GetSkillKey(SkillDefinition skill)

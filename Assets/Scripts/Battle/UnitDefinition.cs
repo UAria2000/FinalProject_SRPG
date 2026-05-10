@@ -52,6 +52,8 @@ public class UnitDefinition : ScriptableObject
     [Header("Battle")]
     public SkillDefinition basicAttack;
     public StatVarianceRules varianceRules = new StatVarianceRules();
+    [Tooltip("체크 시 강풍/화학 구름 등 강제 위치 이동 효과를 받지 않습니다. 일반 자발 이동과 소환으로 인한 밀림은 별도 규칙을 따릅니다.")]
+    public bool forcePositionMoveImmune = false;
 
     [Header("Skill Learning")]
     [Tooltip("전환/생성 시 무작위 스킬보다 먼저 지급할 고정 스킬입니다. Unique 스킬은 항상 가장 먼저 지급되며, 총 스킬 수 한도에 포함됩니다.")]

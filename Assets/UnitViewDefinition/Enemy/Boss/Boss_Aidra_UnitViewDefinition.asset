@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e662b7d56d718594a8e435db9e994010, type: 3}
+  m_Name: Boss_Aidra_UnitViewDefinition
+  m_EditorClassIdentifier: Assembly-CSharp::UnitViewDefinition
+  slotFaceSprite: {fileID: 0}
+  bustPortraitSprite: {fileID: 0}
+  deadSlotFaceSprite: {fileID: 0}
+  deadBustPortraitSprite: {fileID: 0}
+  battleSprite: {fileID: 0}
+  attackBattleSprite: {fileID: 0}
+  deadBattleSprite: {fileID: 0}
+  viewPrefab: {fileID: 0}

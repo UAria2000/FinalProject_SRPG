@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e662b7d56d718594a8e435db9e994010, type: 3}
+  m_Name: DarkKnight
+  m_EditorClassIdentifier: Assembly-CSharp::UnitViewDefinition
+  slotFaceSprite: {fileID: 21300000, guid: a5fda384104f6d7439a64ac897bd2b8e, type: 3}
+  bustPortraitSprite: {fileID: 21300000, guid: c04b03c32b119264cacd1a5ffb41ca20, type: 3}
+  deadSlotFaceSprite: {fileID: 21300000, guid: faeb620fa62036a4ab169e5da91abc30, type: 3}
+  deadBustPortraitSprite: {fileID: 21300000, guid: ea23e73e536425c4fa74d190d81d5c0b, type: 3}
+  battleSprite: {fileID: 21300000, guid: b697c0d97611b1c458ad3838d7e85d01, type: 3}
+  attackBattleSprite: {fileID: 0}
+  deadBattleSprite: {fileID: 21300000, guid: 1a64be75ded8da542a5f41b0294bcf00, type: 3}
+  viewPrefab: {fileID: 7130859592086966948, guid: edca2cd44571b8f4c80b0dfce99d6e95, type: 3}

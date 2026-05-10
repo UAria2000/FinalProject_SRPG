@@ -86,6 +86,9 @@ public class WorldRunManager : MonoBehaviour
 
     private string runtimeDifficultyId = "normal";
     public string RuntimeDifficultyId => runtimeDifficultyId;
+
+    private int worldStartMainCharacterLevel = 0;
+    public int WorldStartMainCharacterLevel => Mathf.Max(1, worldStartMainCharacterLevel > 0 ? worldStartMainCharacterLevel : ResolveCurrentMainCharacterLevel());
     private void Awake()
     {
         if (revealedEnemyPreviewCount <= 0)
@@ -129,6 +132,7 @@ public class WorldRunManager : MonoBehaviour
     {
         RestoreRosterUnitsForNewWorld();
         ResetWorldRunStateForNewWorld();
+        CaptureWorldStartEnemyScalingLevel();
 
         HexWorldGenerator generator = new HexWorldGenerator(generationSettings);
         MapData = generator.Generate();
@@ -447,6 +451,19 @@ public class WorldRunManager : MonoBehaviour
 
     public int GetMainCharacterLevelForEnemyScaling()
     {
+        if (worldStartMainCharacterLevel > 0)
+            return Mathf.Max(1, worldStartMainCharacterLevel);
+
+        return Mathf.Max(1, ResolveCurrentMainCharacterLevel());
+    }
+
+    public void CaptureWorldStartEnemyScalingLevel()
+    {
+        worldStartMainCharacterLevel = Mathf.Max(1, ResolveCurrentMainCharacterLevel());
+    }
+
+    private int ResolveCurrentMainCharacterLevel()
+    {
         if (persistentProfileController == null)
             persistentProfileController = UnityEngine.Object.FindFirstObjectByType<PersistentProfileController>();
 
@@ -644,11 +661,18 @@ public class WorldRunManager : MonoBehaviour
         if (maxSkills <= 0)
             return result;
 
-        AddFixedStartingSkills(result, unitDefinition.fixedStartingSkills, maxSkills, uniqueOnly: true);
-        AddFixedStartingSkills(result, unitDefinition.fixedStartingSkills, maxSkills, uniqueOnly: false);
-
-        if (result.Count >= maxSkills)
-            return result;
+        // 포획/타락으로 생성되는 아군은 기존 적 스킬을 복사하지 않고
+        // 역할군별 아군 스킬 풀에서만 무작위 3개를 배정한다.
+        if (convertedUnitSkillPoolTable != null && !HasSkillFromPool(result, convertedUnitSkillPoolTable.GetClassSkills(unitDefinition.rangeType)))
+        {
+            List<SkillDefinition> classCandidates = new List<SkillDefinition>();
+            AddCandidateSkills(classCandidates, convertedUnitSkillPoolTable.GetClassSkills(unitDefinition.rangeType), result);
+            if (classCandidates.Count > 0 && result.Count < maxSkills)
+            {
+                int classIndex = UnityEngine.Random.Range(0, classCandidates.Count);
+                AddSkillIfValid(result, classCandidates[classIndex], maxSkills, allowUnique: false);
+            }
+        }
 
         List<SkillDefinition> candidates = BuildConvertedUnitRandomSkillCandidates(unitDefinition, result);
         while (result.Count < maxSkills && candidates.Count > 0)
@@ -728,6 +752,20 @@ public class WorldRunManager : MonoBehaviour
 
         list.Add(skill);
         return true;
+    }
+
+    private bool HasSkillFromPool(List<SkillDefinition> list, IEnumerable<SkillDefinition> pool)
+    {
+        if (list == null || pool == null)
+            return false;
+
+        foreach (SkillDefinition skill in pool)
+        {
+            if (ContainsSkill(list, skill))
+                return true;
+        }
+
+        return false;
     }
 
     private bool ContainsSkill(List<SkillDefinition> list, SkillDefinition skill)
@@ -1413,6 +1451,26 @@ public class WorldRunManager : MonoBehaviour
         return GetOrCreateWorldRunState()?.sharedConsumableItem;
     }
 
+    public int GetSharedConsumableAmount()
+    {
+        WorldRunTransientState state = GetOrCreateWorldRunState();
+        ItemDefinition item = state != null ? state.sharedConsumableItem : null;
+        if (item == null || state.inventory == null)
+            return 0;
+
+        int total = 0;
+        for (int i = 0; i < state.inventory.Count; i++)
+        {
+            InventoryStackData stack = state.inventory[i];
+            if (stack == null || stack.item != item || stack.amount <= 0)
+                continue;
+
+            total += stack.amount;
+        }
+
+        return Mathf.Max(0, total);
+    }
+
     public bool IsSharedConsumableAssigned(ItemDefinition item)
     {
         if (item == null)
@@ -1923,6 +1981,7 @@ public class WorldRunManager : MonoBehaviour
 
         generationSettings = runtimeSettings;
         runtimeDifficultyId = string.IsNullOrWhiteSpace(saveData.difficultyId) ? "normal" : saveData.difficultyId;
+        worldStartMainCharacterLevel = Mathf.Max(0, saveData.worldStartMainCharacterLevel);
 
         ResetWorldRunStateForNewWorld();
 
@@ -1934,6 +1993,8 @@ public class WorldRunManager : MonoBehaviour
         movementController = new WorldMovementController(MapData);
 
         RestorePartyRuntimeFromSave(saveData);
+        if (worldStartMainCharacterLevel <= 0)
+            CaptureWorldStartEnemyScalingLevel();
         RestoreTransientWorldStateFromSave(saveData, resolver);
 
         CurrentTile = MapData.GetTileById(saveData.currentTileId);

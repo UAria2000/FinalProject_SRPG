@@ -1,0 +1,119 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b0ec0aa42fa160a46a6330d7ff30c770, type: 3}
+  m_Name: "human_crossbow_piercing_shot_\uAD00\uD1B5 \uC0AC\uACA9"
+  m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
+  skillId: human_crossbow_piercing_shot
+  skillName: "\uAD00\uD1B5 \uC0AC\uACA9"
+  description: "\uC9C0\uC815 \uB300\uC0C1\uACFC \uADF8 \uB4A4 1\uC5F4\uC744 \uACF5\uACA9\uD569\uB2C8\uB2E4.
+    \uD53C\uD574 70%, \uCD9C\uD608 20% \uD655\uB960."
+  icon: {fileID: 0}
+  isBasicAttack: 0
+  castType: 0
+  activeRole: 0
+  skillClass: 4
+  rangeTag: 0
+  passiveGimmick: 0
+  activeGimmick: 0
+  usableMinSlotIndex: 2
+  usableMaxSlotIndex: 3
+  targetMinSlotIndex: 0
+  targetMaxSlotIndex: 3
+  targetTeam: 0
+  targetScope: 0
+  requiredSelfStatusToUse: 0
+  blockedSelfStatusToUse: 0
+  onlyUsableWhenAlone: 0
+  requireOwnTeamLivingCountAtOrBelow: 0
+  maxOwnTeamLivingCountToUse: 3
+  resolutionMode: 0
+  primaryHitCount: 1
+  cooldownTurns: 2
+  initialCooldownTurns: 0
+  accuracyCoefficientPercent: 100
+  allowCrit: 1
+  allowGraze: 1
+  alsoApplyToSelfWhenTargetingAlly: 0
+  selfMoveDirection: 0
+  selfMoveSteps: 0
+  selfApplyStatusAfterUse: 0
+  selfApplyStatusDurationTurns: 0
+  useMissingHpPowerBonus: 0
+  missingHpPercentStep: 1
+  bonusPowerPerStep: 0
+  secondaryTargetRule: 1
+  secondaryAccuracyCoefficientPercent: 100
+  secondaryDamagePercent: 70
+  secondaryApplyNonDamageEffects: 1
+  forcedTargetMoveToRank: 1
+  forcedTargetMoveSteps: 1
+  forcedTargetMoveChancePercent: 100
+  pushBackFailFinalPowerPercent: 0
+  shieldedTargetDamagePowerPercent: 0
+  randomRepositionChancePercent: 20
+  delayedReinforcementDelayRounds: 2
+  abyssReboundRecoilPercentFromTotalDamage: 20
+  blackArenaDuelDurationTurns: 2
+  summonUnitDefinition: {fileID: 0}
+  summonUnitViewDefinition: {fileID: 0}
+  summonLevelOverride: 0
+  maxLivingAlliesForSummon: 3
+  battleStartEnemyTeamDmgDownPercent: 10
+  battleStartEnemyTeamDmgDownDurationTurns: 0
+  battleStartEnemyTeamDmgDownPermanent: 1
+  shieldedHitBleedChancePercent: 100
+  shieldedHitBleedStacks: 1
+  blackAuraShieldGainPercentFromHpDamage: 100
+  blackAuraShieldFlatBonus: 0
+  turnStartSelfHealMaxHpPercent: 5
+  teamStatusResistAuraPercent: 30
+  linkedBossUnitDefinition: {fileID: 0}
+  bossEnrageDmgPercent: 40
+  bossEnrageHitPercent: 15
+  bossEnrageIncomingDamageTakenPercent: 15
+  bossEnrageHealMaxHpPercent: 25
+  linkedBossReviveHpPercent: 30
+  bossReviverHealMaxHpPercent: 25
+  dragonSoldierUnitDefinition: {fileID: 0}
+  dragonSoldierProtectionIdtPercent: 99
+  effects:
+  - kind: 0
+    statusType: 0
+    statModifierType: 0
+    successChancePercent: 100
+    affectedByResistance: 0
+    powerPercent: 70
+    useRandomPowerPercentRange: 0
+    randomPowerPercentMin: 100
+    randomPowerPercentMax: 100
+    flatValue: 0
+    valueReference: 0
+    durationTurns: 0
+    displayIcon: {fileID: 0}
+  - kind: 5
+    statusType: 2
+    statModifierType: 0
+    successChancePercent: 20
+    affectedByResistance: 1
+    powerPercent: 100
+    useRandomPowerPercentRange: 0
+    randomPowerPercentMin: 100
+    randomPowerPercentMax: 100
+    flatValue: 0
+    valueReference: 0
+    durationTurns: 1
+    displayIcon: {fileID: 0}
+  disableAfterUseInBattle: 0
+  castEffectPrefab: {fileID: 0}
+  hitEffectPrefab: {fileID: 5691736663297753136, guid: e3154417192c1904eb89807a5a6626ae, type: 3}
+  useSfx: {fileID: 0}
+  hitSfx: {fileID: 0}

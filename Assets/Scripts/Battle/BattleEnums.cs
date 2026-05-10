@@ -98,7 +98,9 @@ public enum SkillTargetTeam
 public enum TargetScope
 {
     Single,
-    All
+    All,
+    CenteredThree,
+    FrontTwo
 }
 
 public enum SkillResolutionMode
@@ -145,7 +147,11 @@ public enum StatusEffectType
     Stealth = 7,
 
     Frost = 8,
-    Blind = 9
+    Blind = 9,
+    BattleStance = 10,
+    Marked = 11,
+    Hunting = 12,
+    LifeSteal = 13
 }
 
 

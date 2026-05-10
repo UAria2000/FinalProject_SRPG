@@ -10,6 +10,8 @@ public static class BattleStatusUtility
     public const int BurnIdtPenaltyPercentPerStack = 10;
     public const int FrostAcSpdPenaltyPercentPerStack = 10;
     public const int BlindFinalHitChancePenaltyPercent = 30;
+    public const int HuntingTargetBonusCritChancePercentPerStack = 5;
+    public const int LifeStealHealPercent = 30;
 
     public static StatusEffectType Normalize(StatusEffectType statusType)
     {
@@ -31,7 +33,9 @@ public static class BattleStatusUtility
         statusType = Normalize(statusType);
         return statusType == StatusEffectType.Bleed ||
                statusType == StatusEffectType.Burn ||
-               statusType == StatusEffectType.Frost;
+               statusType == StatusEffectType.Frost ||
+               statusType == StatusEffectType.Hunting ||
+               statusType == StatusEffectType.LifeSteal;
     }
 
     public static bool IsNonStackingAilment(StatusEffectType statusType)
@@ -46,7 +50,11 @@ public static class BattleStatusUtility
         return statusType == StatusEffectType.Taunt ||
                statusType == StatusEffectType.CounterStance ||
                statusType == StatusEffectType.DuelArena ||
-               statusType == StatusEffectType.Stealth;
+               statusType == StatusEffectType.Stealth ||
+               statusType == StatusEffectType.BattleStance ||
+               statusType == StatusEffectType.Marked ||
+               statusType == StatusEffectType.Hunting ||
+               statusType == StatusEffectType.LifeSteal;
     }
 
     public static int ClampStack(int stack)
@@ -68,6 +76,10 @@ public static class BattleStatusUtility
             case StatusEffectType.CounterStance: return "반격 태세";
             case StatusEffectType.DuelArena: return "결투";
             case StatusEffectType.Stealth: return "은신";
+            case StatusEffectType.BattleStance: return "전투 자세";
+            case StatusEffectType.Marked: return "표식";
+            case StatusEffectType.Hunting: return "사냥 표식";
+            case StatusEffectType.LifeSteal: return "흡혈";
             default: return statusType.ToString();
         }
     }
@@ -78,15 +90,18 @@ public static class BattleStatusUtility
             return 0;
 
         statusType = Normalize(statusType);
+        int baseResist;
         switch (statusType)
         {
-            case StatusEffectType.Stun: return unit.StunResist;
-            case StatusEffectType.Bleed: return unit.BleedResist;
-            case StatusEffectType.Burn: return unit.BurnResist;
-            case StatusEffectType.Frost: return unit.FrostResist;
-            case StatusEffectType.Blind: return unit.BlindResist;
+            case StatusEffectType.Stun: baseResist = unit.StunResist; break;
+            case StatusEffectType.Bleed: baseResist = unit.BleedResist; break;
+            case StatusEffectType.Burn: baseResist = unit.BurnResist; break;
+            case StatusEffectType.Frost: baseResist = unit.FrostResist; break;
+            case StatusEffectType.Blind: baseResist = unit.BlindResist; break;
             default: return 0;
         }
+
+        return Mathf.Max(0, baseResist + BattlePassiveController.GetActiveStatusResistanceAuraBonus(unit));
     }
 }
 

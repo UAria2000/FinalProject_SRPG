@@ -1,0 +1,66 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c7d82bbe39798b41a6678e937734907, type: 3}
+  m_Name: Human_Guard_UnitDefinition
+  m_EditorClassIdentifier: Assembly-CSharp::UnitDefinition
+  unitId: human_guard
+  unitName: "\uACBD\uBE44\uBCD1"
+  rangeType: 0
+  isNftUnit: 0
+  showInLegion: 0
+  legionSortPriority: 0
+  legionCategoryLabel: Human
+  maxHP: 115
+  dmg: 18
+  spd: 48
+  idt: 10
+  hpGrowthPerLevel: {x: 2, y: 4}
+  dmgGrowthPerLevel: {x: 1, y: 3}
+  hit: 56
+  ac: 38
+  cri: 4
+  crd: 150
+  burnResist: 0
+  bleedResist: 0
+  stunResist: 0
+  frostResist: 0
+  blindResist: 0
+  basicAttack: {fileID: 11400000, guid: 573dbd9904eb4b24ba1e6a28cb6dcf28, type: 2}
+  varianceRules:
+    maxHpRange: {x: 0, y: 0}
+    dmgRange: {x: 0, y: 0}
+    spdRange: {x: 0, y: 0}
+    idtRange: {x: 0, y: 0}
+    hitRange: {x: 0, y: 0}
+    acRange: {x: 0, y: 0}
+    criRange: {x: 0, y: 0}
+    crdRange: {x: 0, y: 0}
+    burnResistRange: {x: 0, y: 0}
+    bleedResistRange: {x: 0, y: 0}
+    stunResistRange: {x: 0, y: 0}
+    frostResistRange: {x: 0, y: 0}
+    blindResistRange: {x: 0, y: 0}
+  forcePositionMoveImmune: 0
+  fixedStartingSkills:
+  - {fileID: 11400000, guid: c11a6e236ed0dd84b9c250624ad9763b, type: 2}
+  - {fileID: 11400000, guid: 57425b02a3ab6ba4a8143835869737a1, type: 2}
+  extraLearnableSkills: []
+  randomEnemyEquipment: []
+  lastWillChancePercent: 30
+  lastWillTextTable: {fileID: 0}
+  isMainPlayerCharacter: 0
+  baseSoulReward: 145
+  canBeDecomposed: 0
+  decomposeShardReward: 1
+  canBeCaptured: 0
+  capturableEnemyNftChancePercent: 0
+  captureRewardItem: {fileID: 0}

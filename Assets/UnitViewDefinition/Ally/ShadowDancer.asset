@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e662b7d56d718594a8e435db9e994010, type: 3}
+  m_Name: ShadowDancer
+  m_EditorClassIdentifier: Assembly-CSharp::UnitViewDefinition
+  slotFaceSprite: {fileID: 21300000, guid: dfaa9222bf8e81a44884674190f825d4, type: 3}
+  bustPortraitSprite: {fileID: 21300000, guid: 9316c84b340c064479da916a1ec361dc, type: 3}
+  deadSlotFaceSprite: {fileID: 21300000, guid: 99461f69de12b85489e256c5462f4fef, type: 3}
+  deadBustPortraitSprite: {fileID: 21300000, guid: e433050e6c4435247992593a8621c237, type: 3}
+  battleSprite: {fileID: 21300000, guid: 8dbef2162bd4a7a4a85761d34a49b116, type: 3}
+  attackBattleSprite: {fileID: 0}
+  deadBattleSprite: {fileID: 21300000, guid: eadc82109ff8f9743a9a22c82ecaa2cb, type: 3}
+  viewPrefab: {fileID: 7130859592086966948, guid: edca2cd44571b8f4c80b0dfce99d6e95, type: 3}

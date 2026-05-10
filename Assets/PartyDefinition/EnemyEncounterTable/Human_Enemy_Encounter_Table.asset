@@ -1,0 +1,84 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c6a35d65b0733cf46b1805d33bf861b7, type: 3}
+  m_Name: Human Enemy Encounter Table
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyEncounterTable
+  minEnemyCount: 2
+  maxEnemyCount: 4
+  allowDuplicates: 1
+  entries:
+  - unitDefinition: {fileID: 11400000, guid: 83113651f23ab764da7fe1ee602f2244, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: 9a22dfa0610538241928ed44fb3541b7, type: 2}
+    weight: 3
+    minLevel: 1
+    maxLevel: 1
+    learnedSkills:
+    - {fileID: 11400000, guid: 7b881328db0d7a64ca526f53135faff5, type: 2}
+    - {fileID: 11400000, guid: ff3a493fac2fa504e9a6b0547f038cc5, type: 2}
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    enabled: 1
+  - unitDefinition: {fileID: 11400000, guid: e481c36b18018804fbd8314d5fcd130b, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: 884c6bbcae83f4e40b36b3465524afbe, type: 2}
+    weight: 1
+    minLevel: 1
+    maxLevel: 1
+    learnedSkills:
+    - {fileID: 11400000, guid: c11a6e236ed0dd84b9c250624ad9763b, type: 2}
+    - {fileID: 11400000, guid: 57425b02a3ab6ba4a8143835869737a1, type: 2}
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    enabled: 1
+  - unitDefinition: {fileID: 11400000, guid: 48d57a4072b3ec644be9b5de9b2a9adc, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: b56d36666c55cf44aa3a7e317eddbff3, type: 2}
+    weight: 2
+    minLevel: 1
+    maxLevel: 1
+    learnedSkills:
+    - {fileID: 11400000, guid: b45644024615f2947bef05b41e3ee53e, type: 2}
+    - {fileID: 11400000, guid: 7a05c9bb166d5dc4b9b0ba5f41cd7ac4, type: 2}
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    enabled: 1
+  - unitDefinition: {fileID: 11400000, guid: 12b0e6cdc3fc73c4984184cf70a13a9d, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: c0187cae7e099854f89407657ce96b5f, type: 2}
+    weight: 2
+    minLevel: 1
+    maxLevel: 1
+    learnedSkills:
+    - {fileID: 11400000, guid: 515eaba8fe7b65e42b9e8626adbc96bf, type: 2}
+    - {fileID: 11400000, guid: 2f5ba692dd1b1c1489ccbff910746de4, type: 2}
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    enabled: 1
+  - unitDefinition: {fileID: 11400000, guid: 0a4d3cb1f896d0e4a8ef8642b5ec12ae, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: 17a7054f707b6814dbcc355c9b6cb89b, type: 2}
+    weight: 2
+    minLevel: 1
+    maxLevel: 1
+    learnedSkills:
+    - {fileID: 11400000, guid: 55f8b41ed7307b3489c68191edc2b64c, type: 2}
+    - {fileID: 11400000, guid: 79b34b6d197c2ab45a7bdc8402b82102, type: 2}
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    enabled: 1
+  - unitDefinition: {fileID: 11400000, guid: 943d4694e9d1e504db5b2e5e2c2015db, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: c4c0b1e48c9202f4e8de19e8435af085, type: 2}
+    weight: 1
+    minLevel: 1
+    maxLevel: 1
+    learnedSkills:
+    - {fileID: 11400000, guid: 92149c8af73bf3e45869a7a262de47da, type: 2}
+    - {fileID: 11400000, guid: 61619dbf5c2ab8447afaa5a6f0a3a734, type: 2}
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    enabled: 1

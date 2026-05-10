@@ -108,6 +108,7 @@ public static class SaveDataMapper
 
         save.hasActiveWorld = true;
         save.mapRadius = worldRunManager.MapData.radius;
+        save.worldStartMainCharacterLevel = Mathf.Max(1, worldRunManager.WorldStartMainCharacterLevel);
 
         bool interruptedArrival = worldRunManager.ShouldSaveAsInterruptedArrival();
         WorldTileData safeCurrentTile = interruptedArrival

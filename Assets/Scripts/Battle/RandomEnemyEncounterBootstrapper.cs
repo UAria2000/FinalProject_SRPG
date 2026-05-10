@@ -279,6 +279,8 @@ public class RandomEnemyEncounterBootstrapper : MonoBehaviour
         member.fixedEpitaph = entry.fixedEpitaph;
         member.statVariance = RollVariance(entry.unitDefinition.varianceRules);
         member.learnedSkills = CopySkills(entry.learnedSkills);
+        if ((member.learnedSkills == null || member.learnedSkills.Count == 0) && entry.unitDefinition != null)
+            member.learnedSkills = CopySkills(entry.unitDefinition.fixedStartingSkills);
         member.isExchangeable = RollCapturableEnemyNft(entry.unitDefinition);
         member.isNft = member.isExchangeable;
         member.equippedItems = RollEnemyEquipment(entry.unitDefinition);

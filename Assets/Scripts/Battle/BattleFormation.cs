@@ -244,6 +244,135 @@ public class BattleFormation
         return true;
     }
 
+
+    public bool CanInsertUnitAt(int targetIndex)
+    {
+        targetIndex = ClampRawSlotIndex(targetIndex);
+        return CanInsertUnitAtByShiftingBack(targetIndex) || CanInsertUnitAtByShiftingForward(targetIndex);
+    }
+
+    public bool TryInsertUnitAt(BattleUnit unit, int targetIndex)
+    {
+        if (unit == null)
+            return false;
+
+        targetIndex = ClampRawSlotIndex(targetIndex);
+
+        if (TryInsertUnitAtByShiftingBack(unit, targetIndex))
+            return true;
+
+        return TryInsertUnitAtByShiftingForward(unit, targetIndex);
+    }
+
+    private int ClampRawSlotIndex(int slotIndex)
+    {
+        if (slotIndex < 0) return 0;
+        if (slotIndex >= slots.Length) return slots.Length - 1;
+        return slotIndex;
+    }
+
+    private bool CanInsertUnitAtByShiftingBack(int targetIndex)
+    {
+        int emptyIndex = -1;
+        for (int i = targetIndex; i < slots.Length; i++)
+        {
+            if (slots[i] == null || slots[i].IsDead)
+            {
+                emptyIndex = i;
+                break;
+            }
+        }
+
+        if (emptyIndex < 0)
+            return false;
+
+        for (int i = targetIndex; i < emptyIndex; i++)
+        {
+            if (slots[i] != null && slots[i].IsPositionMovementLocked)
+                return false;
+        }
+
+        return true;
+    }
+
+    private bool CanInsertUnitAtByShiftingForward(int targetIndex)
+    {
+        int emptyIndex = -1;
+        for (int i = targetIndex; i >= 0; i--)
+        {
+            if (slots[i] == null || slots[i].IsDead)
+            {
+                emptyIndex = i;
+                break;
+            }
+        }
+
+        if (emptyIndex < 0)
+            return false;
+
+        for (int i = emptyIndex + 1; i <= targetIndex; i++)
+        {
+            if (slots[i] != null && slots[i].IsPositionMovementLocked)
+                return false;
+        }
+
+        return true;
+    }
+
+    private bool TryInsertUnitAtByShiftingBack(BattleUnit unit, int targetIndex)
+    {
+        if (!CanInsertUnitAtByShiftingBack(targetIndex))
+            return false;
+
+        int emptyIndex = -1;
+        for (int i = targetIndex; i < slots.Length; i++)
+        {
+            if (slots[i] == null || slots[i].IsDead)
+            {
+                emptyIndex = i;
+                break;
+            }
+        }
+
+        for (int i = emptyIndex; i > targetIndex; i--)
+        {
+            slots[i] = slots[i - 1];
+            if (slots[i] != null)
+                slots[i].SlotIndex = i;
+        }
+
+        slots[targetIndex] = unit;
+        unit.SlotIndex = targetIndex;
+        return true;
+    }
+
+    private bool TryInsertUnitAtByShiftingForward(BattleUnit unit, int targetIndex)
+    {
+        if (!CanInsertUnitAtByShiftingForward(targetIndex))
+            return false;
+
+        int emptyIndex = -1;
+        for (int i = targetIndex; i >= 0; i--)
+        {
+            if (slots[i] == null || slots[i].IsDead)
+            {
+                emptyIndex = i;
+                break;
+            }
+        }
+
+        for (int i = emptyIndex; i < targetIndex; i++)
+        {
+            slots[i] = slots[i + 1];
+            if (slots[i] != null)
+                slots[i].SlotIndex = i;
+        }
+
+        slots[targetIndex] = unit;
+        unit.SlotIndex = targetIndex;
+        return true;
+    }
+
     public List<BattleUnit> RemoveDeadAndCompress()
     {
         List<BattleUnit> moved = new List<BattleUnit>();

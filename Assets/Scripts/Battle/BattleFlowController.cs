@@ -97,6 +97,12 @@ public class BattleFlowController : MonoBehaviour
         List<BattleUnit> deadAllies = battleManager.AllyFormation != null ? battleManager.AllyFormation.GetAllUnits().FindAll(u => u != null && u.IsDead) : new List<BattleUnit>();
         List<BattleUnit> deadEnemies = battleManager.EnemyFormation != null ? battleManager.EnemyFormation.GetAllUnits().FindAll(u => u != null && u.IsDead) : new List<BattleUnit>();
 
+        if (passiveController != null)
+            passiveController.ResolveBeforeDeadUnitsRemoved(deadAllies, deadEnemies);
+
+        deadAllies = battleManager.AllyFormation != null ? battleManager.AllyFormation.GetAllUnits().FindAll(u => u != null && u.IsDead) : new List<BattleUnit>();
+        deadEnemies = battleManager.EnemyFormation != null ? battleManager.EnemyFormation.GetAllUnits().FindAll(u => u != null && u.IsDead) : new List<BattleUnit>();
+
         battleManager.MarkDeadUnitPresence(TeamType.Ally, deadAllies.Count > 0);
         battleManager.MarkDeadUnitPresence(TeamType.Enemy, deadEnemies.Count > 0);
 
@@ -237,6 +243,7 @@ public class BattleFlowController : MonoBehaviour
         while (battleManager.IsBattleInProgress)
         {
             battleManager.IncrementCurrentRound();
+            battleManager.ClearSuppressedUntilNextRoundUnits();
             logController.AppendBattleLog(logController.BuildTurnStartLog(battleManager.CurrentRound));
 
             if (skillGimmickController != null)
@@ -264,7 +271,7 @@ public class BattleFlowController : MonoBehaviour
                 BattleUnit unit = turnManager.GetNextUnit();
                 battleManager.SetCurrentRoundTurnCursor(roundTurnCursor);
                 roundTurnCursor++;
-                if (unit == null || unit.IsDead || !IsUnitInBattle(unit))
+                if (unit == null || unit.IsDead || !IsUnitInBattle(unit) || battleManager.IsUnitSuppressedUntilNextRound(unit))
                     continue;
 
                 battleManager.SetCurrentActingUnit(unit);

@@ -26,6 +26,7 @@ public class BattleManager : MonoBehaviour
     [SerializeField, Min(0f)] private float expRewardPercentOfScaledSoulReward = 100f;
 
     private readonly BattleRewardSummary currentBattleRewardSummary = new BattleRewardSummary();
+    private readonly HashSet<BattleUnit> suppressedUntilNextRoundUnits = new HashSet<BattleUnit>();
 
     [Header("Exploration")]
     [SerializeField] private bool autoStartBattleOnStart = true;
@@ -724,6 +725,7 @@ public class BattleManager : MonoBehaviour
         SelectedEnemyInfoUnit = null;
         SelectedAllyInfoUnit = null;
         currentRoundTurnOrder.Clear();
+        suppressedUntilNextRoundUnits.Clear();
         CurrentRoundTurnCursor = -1;
 
         ResetSelections();
@@ -897,6 +899,41 @@ public class BattleManager : MonoBehaviour
             }
         }
 
+        CurrentRoundTurnCursor = Mathf.Clamp(CurrentRoundTurnCursor, -1, currentRoundTurnOrder.Count - 1);
+    }
+
+    public void SuppressUnitUntilNextRound(BattleUnit unit)
+    {
+        if (unit == null)
+            return;
+
+        suppressedUntilNextRoundUnits.Add(unit);
+        RemoveUnitFromCurrentRoundTurnOrder(unit);
+    }
+
+    public bool IsUnitSuppressedUntilNextRound(BattleUnit unit)
+    {
+        return unit != null && suppressedUntilNextRoundUnits.Contains(unit);
+    }
+
+    public void ClearSuppressedUntilNextRoundUnits()
+    {
+        suppressedUntilNextRoundUnits.Clear();
+    }
+
+    public void RemoveUnitFromCurrentRoundTurnOrder(BattleUnit unit)
+    {
+        if (unit == null)
+            return;
+
+        int idx = currentRoundTurnOrder.IndexOf(unit);
+        if (idx < 0)
+            return;
+
+        if (idx <= CurrentRoundTurnCursor)
+            CurrentRoundTurnCursor--;
+
+        currentRoundTurnOrder.RemoveAt(idx);
         CurrentRoundTurnCursor = Mathf.Clamp(CurrentRoundTurnCursor, -1, currentRoundTurnOrder.Count - 1);
     }
 

@@ -40,6 +40,9 @@ public class BattleActionController : MonoBehaviour
             ownFormation,
             opponentFormation);
 
+        if (targets.Count > 0 && skill.ShouldAlsoApplyToSelfWhenTargetingAlly() && actor != null && !actor.IsDead && !targets.Contains(actor))
+            targets.Add(actor);
+
         if (targets.Count <= 0)
         {
             battleManager.OnActionExecutionFinished(false);
@@ -403,28 +406,48 @@ public class BattleActionController : MonoBehaviour
     private IEnumerator ResolveAttackSkillImpacts(BattleUnit actor, SkillDefinition skill, List<BattleUnit> targets, int rolledPrimaryDamagePercent)
     {
         int totalHpDamageDealt = 0;
+        bool killedWithPrimarySkill = false;
 
         if (targets == null)
             yield break;
 
+        int primaryHitCount = skill != null ? skill.GetPrimaryHitCount() : 1;
+
         for (int i = 0; i < targets.Count; i++)
         {
             BattleUnit primaryTarget = targets[i];
-            BattleUnitView targetView = viewManager.GetView(primaryTarget);
-            if (targetView != null && skill.hitEffectPrefab != null)
-                viewManager.PlayEffect(skill.hitEffectPrefab, targetView.transform.position);
 
-            PlaySkillHitSfx(skill);
+            for (int hitIndex = 0; hitIndex < primaryHitCount; hitIndex++)
+            {
+                if (primaryTarget == null || primaryTarget.IsDead)
+                    break;
 
-            yield return StartCoroutine(ResolveAndApplyAttack(
-                actor,
-                skill,
-                primaryTarget,
-                rolledPrimaryDamagePercent,
-                -1f,
-                string.Empty,
-                true));
-            totalHpDamageDealt += lastResolvedAttackHpDamageDealt;
+                BattleUnitView targetView = viewManager.GetView(primaryTarget);
+                if (targetView != null && skill.hitEffectPrefab != null)
+                    viewManager.PlayEffect(skill.hitEffectPrefab, targetView.transform.position);
+
+                PlaySkillHitSfx(skill);
+
+                string primaryLogSuffix = primaryHitCount > 1
+                    ? string.Format(" [{0}타]", hitIndex + 1)
+                    : string.Empty;
+
+                yield return StartCoroutine(ResolveAndApplyAttack(
+                    actor,
+                    skill,
+                    primaryTarget,
+                    rolledPrimaryDamagePercent,
+                    -1f,
+                    primaryLogSuffix,
+                    true,
+                    true));
+                totalHpDamageDealt += lastResolvedAttackHpDamageDealt;
+                if (primaryTarget != null && primaryTarget.IsDead)
+                    killedWithPrimarySkill = true;
+            }
+
+            if (primaryTarget == null || primaryTarget.IsDead)
+                continue;
 
             if (skill.HasSecondaryHit())
             {
@@ -445,8 +468,28 @@ public class BattleActionController : MonoBehaviour
                         skill.secondaryDamagePercent,
                         skill.secondaryAccuracyCoefficientPercent,
                         " [추가타격]",
-                        skill.secondaryApplyNonDamageEffects));
+                        skill.secondaryApplyNonDamageEffects,
+                        false));
                     totalHpDamageDealt += lastResolvedAttackHpDamageDealt;
+                    if (secondaryTarget != null && secondaryTarget.IsDead)
+                        killedWithPrimarySkill = true;
+                }
+                else if (skill.HasMissingSecondaryTargetDamageBonus())
+                {
+                    float bonusPower = Mathf.Max(rolledPrimaryDamagePercent, skill.GetMissingSecondaryTargetDamagePowerPercent());
+                    PlaySkillHitSfx(skill);
+                    yield return StartCoroutine(ResolveAndApplyAttack(
+                        actor,
+                        skill,
+                        primaryTarget,
+                        bonusPower,
+                        -1f,
+                        " [단독 관통 보정]",
+                        false,
+                        false));
+                    totalHpDamageDealt += lastResolvedAttackHpDamageDealt;
+                    if (primaryTarget != null && primaryTarget.IsDead)
+                        killedWithPrimarySkill = true;
                 }
             }
 
@@ -463,11 +506,21 @@ public class BattleActionController : MonoBehaviour
                         rolledPrimaryDamagePercent,
                         -1f,
                         " [관통]",
+                        false,
                         false));
                     totalHpDamageDealt += lastResolvedAttackHpDamageDealt;
                 }
             }
         }
+
+        if (skill.activeGimmick == ActiveSkillGimmick.ChainLightning)
+            yield return StartCoroutine(ApplyChainLightningFollowups(actor, skill, targets));
+
+        if (skill.activeGimmick == ActiveSkillGimmick.ChainExecutionOnce && killedWithPrimarySkill)
+            yield return StartCoroutine(ApplyChainExecutionOnce(actor, skill, rolledPrimaryDamagePercent));
+
+        if (skill.activeGimmick == ActiveSkillGimmick.ShieldSelfFromDamageDealt)
+            ApplySelfShieldFromDamageDealt(actor, skill, totalHpDamageDealt);
 
         if (skill.activeGimmick == ActiveSkillGimmick.AbyssReboundSelfRecoil20FromTotalDamage)
             yield return StartCoroutine(ApplyAbyssReboundSelfRecoil(actor, skill, totalHpDamageDealt));
@@ -480,7 +533,8 @@ public class BattleActionController : MonoBehaviour
         float damagePowerPercentOverride,
         float accuracyPercentOverride,
         string logSuffix,
-        bool applyNonDamageEffects)
+        bool applyNonDamageEffects,
+        bool allowPrimaryHitGimmicks)
     {
         lastResolvedAttackHpDamageDealt = 0;
 
@@ -492,7 +546,7 @@ public class BattleActionController : MonoBehaviour
             target,
             skill,
             damagePowerPercentOverride,
-            logSuffix);
+            allowPrimaryHitGimmicks);
 
         AttackResult result = BattleCalculator.ResolveAttack(
             actor,
@@ -516,6 +570,8 @@ public class BattleActionController : MonoBehaviour
                 battleManager.PassiveController.ResolveAfterDirectAttackDamageTaken(actor, target, hpDamageDealt);
             }
 
+            ApplyLifeStealFromDirectAttack(actor, skill, hpDamageDealt);
+
             if (applyNonDamageEffects)
             {
                 if (skill.activeGimmick == ActiveSkillGimmick.BleedDrainStrike)
@@ -524,7 +580,7 @@ public class BattleActionController : MonoBehaviour
                     ApplyNonDamageEffects(actor, target, skill.skillName, skill.effects, true);
             }
 
-            if (string.IsNullOrEmpty(logSuffix) &&
+            if (allowPrimaryHitGimmicks &&
                 skill.activeGimmick == ActiveSkillGimmick.BlackArenaDuel2Turns &&
                 actor != null && !actor.IsDead &&
                 target != null && !target.IsDead)
@@ -555,7 +611,7 @@ public class BattleActionController : MonoBehaviour
         }
 
         if (result.DidHit &&
-            string.IsNullOrEmpty(logSuffix) &&
+            allowPrimaryHitGimmicks &&
             target.HasStatus(StatusEffectType.CounterStance) &&
             actor != null &&
             !actor.IsDead)
@@ -563,8 +619,11 @@ public class BattleActionController : MonoBehaviour
             yield return StartCoroutine(ExecuteReactiveCounterAttack(target, actor));
         }
 
-        if (result.DidHit && string.IsNullOrEmpty(logSuffix))
+        if (result.DidHit && allowPrimaryHitGimmicks)
+        {
             yield return StartCoroutine(HandleForcedTargetMoveAfterHit(actor, skill, target));
+            yield return StartCoroutine(HandleRandomRepositionAfterHit(actor, skill, target));
+        }
     }
 
     private float GetResolvedDamagePowerPercentForThisAttack(
@@ -572,7 +631,7 @@ public class BattleActionController : MonoBehaviour
         BattleUnit target,
         SkillDefinition skill,
         float requestedDamagePowerPercent,
-        string logSuffix)
+        bool allowPrimaryHitGimmicks)
     {
         float resolvedDamagePowerPercent = requestedDamagePowerPercent;
 
@@ -582,11 +641,25 @@ public class BattleActionController : MonoBehaviour
         if (skill.HasMissingHpPowerBonus())
             resolvedDamagePowerPercent += skill.GetMissingHpBonusPowerPercent(actor);
 
-        if (!string.IsNullOrEmpty(logSuffix))
+        if (skill.HasShieldedTargetDamageBonus() && target.CurrentShield > 0)
+            resolvedDamagePowerPercent = Mathf.Max(resolvedDamagePowerPercent, skill.GetShieldedTargetDamagePowerPercent());
+
+        if (skill.HasTargetStatusDamageBonus() && target.HasStatus(skill.targetStatusBonusType))
+            resolvedDamagePowerPercent += skill.GetTargetStatusBonusPowerAddPercent();
+
+        if (!allowPrimaryHitGimmicks)
             return resolvedDamagePowerPercent;
 
         if (!skill.HasForcedTargetPushBackAfterHit())
             return resolvedDamagePowerPercent;
+
+        if (target.IsForcedPositionMoveImmune)
+        {
+            float immuneFailPowerPercent = skill.GetPushBackFailFinalPowerPercent();
+            if (immuneFailPowerPercent > resolvedDamagePowerPercent)
+                resolvedDamagePowerPercent = immuneFailPowerPercent;
+            return resolvedDamagePowerPercent;
+        }
 
         BattleFormation targetFormation = target.Team == TeamType.Ally
             ? battleManager.AllyFormation
@@ -677,15 +750,61 @@ public class BattleActionController : MonoBehaviour
         }
     }
 
+
+    private IEnumerator HandleRandomRepositionAfterHit(BattleUnit actor, SkillDefinition skill, BattleUnit target)
+    {
+        if (actor == null || skill == null || target == null)
+            yield break;
+
+        if (skill.activeGimmick != ActiveSkillGimmick.RandomRepositionTargetsOnHit)
+            yield break;
+
+        if (target.IsDead || !battleManager.IsUnitInBattle(target) || target.IsPositionMovementLocked || target.IsForcedPositionMoveImmune)
+            yield break;
+
+        float chance = skill.GetRandomRepositionChancePercent();
+        if (chance <= 0f || Random.Range(0f, 100f) >= chance)
+            yield break;
+
+        BattleFormation formation = target.Team == TeamType.Ally
+            ? battleManager.AllyFormation
+            : battleManager.EnemyFormation;
+
+        if (formation == null || !formation.Contains(target))
+            yield break;
+
+        int fromSlot = target.SlotIndex;
+        int toSlot = Random.Range(0, 4);
+        if (toSlot == fromSlot)
+            yield break;
+
+        bool moved = formation.MoveUnitTo(target, toSlot);
+        if (!moved)
+            yield break;
+
+        logController.AppendBattleLog(
+            logController.BuildForcedTargetMoveLog(actor, skill, target, fromSlot, target.SlotIndex));
+
+        if (viewManager != null)
+        {
+            yield return StartCoroutine(viewManager.AnimateRefreshAllPositions(
+                battleManager.AllyFormation,
+                battleManager.EnemyFormation,
+                battleManager.MoveAnimationDuration));
+        }
+    }
+
     private IEnumerator HandleForcedTargetMoveAfterHit(BattleUnit actor, SkillDefinition skill, BattleUnit target)
     {
         if (actor == null || skill == null || target == null)
             yield break;
 
-        if (!skill.HasForcedTargetMoveAfterHit() && !skill.HasForcedTargetPushBackAfterHit())
+        if (!skill.HasForcedTargetMoveAfterHit() &&
+            !skill.HasForcedTargetPushBackAfterHit() &&
+            skill.activeGimmick != ActiveSkillGimmick.PullTargetForwardAfterHit)
             yield break;
 
-        if (target.IsDead || !battleManager.IsUnitInBattle(target))
+        if (target.IsDead || !battleManager.IsUnitInBattle(target) || target.IsForcedPositionMoveImmune)
             yield break;
 
         BattleFormation targetFormation = target.Team == TeamType.Ally
@@ -693,6 +812,10 @@ public class BattleActionController : MonoBehaviour
             : battleManager.EnemyFormation;
 
         if (targetFormation == null || !targetFormation.Contains(target))
+            yield break;
+
+        float chance = skill.GetForcedTargetMoveChancePercent();
+        if (chance <= 0f || Random.Range(0f, 100f) >= chance)
             yield break;
 
         int fromSlotIndex = target.SlotIndex;
@@ -708,6 +831,11 @@ public class BattleActionController : MonoBehaviour
         {
             int steps = skill.GetForcedTargetMoveSteps();
             moved = targetFormation.MoveUnitByDelta(target, steps);
+        }
+        else if (skill.activeGimmick == ActiveSkillGimmick.PullTargetForwardAfterHit)
+        {
+            int steps = skill.GetForcedTargetMoveSteps();
+            moved = targetFormation.MoveUnitByDelta(target, -steps);
         }
 
         if (!moved)
@@ -796,6 +924,114 @@ public class BattleActionController : MonoBehaviour
             skill.skillName,
             target.Name,
             duration));
+    }
+
+
+    private void ApplyLifeStealFromDirectAttack(BattleUnit actor, SkillDefinition skill, int hpDamageDealt)
+    {
+        if (actor == null || actor.IsDead || hpDamageDealt <= 0)
+            return;
+
+        if (actor.LifeStealStackCount <= 0)
+            return;
+
+        int healPercent = BattleStatusUtility.LifeStealHealPercent;
+        int healAmount = Mathf.Max(1, Mathf.FloorToInt(hpDamageDealt * (healPercent * 0.01f)));
+        int healed = actor.Heal(healAmount);
+        if (healed > 0 && logController != null)
+            logController.AppendBattleLog(logController.BuildHealLog(actor, actor, skill != null ? skill.skillName + " [흡혈]" : "흡혈", healed));
+    }
+
+    private void ApplySelfShieldFromDamageDealt(BattleUnit actor, SkillDefinition skill, int totalHpDamageDealt)
+    {
+        if (actor == null || actor.IsDead || skill == null || totalHpDamageDealt <= 0)
+            return;
+
+        float percent = skill.GetSelfShieldFromDamageDealtPercent();
+        if (percent <= 0f)
+            return;
+
+        int shield = Mathf.Max(1, Mathf.FloorToInt(totalHpDamageDealt * (percent * 0.01f)));
+        int gained = actor.AddShield(shield);
+        if (gained > 0 && logController != null)
+            logController.AppendBattleLog(logController.BuildShieldLog(actor, actor, skill.skillName, gained));
+    }
+
+    private IEnumerator ApplyChainLightningFollowups(BattleUnit actor, SkillDefinition skill, List<BattleUnit> alreadyHit)
+    {
+        if (actor == null || actor.IsDead || skill == null)
+            yield break;
+
+        float[] powers = new float[]
+        {
+            skill.GetChainLightningFirstJumpPowerPercent(),
+            skill.GetChainLightningSecondJumpPowerPercent()
+        };
+
+        for (int i = 0; i < powers.Length; i++)
+        {
+            BattleUnit target = PickRandomAliveEnemy(actor, allowAlreadyHit: true);
+            if (target == null)
+                yield break;
+
+            PlaySkillHitSfx(skill);
+            yield return StartCoroutine(ResolveAndApplyAttack(
+                actor,
+                skill,
+                target,
+                powers[i],
+                -1f,
+                string.Format(" [연쇄 {0}]", i + 1),
+                false,
+                false));
+        }
+    }
+
+    private IEnumerator ApplyChainExecutionOnce(BattleUnit actor, SkillDefinition skill, int rolledPrimaryDamagePercent)
+    {
+        if (actor == null || actor.IsDead || skill == null)
+            yield break;
+
+        BattleUnit target = PickRandomAliveEnemy(actor, allowAlreadyHit: true);
+        if (target == null)
+            yield break;
+
+        int hitCount = Mathf.Max(1, skill.GetPrimaryHitCount());
+        for (int i = 0; i < hitCount; i++)
+        {
+            if (target == null || target.IsDead)
+                yield break;
+
+            PlaySkillHitSfx(skill);
+            yield return StartCoroutine(ResolveAndApplyAttack(
+                actor,
+                skill,
+                target,
+                rolledPrimaryDamagePercent,
+                -1f,
+                string.Format(" [연쇄 처형 {0}타]", i + 1),
+                false,
+                false));
+        }
+    }
+
+    private BattleUnit PickRandomAliveEnemy(BattleUnit actor, bool allowAlreadyHit)
+    {
+        if (actor == null || battleManager == null)
+            return null;
+
+        BattleFormation enemyFormation = actor.Team == TeamType.Ally
+            ? battleManager.EnemyFormation
+            : battleManager.AllyFormation;
+
+        if (enemyFormation == null)
+            return null;
+
+        List<BattleUnit> candidates = enemyFormation.GetAliveUnits();
+        if (candidates == null || candidates.Count == 0)
+            return null;
+
+        return candidates[Random.Range(0, candidates.Count)];
     }
 
     private IEnumerator ApplyAbyssReboundSelfRecoil(BattleUnit actor, SkillDefinition skill, int totalHpDamageDealt)
@@ -986,6 +1222,13 @@ public class BattleActionController : MonoBehaviour
                 if (healed > 0)
                     logController.AppendBattleLog(
                         logController.BuildHealLog(actor, actor, skill.skillName + " [흡혈]", healed));
+                continue;
+            }
+
+            if (block.kind == BattleEffectKind.Buff || block.kind == BattleEffectKind.Debuff)
+            {
+                ApplyBlock(actor, actor, skill.skillName, block);
+                continue;
             }
         }
     }
@@ -1076,6 +1319,23 @@ public class BattleActionController : MonoBehaviour
         return BattleStatusUtility.GetDisplayName(statusType);
     }
 
+    private string GetStatModifierDisplayName(StatModifierType statType)
+    {
+        switch (statType)
+        {
+            case StatModifierType.DMG: return "DMG";
+            case StatModifierType.SPD: return "SPD";
+            case StatModifierType.HIT: return "HIT";
+            case StatModifierType.AC: return "AC";
+            case StatModifierType.IDT: return "IDT";
+            case StatModifierType.CRI: return "CRI";
+            case StatModifierType.CRD: return "CRD";
+            case StatModifierType.IncomingDamageTakenPercent: return "받는 피해";
+            case StatModifierType.PierceBackOne: return "관통";
+            default: return statType.ToString();
+        }
+    }
+
     private void ApplyTimedModifierBlock(BattleUnit actor, BattleUnit target, string sourceName, BattleEffectBlock block)
     {
         if (block == null || target == null)
@@ -1143,7 +1403,20 @@ public class BattleActionController : MonoBehaviour
                 }
             default:
                 {
-                    logController.AppendBattleLog(logController.BuildEffectSuccessLog(actor, target, sourceName, block.statModifierType.ToString()));
+                    int basePercent = Mathf.Abs(block.flatValue);
+                    if (basePercent <= 0 || block.durationTurns <= 0)
+                        return;
+
+                    int signedPercent = block.kind == BattleEffectKind.Buff ? basePercent : -basePercent;
+                    bool applied = target.TryApplyTimedModifier(block.statModifierType, signedPercent, block.durationTurns);
+                    if (applied)
+                    {
+                        string label = GetStatModifierDisplayName(block.statModifierType);
+                        string text = signedPercent >= 0
+                            ? $"{label} {signedPercent}% 증가"
+                            : $"{label} {Mathf.Abs(signedPercent)}% 감소";
+                        logController.AppendBattleLog(logController.BuildEffectSuccessLog(actor, target, sourceName, text));
+                    }
                     break;
                 }
         }

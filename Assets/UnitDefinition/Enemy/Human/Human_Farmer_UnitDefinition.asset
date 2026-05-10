@@ -1,0 +1,66 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c7d82bbe39798b41a6678e937734907, type: 3}
+  m_Name: Human_Farmer_UnitDefinition
+  m_EditorClassIdentifier: Assembly-CSharp::UnitDefinition
+  unitId: human_farmer
+  unitName: "\uB18D\uBD80"
+  rangeType: 0
+  isNftUnit: 0
+  showInLegion: 0
+  legionSortPriority: 0
+  legionCategoryLabel: Human
+  maxHP: 45
+  dmg: 10
+  spd: 90
+  idt: 0
+  hpGrowthPerLevel: {x: 2, y: 4}
+  dmgGrowthPerLevel: {x: 1, y: 3}
+  hit: 44
+  ac: 28
+  cri: 2
+  crd: 150
+  burnResist: 0
+  bleedResist: 0
+  stunResist: 0
+  frostResist: 0
+  blindResist: 0
+  basicAttack: {fileID: 11400000, guid: 74a78917624a9514f9531305f2f95d6c, type: 2}
+  varianceRules:
+    maxHpRange: {x: 0, y: 0}
+    dmgRange: {x: 0, y: 0}
+    spdRange: {x: 0, y: 0}
+    idtRange: {x: 0, y: 0}
+    hitRange: {x: 0, y: 0}
+    acRange: {x: 0, y: 0}
+    criRange: {x: 0, y: 0}
+    crdRange: {x: 0, y: 0}
+    burnResistRange: {x: 0, y: 0}
+    bleedResistRange: {x: 0, y: 0}
+    stunResistRange: {x: 0, y: 0}
+    frostResistRange: {x: 0, y: 0}
+    blindResistRange: {x: 0, y: 0}
+  forcePositionMoveImmune: 0
+  fixedStartingSkills:
+  - {fileID: 11400000, guid: 7b881328db0d7a64ca526f53135faff5, type: 2}
+  - {fileID: 11400000, guid: ff3a493fac2fa504e9a6b0547f038cc5, type: 2}
+  extraLearnableSkills: []
+  randomEnemyEquipment: []
+  lastWillChancePercent: 30
+  lastWillTextTable: {fileID: 0}
+  isMainPlayerCharacter: 0
+  baseSoulReward: 95
+  canBeDecomposed: 0
+  decomposeShardReward: 1
+  canBeCaptured: 0
+  capturableEnemyNftChancePercent: 0
+  captureRewardItem: {fileID: 0}

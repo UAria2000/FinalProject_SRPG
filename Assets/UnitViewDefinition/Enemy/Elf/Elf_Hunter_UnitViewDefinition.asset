@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e662b7d56d718594a8e435db9e994010, type: 3}
+  m_Name: Elf_Hunter_UnitViewDefinition
+  m_EditorClassIdentifier: Assembly-CSharp::UnitViewDefinition
+  slotFaceSprite: {fileID: 21300000, guid: 1c85e7e5844d7bc47b3d9da1fcfd8dc8, type: 3}
+  bustPortraitSprite: {fileID: 21300000, guid: 63cca56ae08f2d449bcb654c8a875cc1, type: 3}
+  deadSlotFaceSprite: {fileID: 0}
+  deadBustPortraitSprite: {fileID: 0}
+  battleSprite: {fileID: 21300000, guid: 95a64583de8c47d43acf050a624b5bc8, type: 3}
+  attackBattleSprite: {fileID: 0}
+  deadBattleSprite: {fileID: 0}
+  viewPrefab: {fileID: 0}

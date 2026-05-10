@@ -1,0 +1,50 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8af626abda79b6544ab9c5c5fcc17370, type: 3}
+  m_Name: Dragon_Boss_Aidra_Party
+  m_EditorClassIdentifier: Assembly-CSharp::PartyDefinition
+  partyName: "\uC5D8\uD504 \uBCF4\uC2A4 - \uACE0\uB8E1 \uC5D0\uC774\uB4DC\uB77C"
+  members:
+  - unitDefinition: {fileID: 11400000, guid: 440c342bd307cc940a4241adab6782a6, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: f7eae2bcf21afdc4581bb3b809df16ff, type: 2}
+    startSlotIndex: 0
+    instanceId: boss_aidra_boss_slot_0
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    isExchangeable: 0
+    isNft: 0
+    currentLevel: 9
+    originalLevel: 9
+    currentExp: 0
+    levelGrowthMaxHp: 0
+    levelGrowthDmg: 0
+    promotionRank: 1
+    promotionBonusPercentPerRank: 1
+    statVariance:
+      maxHpDelta: 0
+      dmgDelta: 0
+      spdDelta: 0
+      idtDelta: 0
+      hitDelta: 0
+      acDelta: 0
+      criDelta: 0
+      crdDelta: 0
+      burnResistDelta: 0
+      bleedResistDelta: 0
+      stunResistDelta: 0
+      frostResistDelta: 0
+      blindResistDelta: 0
+    learnedSkills: []
+    equippedItems: []
+    battleLootDrops: []
+    persistentCurrentHP: -1
+  inventory: []

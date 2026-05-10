@@ -49,6 +49,16 @@ public class BattlePassiveController : MonoBehaviour
         if (battleManager == null || actingUnit == null || actingUnit.IsDead || !battleManager.IsUnitInBattle(actingUnit))
             yield break;
 
+        yield return StartCoroutine(ResolveTurnStartAlwaysOnPassives(actingUnit));
+
+        SkillDefinition nextTurnFleeSkill = actingUnit.PeekPendingNextTurnFleeSkill();
+        if (nextTurnFleeSkill != null)
+        {
+            actingUnit.ConsumePendingNextTurnFleeSkill();
+            yield return StartCoroutine(ExecuteGuaranteedFlee(actingUnit, nextTurnFleeSkill));
+            yield break;
+        }
+
         SkillDefinition passiveSkill = actingUnit.PeekPendingPassiveSkill();
         if (passiveSkill == null)
             yield break;
@@ -108,6 +118,200 @@ public class BattlePassiveController : MonoBehaviour
             defender.Name,
             skillName,
             actualShield));
+    }
+
+    public void ResolveBeforeDeadUnitsRemoved(List<BattleUnit> deadAllies, List<BattleUnit> deadEnemies)
+    {
+        if (battleManager == null || battleManager.BattleResult != BattleResultType.None)
+            return;
+
+        ResolveLinkedBossDeathPassivesForFormation(battleManager.AllyFormation, deadAllies);
+        ResolveLinkedBossDeathPassivesForFormation(battleManager.EnemyFormation, deadEnemies);
+    }
+
+    private void ResolveLinkedBossDeathPassivesForFormation(BattleFormation formation, List<BattleUnit> deadUnits)
+    {
+        if (formation == null || deadUnits == null || deadUnits.Count <= 0)
+            return;
+
+        List<BattleUnit> units = formation.GetAllUnits();
+        for (int i = 0; i < units.Count; i++)
+        {
+            BattleUnit unit = units[i];
+            if (unit == null || unit.IsDead)
+                continue;
+
+            SkillDefinition enrageSkill;
+            if (unit.TryGetPassiveSkillByGimmick(PassiveSkillGimmick.HumanJudgeEnrageWhenLinkedBossDies, out enrageSkill) &&
+                enrageSkill != null &&
+                !unit.IsSkillDisabled(enrageSkill) &&
+                ContainsDeadUnitDefinition(deadUnits, enrageSkill.GetLinkedBossUnitDefinition()))
+            {
+                ApplyHumanJudgeEnrage(unit, enrageSkill);
+            }
+
+            SkillDefinition reviveSkill;
+            if (unit.TryGetPassiveSkillByGimmick(PassiveSkillGimmick.HumanHighPriestReviveLinkedBossOnDeath, out reviveSkill) &&
+                reviveSkill != null &&
+                !unit.IsSkillDisabled(reviveSkill))
+            {
+                BattleUnit deadLinkedBoss = FindDeadUnitByDefinition(deadUnits, reviveSkill.GetLinkedBossUnitDefinition());
+                if (deadLinkedBoss != null)
+                    ReviveLinkedBoss(unit, deadLinkedBoss, reviveSkill);
+            }
+        }
+    }
+
+    private bool ContainsDeadUnitDefinition(List<BattleUnit> deadUnits, UnitDefinition definition)
+    {
+        return FindDeadUnitByDefinition(deadUnits, definition) != null;
+    }
+
+    private BattleUnit FindDeadUnitByDefinition(List<BattleUnit> deadUnits, UnitDefinition definition)
+    {
+        if (deadUnits == null || definition == null)
+            return null;
+
+        for (int i = 0; i < deadUnits.Count; i++)
+        {
+            BattleUnit unit = deadUnits[i];
+            if (unit == null)
+                continue;
+
+            if (unit.Definition == definition && unit.IsDead)
+                return unit;
+        }
+
+        return null;
+    }
+
+    private void ApplyHumanJudgeEnrage(BattleUnit judge, SkillDefinition passiveSkill)
+    {
+        if (judge == null || judge.IsDead || passiveSkill == null)
+            return;
+
+        int dmgPercent = passiveSkill.GetBossEnrageDmgPercent();
+        int hitPercent = passiveSkill.GetBossEnrageHitPercent();
+        int incomingDamageTakenPercent = passiveSkill.GetBossEnrageIncomingDamageTakenPercent();
+        float healPercent = passiveSkill.GetBossEnrageHealMaxHpPercent();
+
+        if (dmgPercent > 0)
+            judge.AddPersistentBattleDmgModifierPercent(dmgPercent);
+
+        if (hitPercent > 0)
+            judge.AddPersistentBattleHitModifierPercent(hitPercent);
+
+        if (incomingDamageTakenPercent > 0)
+            judge.AddPersistentBattleIncomingDamageTakenPercent(incomingDamageTakenPercent);
+
+        int healed = 0;
+        if (healPercent > 0f)
+        {
+            int healAmount = Mathf.Max(1, Mathf.FloorToInt(judge.MaxHP * (healPercent * 0.01f)));
+            healed = judge.Heal(healAmount);
+        }
+
+        judge.DisableSkill(passiveSkill);
+
+        AppendLog(string.Format(
+            "{0}의 {1} 발동 → DMG +{2}%, HIT +{3}%, 받는 피해 +{4}%, {5} 회복",
+            judge.Name,
+            GetPassiveSkillName(passiveSkill),
+            dmgPercent,
+            hitPercent,
+            incomingDamageTakenPercent,
+            healed));
+    }
+
+    private void ReviveLinkedBoss(BattleUnit reviver, BattleUnit target, SkillDefinition passiveSkill)
+    {
+        if (reviver == null || reviver.IsDead || target == null || passiveSkill == null)
+            return;
+
+        float revivePercent = passiveSkill.GetLinkedBossReviveHpPercent();
+        target.ReviveWithHpPercent(revivePercent);
+        battleManager.SuppressUnitUntilNextRound(target);
+
+        int healed = 0;
+        float reviverHealPercent = passiveSkill.GetBossReviverHealMaxHpPercent();
+        if (reviverHealPercent > 0f)
+        {
+            int healAmount = Mathf.Max(1, Mathf.FloorToInt(reviver.MaxHP * (reviverHealPercent * 0.01f)));
+            healed = reviver.Heal(healAmount);
+        }
+
+        reviver.DisableSkill(passiveSkill);
+
+        AppendLog(string.Format(
+            "{0}의 {1} 발동 → {2} HP {3}%로 소생, {0} {4} 회복",
+            reviver.Name,
+            GetPassiveSkillName(passiveSkill),
+            target.Name,
+            Mathf.RoundToInt(revivePercent),
+            healed));
+    }
+
+    private IEnumerator ResolveTurnStartAlwaysOnPassives(BattleUnit actingUnit)
+    {
+        if (actingUnit == null || actingUnit.IsDead)
+            yield break;
+
+        SkillDefinition regenSkill;
+        if (actingUnit.TryGetPassiveSkillByGimmick(PassiveSkillGimmick.HealSelfMaxHpPercentOnTurnStart, out regenSkill))
+        {
+            float healPercent = regenSkill.GetTurnStartSelfHealMaxHpPercent();
+            if (healPercent > 0f)
+            {
+                int healAmount = Mathf.Max(1, Mathf.FloorToInt(actingUnit.MaxHP * (healPercent * 0.01f)));
+                int healed = actingUnit.Heal(healAmount);
+                if (healed > 0)
+                {
+                    AppendLog(string.Format(
+                        "{0}의 {1} 발동 → {2} 회복",
+                        actingUnit.Name,
+                        GetPassiveSkillName(regenSkill),
+                        healed));
+
+                    BattleUnitView view = battleManager != null && battleManager.ViewManager != null
+                        ? battleManager.ViewManager.GetView(actingUnit)
+                        : null;
+                    if (view != null)
+                        yield return StartCoroutine(view.AnimateHPChange(0.1f));
+                }
+            }
+        }
+    }
+
+    public static int GetActiveStatusResistanceAuraBonus(BattleUnit target)
+    {
+        if (target == null || target.IsDead)
+            return 0;
+
+        BattleManager manager = Object.FindFirstObjectByType<BattleManager>();
+        if (manager == null)
+            return 0;
+
+        BattleFormation formation = target.Team == TeamType.Ally ? manager.AllyFormation : manager.EnemyFormation;
+        if (formation == null)
+            return 0;
+
+        List<BattleUnit> allies = formation.GetAliveUnits();
+        int totalBonus = 0;
+
+        for (int i = 0; i < allies.Count; i++)
+        {
+            BattleUnit ally = allies[i];
+            if (ally == null || ally.IsDead)
+                continue;
+
+            SkillDefinition auraSkill;
+            if (!ally.TryGetPassiveSkillByGimmick(PassiveSkillGimmick.TeamStatusResistAuraWhileAlive, out auraSkill))
+                continue;
+
+            totalBonus += auraSkill.GetTeamStatusResistAuraPercent();
+        }
+
+        return Mathf.Max(0, totalBonus);
     }
 
     private void ResolveBattleStartPassivesForFormation(BattleFormation sourceFormation, BattleFormation targetFormation)

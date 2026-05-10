@@ -1,0 +1,66 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c7d82bbe39798b41a6678e937734907, type: 3}
+  m_Name: Human_Paladin_UnitDefinition
+  m_EditorClassIdentifier: Assembly-CSharp::UnitDefinition
+  unitId: human_paladin
+  unitName: "\uC131\uAE30\uC0AC"
+  rangeType: 0
+  isNftUnit: 0
+  showInLegion: 0
+  legionSortPriority: 0
+  legionCategoryLabel: Human
+  maxHP: 135
+  dmg: 26
+  spd: 42
+  idt: 10
+  hpGrowthPerLevel: {x: 2, y: 4}
+  dmgGrowthPerLevel: {x: 1, y: 3}
+  hit: 54
+  ac: 40
+  cri: 6
+  crd: 150
+  burnResist: 0
+  bleedResist: 0
+  stunResist: 0
+  frostResist: 0
+  blindResist: 0
+  basicAttack: {fileID: 11400000, guid: 85c89d8a5acb9b3408c785d3f3d6b7a7, type: 2}
+  varianceRules:
+    maxHpRange: {x: 0, y: 0}
+    dmgRange: {x: 0, y: 0}
+    spdRange: {x: 0, y: 0}
+    idtRange: {x: 0, y: 0}
+    hitRange: {x: 0, y: 0}
+    acRange: {x: 0, y: 0}
+    criRange: {x: 0, y: 0}
+    crdRange: {x: 0, y: 0}
+    burnResistRange: {x: 0, y: 0}
+    bleedResistRange: {x: 0, y: 0}
+    stunResistRange: {x: 0, y: 0}
+    frostResistRange: {x: 0, y: 0}
+    blindResistRange: {x: 0, y: 0}
+  forcePositionMoveImmune: 0
+  fixedStartingSkills:
+  - {fileID: 11400000, guid: 92149c8af73bf3e45869a7a262de47da, type: 2}
+  - {fileID: 11400000, guid: 61619dbf5c2ab8447afaa5a6f0a3a734, type: 2}
+  extraLearnableSkills: []
+  randomEnemyEquipment: []
+  lastWillChancePercent: 30
+  lastWillTextTable: {fileID: 0}
+  isMainPlayerCharacter: 0
+  baseSoulReward: 170
+  canBeDecomposed: 0
+  decomposeShardReward: 1
+  canBeCaptured: 1
+  capturableEnemyNftChancePercent: 0
+  captureRewardItem: {fileID: 11400000, guid: 46952be8aa2e48645b359b084a4dca5d, type: 2}

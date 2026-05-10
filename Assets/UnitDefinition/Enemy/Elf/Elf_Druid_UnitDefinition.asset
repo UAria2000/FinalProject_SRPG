@@ -1,0 +1,66 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c7d82bbe39798b41a6678e937734907, type: 3}
+  m_Name: Elf_Druid_UnitDefinition
+  m_EditorClassIdentifier: Assembly-CSharp::UnitDefinition
+  unitId: elf_druid
+  unitName: "\uB4DC\uB8E8\uC774\uB4DC"
+  rangeType: 1
+  isNftUnit: 0
+  showInLegion: 0
+  legionSortPriority: 0
+  legionCategoryLabel: Elf
+  maxHP: 80
+  dmg: 16
+  spd: 50
+  idt: 0
+  hpGrowthPerLevel: {x: 2, y: 4}
+  dmgGrowthPerLevel: {x: 1, y: 3}
+  hit: 56
+  ac: 32
+  cri: 4
+  crd: 150
+  burnResist: 0
+  bleedResist: 0
+  stunResist: 0
+  frostResist: 0
+  blindResist: 0
+  basicAttack: {fileID: 11400000, guid: d3bef779a097799479528a727d475872, type: 2}
+  varianceRules:
+    maxHpRange: {x: 0, y: 0}
+    dmgRange: {x: 0, y: 0}
+    spdRange: {x: 0, y: 0}
+    idtRange: {x: 0, y: 0}
+    hitRange: {x: 0, y: 0}
+    acRange: {x: 0, y: 0}
+    criRange: {x: 0, y: 0}
+    crdRange: {x: 0, y: 0}
+    burnResistRange: {x: 0, y: 0}
+    bleedResistRange: {x: 0, y: 0}
+    stunResistRange: {x: 0, y: 0}
+    frostResistRange: {x: 0, y: 0}
+    blindResistRange: {x: 0, y: 0}
+  forcePositionMoveImmune: 0
+  fixedStartingSkills:
+  - {fileID: 11400000, guid: 7940ad2f54a9ca44fbda4fd835e58f53, type: 2}
+  - {fileID: 11400000, guid: 59250e727813e494fb963da07ca4d512, type: 2}
+  extraLearnableSkills: []
+  randomEnemyEquipment: []
+  lastWillChancePercent: 30
+  lastWillTextTable: {fileID: 0}
+  isMainPlayerCharacter: 0
+  baseSoulReward: 125
+  canBeDecomposed: 0
+  decomposeShardReward: 1
+  canBeCaptured: 0
+  capturableEnemyNftChancePercent: 0
+  captureRewardItem: {fileID: 0}

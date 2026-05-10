@@ -1,0 +1,81 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c6a35d65b0733cf46b1805d33bf861b7, type: 3}
+  m_Name: Elf Enemy Encounter Table
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyEncounterTable
+  minEnemyCount: 2
+  maxEnemyCount: 4
+  allowDuplicates: 1
+  entries:
+  - unitDefinition: {fileID: 11400000, guid: 40158b9943007ec45b583ed33b726404, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: 059ae0431fc01b444bb6dd2449c6c5bd, type: 2}
+    weight: 3
+    minLevel: 1
+    maxLevel: 1
+    learnedSkills: []
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    enabled: 1
+  - unitDefinition: {fileID: 11400000, guid: ba683f17cb99cd24c9408467f5e59b5a, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: 1630232acd8c3f54faee78604d504173, type: 2}
+    weight: 1
+    minLevel: 1
+    maxLevel: 1
+    learnedSkills: []
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    enabled: 1
+  - unitDefinition: {fileID: 11400000, guid: 1fc54ee31e01ab54fb5634119565a292, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: 60017d53c596c3548a76cc1d7395e5d4, type: 2}
+    weight: 2
+    minLevel: 1
+    maxLevel: 1
+    learnedSkills: []
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    enabled: 1
+  - unitDefinition: {fileID: 11400000, guid: 219062074960def4b9f4c8d86b8101a7, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: 770b58c85908a544581ae6d244b4e252, type: 2}
+    weight: 2
+    minLevel: 1
+    maxLevel: 1
+    learnedSkills: []
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    enabled: 1
+  - unitDefinition: {fileID: 11400000, guid: c5513644a0c48e647b36e110ff6a6238, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: 83e0fd59479296f478fe71e1c6822c59, type: 2}
+    weight: 1
+    minLevel: 1
+    maxLevel: 1
+    learnedSkills: []
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    enabled: 1
+  - unitDefinition: {fileID: 11400000, guid: d1967db3ed2359a45b6778f911d12716, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: 41649f522faee514ca2cfe95235bae45, type: 2}
+    weight: 2
+    minLevel: 1
+    maxLevel: 1
+    learnedSkills: []
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    enabled: 1
+  - unitDefinition: {fileID: 11400000, guid: 79a071ce171eb1c4580813a42d6d07d7, type: 2}
+    unitViewDefinition: {fileID: 11400000, guid: 52a99dbf6c1649c488a0f7753ddd7a7f, type: 2}
+    weight: 2
+    minLevel: 1
+    maxLevel: 1
+    learnedSkills: []
+    instanceDisplayNameOverride: 
+    fixedEpitaph: 
+    enabled: 1

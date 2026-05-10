@@ -82,7 +82,95 @@ public class BattleSkillGimmickController : MonoBehaviour
                 actor.ConsumeConditionalSkillArm(skill);
                 QueueDelayedReinforcement(actor, skill);
                 break;
+            case ActiveSkillGimmick.FleeOnNextOwnTurn:
+                if (actor.TryArmNextTurnFleeSkill(skill))
+                    AppendLog(string.Format("{0}의 {1}: 다음 자기 턴 시작 시 도주", actor.Name, GetSkillName(skill)));
+                break;
+            case ActiveSkillGimmick.ImmediateSummonInFront:
+                TryImmediateSummonInFront(actor, skill);
+                break;
         }
+    }
+
+    private bool TryImmediateSummonInFront(BattleUnit actor, SkillDefinition skill)
+    {
+        if (actor == null || skill == null || battleManager == null)
+            return false;
+
+        if (skill.summonUnitDefinition == null)
+        {
+            AppendLog(string.Format("{0}의 {1}: 소환 실패 (소환 UnitDefinition 없음)", actor.Name, GetSkillName(skill)));
+            return false;
+        }
+
+        BattleFormation formation = actor.Team == TeamType.Ally
+            ? battleManager.AllyFormation
+            : battleManager.EnemyFormation;
+
+        if (formation == null || !formation.Contains(actor))
+            return false;
+
+        int maxLiving = Mathf.Clamp(skill.maxLivingAlliesForSummon, 1, 4);
+        if (formation.GetAliveUnits().Count > maxLiving)
+        {
+            AppendLog(string.Format("{0}의 {1}: 소환 조건 불충족", actor.Name, GetSkillName(skill)));
+            return false;
+        }
+
+        int insertSlot = Mathf.Clamp(actor.SlotIndex - 1, 0, 3);
+        if (!formation.CanInsertUnitAt(insertSlot))
+        {
+            AppendLog(string.Format("{0}의 {1}: 소환 실패 (전방 자리 없음)", actor.Name, GetSkillName(skill)));
+            return false;
+        }
+
+        PartyMemberData member = CreateSummonedMemberData(skill, actor, insertSlot, actor.Team);
+        BattleUnit newUnit = new BattleUnit(member, actor.Team);
+
+        if (!formation.TryInsertUnitAt(newUnit, insertSlot))
+        {
+            AppendLog(string.Format("{0}의 {1}: 소환 실패 (대열 이동 불가)", actor.Name, GetSkillName(skill)));
+            return false;
+        }
+
+        if (battleManager.ViewManager != null && battleManager.InputController != null)
+        {
+            battleManager.ViewManager.CreateView(newUnit, battleManager.InputController);
+            battleManager.ViewManager.RefreshAllPositionsInstant(battleManager.AllyFormation, battleManager.EnemyFormation);
+        }
+
+        AppendLog(string.Format("{0}의 {1}: {2} 소환", actor.Name, GetSkillName(skill), newUnit.Name));
+        battleManager.RefreshAllUI();
+        return true;
+    }
+
+    private PartyMemberData CreateSummonedMemberData(SkillDefinition skill, BattleUnit actor, int slotIndex, TeamType team)
+    {
+        UnitDefinition definition = skill != null ? skill.summonUnitDefinition : null;
+
+        PartyMemberData member = new PartyMemberData();
+        member.unitDefinition = definition;
+        member.unitViewDefinition = skill != null ? skill.summonUnitViewDefinition : null;
+        member.startSlotIndex = Mathf.Clamp(slotIndex, 0, 3);
+
+        int level = 1;
+        if (skill != null && skill.summonLevelOverride > 0)
+            level = skill.summonLevelOverride;
+        else if (actor != null)
+            level = actor.CurrentLevel;
+
+        member.currentLevel = Mathf.Max(1, level);
+        member.originalLevel = member.currentLevel;
+        member.currentExp = 0;
+        member.instanceId = BuildRuntimeInstanceId(definition, team, slotIndex);
+        member.instanceDisplayNameOverride = string.Empty;
+        member.fixedEpitaph = string.Empty;
+        member.statVariance = RollVariance(definition != null ? definition.varianceRules : null);
+        member.learnedSkills = CopySkills(definition != null ? definition.fixedStartingSkills : null);
+        member.equippedItems = new List<ItemDefinition>();
+        member.battleLootDrops = new List<ItemDropDefinition>();
+        member.persistentCurrentHP = -1;
+        return member;
     }
 
     private void ArmReinforcementSkillsForFormation(BattleFormation formation)

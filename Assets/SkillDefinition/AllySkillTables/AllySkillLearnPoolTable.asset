@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 762ab293f6482684ebd6692b914debe4, type: 3}
+  m_Name: AllySkillLearnPoolTable
+  m_EditorClassIdentifier: Assembly-CSharp::SkillLearnPoolTable
+  meleeSkills:
+  - {fileID: 11400000, guid: 32ad585daa2579349ab6a87cbe095f61, type: 2}
+  - {fileID: 11400000, guid: ea961ad9574671248987247884b0c430, type: 2}
+  - {fileID: 11400000, guid: d4462763f9545844ca62cab8f30b8aab, type: 2}
+  - {fileID: 11400000, guid: 6c5b1e5f9c5e1cc4eb8dc6325f4d2c12, type: 2}
+  - {fileID: 11400000, guid: 8b0ae5385ccd59040afbd951dde5bf2a, type: 2}
+  - {fileID: 11400000, guid: 3a2ce543548e341448f120842f6ae646, type: 2}
+  - {fileID: 11400000, guid: 5406808583333bf4f92de0e081ddce26, type: 2}
+  midSkills:
+  - {fileID: 11400000, guid: 163d9c80cb4d4ec4892a38b6102ae32f, type: 2}
+  - {fileID: 11400000, guid: dcadc275104a8c64cb68d400630e9ded, type: 2}
+  - {fileID: 11400000, guid: b66b54d3c056c59448df7304228797f7, type: 2}
+  - {fileID: 11400000, guid: eacf94d6dfd2ab042b8a3b6f46c60a60, type: 2}
+  - {fileID: 11400000, guid: 2c9c059bafd2a4d4c81812c89fb8bd99, type: 2}
+  - {fileID: 11400000, guid: 2103b8e48c0b9f240867027cbf13e270, type: 2}
+  rangedSkills:
+  - {fileID: 11400000, guid: 26559442c923a2a44977375382768c6e, type: 2}
+  - {fileID: 11400000, guid: 87a276281016a0b4e97c34a0f9abd89b, type: 2}
+  - {fileID: 11400000, guid: 1120e4b8bfac18d45a6e6906d5bf5f19, type: 2}
+  - {fileID: 11400000, guid: d877a6d0472082f43a5cf8e87eee5478, type: 2}
+  - {fileID: 11400000, guid: d95ad659d6f53ee4cb0e59afd9e00f66, type: 2}
+  commonSkills:
+  - {fileID: 11400000, guid: e7db4ea2807271e47b44727d25b2c750, type: 2}
+  - {fileID: 11400000, guid: 76353a568d842ff4ea0567cc37d00e42, type: 2}
+  - {fileID: 11400000, guid: 5f5af73ac5fab014ebb3e7ec08d75120, type: 2}

@@ -57,7 +57,7 @@ public static class BattleCalculator
         if (skill != null && !skill.allowGraze)
             missChance = failChance;
 
-        float critRate = skill != null && skill.allowCrit ? Mathf.Clamp(attacker.CRI, 0f, 100f) : 0f;
+        float critRate = skill != null && skill.allowCrit ? Mathf.Clamp(GetEffectiveCritRate(attacker, target), 0f, 100f) : 0f;
         float critChance = totalHitChance * (critRate / 100f);
         float normalHitChance = totalHitChance - critChance;
 
@@ -118,7 +118,7 @@ public static class BattleCalculator
 
             float effectiveHit = attacker.HIT * (skill.accuracyCoefficientPercent * 0.01f);
             float totalHitChance = ApplyBlindFinalHitPenalty(CalculateTotalHitChance(effectiveHit, target.AC), attacker);
-            float critChance = skill.allowCrit ? totalHitChance * (Mathf.Clamp(attacker.CRI, 0f, 100f) / 100f) : 0f;
+            float critChance = skill.allowCrit ? totalHitChance * (Mathf.Clamp(GetEffectiveCritRate(attacker, target), 0f, 100f) / 100f) : 0f;
             float normalHitChance = Mathf.Max(0f, totalHitChance - critChance);
 
             data.hitChancePercent = Mathf.RoundToInt(critChance + normalHitChance);
@@ -130,6 +130,12 @@ public static class BattleCalculator
             int minPercent;
             int maxPercent;
             GetSkillDamagePowerPercentRange(skill, out minPercent, out maxPercent);
+            if (skill.HasShieldedTargetDamageBonus() && target.CurrentShield > 0)
+            {
+                int shieldedPower = Mathf.RoundToInt(skill.GetShieldedTargetDamagePowerPercent());
+                minPercent = Mathf.Max(minPercent, shieldedPower);
+                maxPercent = Mathf.Max(maxPercent, shieldedPower);
+            }
 
             data.damageMin = Mathf.Max(0, Mathf.FloorToInt(minBase * (minPercent * 0.01f)));
             data.damageMax = Mathf.Max(0, Mathf.FloorToInt(maxBase * (maxPercent * 0.01f)));
@@ -206,6 +212,22 @@ public static class BattleCalculator
             minPercent = minTotal;
             maxPercent = maxTotal;
         }
+    }
+
+    private static float GetEffectiveCritRate(BattleUnit attacker, BattleUnit target)
+    {
+        if (attacker == null)
+            return 0f;
+
+        int crit = attacker.CRI;
+        if (target != null)
+        {
+            int huntingStacks = target.GetStatusStackCount(StatusEffectType.Hunting);
+            if (huntingStacks > 0)
+                crit += huntingStacks * BattleStatusUtility.HuntingTargetBonusCritChancePercentPerStack;
+        }
+
+        return crit;
     }
 
     public static int CalculateFleeChancePercent(BattleUnit actor, BattleFormation enemyFormation)

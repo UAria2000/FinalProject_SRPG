@@ -29,30 +29,14 @@ MonoBehaviour:
     displayName: Human
     tileSprite: {fileID: 21300000, guid: cf71423dbdef7c54b99bffbda7875fdf, type: 3}
     unknownSprite: {fileID: 21300000, guid: 192ba255d8780914e9afba134643de18, type: 3}
-    fallbackColor: {r: 0.34901962, g: 0.49411768, b: 0.8078432, a: 0}
-    enemyPortraitPool:
-    - {fileID: 21300000, guid: c92ce382991061d428bfb8307e5ceed9, type: 3}
-    - {fileID: 21300000, guid: 978eb80b605d82548ba32a811658c0f6, type: 3}
-    - {fileID: 21300000, guid: b84e3003befbf584ca8fb7a9c6b9433c, type: 3}
-    - {fileID: 21300000, guid: 8fb680aef7ea5514aae74ddbd8559327, type: 3}
-    - {fileID: 21300000, guid: 45f1e23bf66ddf740b8c4e703c41dba4, type: 3}
+    fallbackColor: {r: 0.25882354, g: 0.41176474, b: 0.63529414, a: 0}
+    enemyPortraitPool: []
   - faction: 3
     displayName: Elf
     tileSprite: {fileID: 21300000, guid: b343e2b9a70d71d45af9f572dfbed86e, type: 3}
     unknownSprite: {fileID: 21300000, guid: 71d51341ad4fe8e47bbbf143f729c447, type: 3}
     fallbackColor: {r: 0.47058827, g: 0.6784314, b: 0.30980393, a: 0}
-    enemyPortraitPool:
-    - {fileID: 21300000, guid: e07c9373a4031a44c8fdbc2dd9f73156, type: 3}
-    - {fileID: 21300000, guid: a80ffab60f3d96342a4f78a5d35a6fe6, type: 3}
-    - {fileID: 21300000, guid: 9cddc543e1ed9434082ef2e355f6b48f, type: 3}
-  - faction: 3
-    displayName: Elf
-    tileSprite: {fileID: 21300000, guid: b343e2b9a70d71d45af9f572dfbed86e, type: 3}
-    unknownSprite: {fileID: 21300000, guid: 71d51341ad4fe8e47bbbf143f729c447, type: 3}
-    fallbackColor: {r: 0.47058827, g: 0.6784314, b: 0.30980393, a: 0}
-    enemyPortraitPool:
-    - {fileID: 0}
-    - {fileID: 0}
+    enemyPortraitPool: []
   eventWeightSettings: {fileID: 11400000, guid: 82ff351194af72e41b858f3570803be3, type: 2}
   eventPresentations:
   - eventType: 1
@@ -98,23 +82,23 @@ MonoBehaviour:
   startTileIcon: {fileID: 21300000, guid: dcbbeddc435224748a1aff0cef431208, type: 3}
   factionBattleConfigs:
   - faction: 2
-    battleTier1Table: {fileID: 11400000, guid: f0c6dd39b4cb01f4db559dcbcaeac869, type: 2}
-    battleTier2Table: {fileID: 11400000, guid: 92ed3439a4f475946b6faf0f36eb5d80, type: 2}
-    battleTier3Table: {fileID: 11400000, guid: 9a9b7ab8e51e93143b6536a5c4187977, type: 2}
+    battleTier1Table: {fileID: 11400000, guid: 7fe74cffb14d74b4f9a8d5ad2b5edfd7, type: 2}
+    battleTier2Table: {fileID: 11400000, guid: 7fe74cffb14d74b4f9a8d5ad2b5edfd7, type: 2}
+    battleTier3Table: {fileID: 11400000, guid: 7fe74cffb14d74b4f9a8d5ad2b5edfd7, type: 2}
     eliteTier1Table: {fileID: 0}
     eliteTier2Table: {fileID: 0}
     eliteTier3Table: {fileID: 0}
-    bossPartyDefinition: {fileID: 11400000, guid: 455474ca878829e48b422f020e896f3b, type: 2}
+    bossPartyDefinition: {fileID: 11400000, guid: d0b13393cf76bd142acd8753b5cf5024, type: 2}
     bossEncounterTable: {fileID: 0}
   - faction: 3
-    battleTier1Table: {fileID: 11400000, guid: 681deb5fa980cc64ebe194a5a097874d, type: 2}
-    battleTier2Table: {fileID: 11400000, guid: 681deb5fa980cc64ebe194a5a097874d, type: 2}
-    battleTier3Table: {fileID: 11400000, guid: 681deb5fa980cc64ebe194a5a097874d, type: 2}
+    battleTier1Table: {fileID: 11400000, guid: 50c574e179c8a8443b3698a400557a49, type: 2}
+    battleTier2Table: {fileID: 11400000, guid: 50c574e179c8a8443b3698a400557a49, type: 2}
+    battleTier3Table: {fileID: 11400000, guid: 50c574e179c8a8443b3698a400557a49, type: 2}
     eliteTier1Table: {fileID: 0}
     eliteTier2Table: {fileID: 0}
     eliteTier3Table: {fileID: 0}
-    bossPartyDefinition: {fileID: 0}
-    bossEncounterTable: {fileID: 11400000, guid: 681deb5fa980cc64ebe194a5a097874d, type: 2}
+    bossPartyDefinition: {fileID: 11400000, guid: 405f5b8d9c202e04da5a00cd5c12632d, type: 2}
+    bossEncounterTable: {fileID: 0}
   conquestRequiredPercentSmall: 50
   conquestRequiredPercentMedium: 75
   conquestRequiredPercentLarge: 70

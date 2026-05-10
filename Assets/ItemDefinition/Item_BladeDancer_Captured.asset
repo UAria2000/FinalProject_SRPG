@@ -29,8 +29,8 @@ MonoBehaviour:
   equipmentDmgBonus: 0
   equipmentSpdBonus: 0
   equipmentIdtBonus: 0
-  equipmentHitBonusX10: 0
-  equipmentAcBonusX10: 0
+  equipmentHitBonus: 0
+  equipmentAcBonus: 0
   equipmentCriBonus: 0
   equipmentCrdBonus: 0
   equipmentAllResistBonus: 0
@@ -41,7 +41,7 @@ MonoBehaviour:
   equipmentBlindResistBonus: 0
   equipmentStartShieldPercentOfMaxHP: 0
   isPrisonerItem: 1
-  convertedAllyUnitDefinition: {fileID: 11400000, guid: f8f9adbf09c124c4f841e0510acbe903, type: 2}
-  convertedAllyUnitViewDefinition: {fileID: 11400000, guid: db5ea6affc7c81a4ab640be9675790dd, type: 2}
+  convertedAllyUnitDefinition: {fileID: 11400000, guid: 1fc54ee31e01ab54fb5634119565a292, type: 2}
+  convertedAllyUnitViewDefinition: {fileID: 11400000, guid: 60017d53c596c3548a76cc1d7395e5d4, type: 2}
   useItemIconAsPrisonerPortrait: 1
   effects: []
