@@ -133,6 +133,12 @@ public class SkillDefinition : ScriptableObject
     public GameObject castEffectPrefab; // 시전 시 사용자 위치에서 발생
     public GameObject hitEffectPrefab;  // 타격 시 대상 위치에서 발생
 
+    [Header("Audio")]
+    [Tooltip("현재는 자동 재생하지 않습니다. 추후 시전 시작 사운드가 필요할 때 사용합니다.")]
+    public AudioClip useSfx;
+    [Tooltip("피격/효과 적용 타이밍에 재생할 스킬 효과음입니다. 비워두면 재생하지 않습니다.")]
+    public AudioClip hitSfx;
+
     public bool HasDamageEffect()
     {
         if (effects == null) return false;

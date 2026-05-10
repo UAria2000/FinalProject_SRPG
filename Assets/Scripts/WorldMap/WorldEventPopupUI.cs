@@ -20,6 +20,13 @@ public class WorldEventPopupUI : MonoBehaviour
     [SerializeField] private Button confirmButton;
     [SerializeField] private Button closeButton;
 
+    [Header("Dim Close")]
+    [Tooltip("패널 뒤에 깔리는 딤 오브젝트. 연결하면 팝업 열림/닫힘과 함께 활성화됩니다.")]
+    [SerializeField] private GameObject dimRoot;
+    [Tooltip("딤 클릭 닫기용 버튼. 비워두면 dimRoot의 Button을 찾고, 없으면 런타임에 추가합니다.")]
+    [SerializeField] private Button dimCloseButton;
+    [SerializeField] private bool closeOnDimClick = true;
+
     [Header("Optional Reward Slots")]
     [Tooltip("보물 이벤트 보상을 슬롯으로 보여줄 때 연결한다. 비워두면 기존처럼 확인 시 전부 자동 지급된다.")]
     [SerializeField] private List<WorldEventRewardSlotUI> rewardSlots = new List<WorldEventRewardSlotUI>(4);
@@ -51,6 +58,8 @@ public class WorldEventPopupUI : MonoBehaviour
             closeButton.onClick.RemoveAllListeners();
             closeButton.onClick.AddListener(HandleCloseClicked);
         }
+
+        InitializeDimCloseButton();
 
         if (bottomPartySummaryPanelUI == null)
             bottomPartySummaryPanelUI = UnityEngine.Object.FindFirstObjectByType<BottomPartySummaryPanelUI>();
@@ -187,6 +196,12 @@ public class WorldEventPopupUI : MonoBehaviour
 
     private void SetOpen(bool open)
     {
+        if (dimRoot != null)
+            dimRoot.SetActive(open);
+
+        if (dimCloseButton != null)
+            dimCloseButton.interactable = open && closeOnDimClick;
+
         if (root != null)
             root.SetActive(open);
         else
@@ -194,6 +209,29 @@ public class WorldEventPopupUI : MonoBehaviour
 
         if (bottomPartySummaryPanelUI != null)
             bottomPartySummaryPanelUI.SetExternalMainPanelOpen(open && rewardMode == PopupRewardMode.Treasure);
+    }
+
+    private void InitializeDimCloseButton()
+    {
+        if (dimCloseButton == null && dimRoot != null)
+            dimCloseButton = dimRoot.GetComponent<Button>();
+
+        if (dimCloseButton == null && dimRoot != null)
+            dimCloseButton = dimRoot.AddComponent<Button>();
+
+        if (dimCloseButton == null)
+            return;
+
+        dimCloseButton.onClick.RemoveAllListeners();
+        dimCloseButton.onClick.AddListener(HandleDimClicked);
+    }
+
+    private void HandleDimClicked()
+    {
+        if (!closeOnDimClick)
+            return;
+
+        HandleCloseClicked();
     }
 
     private void HandleConfirmClicked()

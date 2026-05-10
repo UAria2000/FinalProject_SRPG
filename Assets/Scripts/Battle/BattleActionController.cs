@@ -55,88 +55,45 @@ public class BattleActionController : MonoBehaviour
             viewManager.PlayEffect(skill.castEffectPrefab, actorView.transform.position);
         }
 
-        if (skill.IsEnemyTargetAttackSkill() && clickedTarget != null)
-        {
-            BattleUnitView targetView = viewManager.GetView(clickedTarget);
-            if (actorView != null && targetView != null)
-                yield return StartCoroutine(actorView.PlayAttackMove(
-                    targetView.AnchoredPosition,
-                    battleManager.AttackMoveRatio,
-                    battleManager.AttackMoveMaxDistance,
-                    battleManager.AttackMoveDuration));
-        }
-
         int rolledPrimaryDamagePercent = BattleCalculator.RollSkillDamagePowerPercent(skill);
+        Sprite attackSprite = actor != null && actor.ViewDefinition != null ? actor.ViewDefinition.GetAttackBattleSprite() : null;
 
         if (skill.resolutionMode == SkillResolutionMode.Attack && skill.HasDamageEffect())
         {
-            int totalHpDamageDealt = 0;
-
-            for (int i = 0; i < targets.Count; i++)
+            if (skill.IsEnemyTargetAttackSkill() && clickedTarget != null)
             {
-                // --- [이펙트 추가] 대상 위치에서 타격 이펙트 재생 ---
-                BattleUnitView targetView = viewManager.GetView(targets[i]);
-                if (targetView != null && skill.hitEffectPrefab != null)
+                BattleUnitView targetView = viewManager.GetView(clickedTarget);
+                if (actorView != null && targetView != null)
                 {
-                    viewManager.PlayEffect(skill.hitEffectPrefab, targetView.transform.position);
+                    yield return StartCoroutine(actorView.PlayAttackMoveWithImpact(
+                        targetView.AnchoredPosition,
+                        battleManager.AttackMoveRatio,
+                        battleManager.AttackMoveMaxDistance,
+                        battleManager.AttackMoveDuration,
+                        attackSprite,
+                        () => ResolveAttackSkillImpacts(actor, skill, targets, rolledPrimaryDamagePercent)));
                 }
-
-                yield return StartCoroutine(ResolveAndApplyAttack(
-                    actor,
-                    skill,
-                    targets[i],
-                    rolledPrimaryDamagePercent,
-                    -1f,
-                    string.Empty,
-                    true));
-                totalHpDamageDealt += lastResolvedAttackHpDamageDealt;
-
-                if (skill.HasSecondaryHit())
+                else
                 {
-                    BattleUnit secondaryTarget = BattleTargeting.GetSecondaryTarget(
-                        actor,
-                        skill,
-                        targets[i],
-                        battleManager.AllyFormation,
-                        battleManager.EnemyFormation);
-
-                    if (secondaryTarget != null && !secondaryTarget.IsDead)
-                    {
-                        yield return StartCoroutine(ResolveAndApplyAttack(
-                            actor,
-                            skill,
-                            secondaryTarget,
-                            skill.secondaryDamagePercent,
-                            skill.secondaryAccuracyCoefficientPercent,
-                            " [추가타격]",
-                            skill.secondaryApplyNonDamageEffects));
-                        totalHpDamageDealt += lastResolvedAttackHpDamageDealt;
-                    }
-                }
-
-                if (actor.HasPierceBackOneBuff)
-                {
-                    BattleUnit pierceTarget = GetBackUnit(targets[i]);
-                    if (pierceTarget != null && !pierceTarget.IsDead)
-                    {
-                        yield return StartCoroutine(ResolveAndApplyAttack(
-                            actor,
-                            skill,
-                            pierceTarget,
-                            rolledPrimaryDamagePercent,
-                            -1f,
-                            " [관통]",
-                            false));
-                        totalHpDamageDealt += lastResolvedAttackHpDamageDealt;
-                    }
+                    yield return StartCoroutine(ResolveAttackSkillImpacts(actor, skill, targets, rolledPrimaryDamagePercent));
                 }
             }
+            else
+            {
+                if (actorView != null && attackSprite != null)
+                    actorView.SetBodySpriteOverride(attackSprite);
 
-            if (skill.activeGimmick == ActiveSkillGimmick.AbyssReboundSelfRecoil20FromTotalDamage)
-                yield return StartCoroutine(ApplyAbyssReboundSelfRecoil(actor, skill, totalHpDamageDealt));
+                yield return StartCoroutine(ResolveAttackSkillImpacts(actor, skill, targets, rolledPrimaryDamagePercent));
+
+                if (actorView != null && attackSprite != null)
+                    actorView.ClearBodySpriteOverride();
+            }
         }
         else
         {
+            if (actorView != null && attackSprite != null)
+                actorView.SetBodySpriteOverride(attackSprite);
+
             for (int i = 0; i < targets.Count; i++)
             {
                 BattleUnit primaryTarget = targets[i];
@@ -148,6 +105,7 @@ public class BattleActionController : MonoBehaviour
                     viewManager.PlayEffect(skill.hitEffectPrefab, targetView.transform.position);
                 }
 
+                PlaySkillHitSfx(skill);
                 ApplySuccessOnlyEffects(actor, primaryTarget, skill.skillName, skill.effects);
 
                 BattleUnitView primaryView = viewManager.GetView(primaryTarget);
@@ -166,6 +124,7 @@ public class BattleActionController : MonoBehaviour
 
                     if (secondaryTarget != null && !secondaryTarget.IsDead)
                     {
+                        PlaySkillHitSfx(skill);
                         ApplySuccessOnlyEffects(actor, secondaryTarget, skill.skillName + " [후열]", skill.effects);
 
                         BattleUnitView secondaryView = viewManager.GetView(secondaryTarget);
@@ -174,6 +133,8 @@ public class BattleActionController : MonoBehaviour
                     }
                 }
             }
+            if (actorView != null && attackSprite != null)
+                actorView.ClearBodySpriteOverride();
         }
 
         if (battleManager.SkillGimmickController != null)
@@ -439,6 +400,79 @@ public class BattleActionController : MonoBehaviour
         battleManager.OnActionExecutionFinished(true);
     }
 
+    private IEnumerator ResolveAttackSkillImpacts(BattleUnit actor, SkillDefinition skill, List<BattleUnit> targets, int rolledPrimaryDamagePercent)
+    {
+        int totalHpDamageDealt = 0;
+
+        if (targets == null)
+            yield break;
+
+        for (int i = 0; i < targets.Count; i++)
+        {
+            BattleUnit primaryTarget = targets[i];
+            BattleUnitView targetView = viewManager.GetView(primaryTarget);
+            if (targetView != null && skill.hitEffectPrefab != null)
+                viewManager.PlayEffect(skill.hitEffectPrefab, targetView.transform.position);
+
+            PlaySkillHitSfx(skill);
+
+            yield return StartCoroutine(ResolveAndApplyAttack(
+                actor,
+                skill,
+                primaryTarget,
+                rolledPrimaryDamagePercent,
+                -1f,
+                string.Empty,
+                true));
+            totalHpDamageDealt += lastResolvedAttackHpDamageDealt;
+
+            if (skill.HasSecondaryHit())
+            {
+                BattleUnit secondaryTarget = BattleTargeting.GetSecondaryTarget(
+                    actor,
+                    skill,
+                    primaryTarget,
+                    battleManager.AllyFormation,
+                    battleManager.EnemyFormation);
+
+                if (secondaryTarget != null && !secondaryTarget.IsDead)
+                {
+                    PlaySkillHitSfx(skill);
+                    yield return StartCoroutine(ResolveAndApplyAttack(
+                        actor,
+                        skill,
+                        secondaryTarget,
+                        skill.secondaryDamagePercent,
+                        skill.secondaryAccuracyCoefficientPercent,
+                        " [추가타격]",
+                        skill.secondaryApplyNonDamageEffects));
+                    totalHpDamageDealt += lastResolvedAttackHpDamageDealt;
+                }
+            }
+
+            if (actor != null && actor.HasPierceBackOneBuff)
+            {
+                BattleUnit pierceTarget = GetBackUnit(primaryTarget);
+                if (pierceTarget != null && !pierceTarget.IsDead)
+                {
+                    PlaySkillHitSfx(skill);
+                    yield return StartCoroutine(ResolveAndApplyAttack(
+                        actor,
+                        skill,
+                        pierceTarget,
+                        rolledPrimaryDamagePercent,
+                        -1f,
+                        " [관통]",
+                        false));
+                    totalHpDamageDealt += lastResolvedAttackHpDamageDealt;
+                }
+            }
+        }
+
+        if (skill.activeGimmick == ActiveSkillGimmick.AbyssReboundSelfRecoil20FromTotalDamage)
+            yield return StartCoroutine(ApplyAbyssReboundSelfRecoil(actor, skill, totalHpDamageDealt));
+    }
+
     private IEnumerator ResolveAndApplyAttack(
         BattleUnit actor,
         SkillDefinition skill,
@@ -504,9 +538,15 @@ public class BattleActionController : MonoBehaviour
 
         logController.AppendBattleLog(logController.BuildAttackLog(actor, target, skill, result, logSuffix));
 
+        ShowAttackFloatingFeedback(target, skill, result);
+
         BattleUnitView view = viewManager.GetView(target);
         if (view != null)
+        {
+            if (result.DidHit)
+                view.PlayHitFlash(Mathf.Max(0.05f, battleManager.AttackMoveDuration * 0.5f));
             yield return StartCoroutine(view.AnimateHPChange(0.15f));
+        }
 
         if (target.IsDead)
         {
@@ -823,6 +863,40 @@ public class BattleActionController : MonoBehaviour
         return false;
     }
 
+    private void PlaySkillHitSfx(SkillDefinition skill)
+    {
+        if (skill == null || skill.hitSfx == null)
+            return;
+
+        GameAudioManager.PlaySfx(skill.hitSfx);
+    }
+
+    private void ShowAttackFloatingFeedback(BattleUnit target, SkillDefinition skill, AttackResult result)
+    {
+        if (target == null || viewManager == null)
+            return;
+
+        string skillName = skill != null ? skill.skillName : string.Empty;
+        if (result.DidHit)
+        {
+            string amountText = Mathf.Max(0, result.Damage).ToString();
+            if (result.ResultType == AttackResultType.Crit)
+                amountText = "<b>" + amountText + "</b>";
+
+            ShowFloatingFeedback(target, string.Format("{0}\n{1}", skillName, amountText), new Color(1f, 0.2f, 0.2f, 1f));
+        }
+        else
+        {
+            ShowFloatingFeedback(target, string.Format("{0}\n회피", skillName), new Color(0.7f, 0.7f, 0.7f, 1f));
+        }
+    }
+
+    private void ShowFloatingFeedback(BattleUnit target, string text, Color color)
+    {
+        if (viewManager != null)
+            viewManager.ShowFloatingText(target, text, color, 1f);
+    }
+
     private string GetEffectDisplayName(BattleEffectBlock block)
     {
         if (block == null)
@@ -939,6 +1013,8 @@ public class BattleActionController : MonoBehaviour
                     int amount = ResolveEffectAmount(actor, target, block);
                     int healed = target.Heal(amount);
                     logController.AppendBattleLog(logController.BuildHealLog(actor, target, sourceName, healed));
+                    if (healed > 0)
+                        ShowFloatingFeedback(target, string.Format("{0}\n{1}", sourceName, healed), new Color(0.25f, 1f, 0.35f, 1f));
                     break;
                 }
             case BattleEffectKind.Shield:
@@ -946,6 +1022,8 @@ public class BattleActionController : MonoBehaviour
                     int amount = ResolveEffectAmount(actor, target, block);
                     target.AddShield(amount);
                     logController.AppendBattleLog(logController.BuildShieldLog(actor, target, sourceName, amount));
+                    if (amount > 0)
+                        ShowFloatingFeedback(target, string.Format("{0}\n{1}", sourceName, amount), new Color(0.25f, 1f, 0.35f, 1f));
                     break;
                 }
             case BattleEffectKind.Buff:

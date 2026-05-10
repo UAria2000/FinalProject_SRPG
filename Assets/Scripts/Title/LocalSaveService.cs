@@ -59,4 +59,17 @@ public static class LocalSaveService
         if (File.Exists(path))
             File.Delete(path);
     }
+
+    public static void DeleteProfile(string accountId)
+    {
+        string path = SavePathUtility.GetProfilePath(accountId);
+        if (File.Exists(path))
+            File.Delete(path);
+    }
+
+    public static void DeleteProgressData(string accountId)
+    {
+        DeleteProfile(accountId);
+        DeleteWorldRun(accountId);
+    }
 }

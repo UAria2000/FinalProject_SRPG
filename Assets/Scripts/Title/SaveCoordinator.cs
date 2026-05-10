@@ -168,6 +168,16 @@ public class SaveCoordinator : MonoBehaviour
         LocalSaveService.DeleteWorldRun(accountId);
     }
 
+    public void DeleteAccountProgressData()
+    {
+        queuedContinueWorld = false;
+        queuedNewWorld = false;
+        queuedDifficultyId = null;
+        queuedMapRadius = 0;
+        persistentInventory = new List<PersistentInventoryItemSaveData>();
+        LocalSaveService.DeleteProgressData(accountId);
+    }
+
     public void SetLastWorldSettlementResult(WorldSettlementResultState result)
     {
         RebindSceneReferences();

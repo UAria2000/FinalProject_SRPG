@@ -264,21 +264,33 @@ public class WorldRunManager : MonoBehaviour
         RequestAutoSaveAll();
     }
 
-    public void ResolveCombatVictory(WorldTileData tile)
+    public void ResolveCombatVictory(WorldTileData tile, bool showQueuedQuestCompletionPopup = true)
     {
         if (tile == null)
             return;
 
+        bool wasAlreadyResolvedByPlayer = tile.IsPlayerOwned && tile.isResolved;
+
         ResolveMapEvent(tile, true, true, true);
 
-        if (tile.eventType == WorldTileEventType.EliteBattle)
-            questController?.NotifyEliteBattleWon();
-        else if (tile.eventType == WorldTileEventType.Boss)
-            questController?.NotifyBossBattleWon();
+        if (!wasAlreadyResolvedByPlayer)
+        {
+            if (tile.eventType == WorldTileEventType.EliteBattle)
+                questController?.NotifyEliteBattleWon();
+            else if (tile.eventType == WorldTileEventType.Boss)
+                questController?.NotifyBossBattleWon();
+        }
 
-        questController?.TryShowQueuedCompletionPopup();
+        if (showQueuedQuestCompletionPopup)
+            questController?.TryShowQueuedCompletionPopup();
+
         FocusCurrentTile();
         RequestAutoSaveAll();
+    }
+
+    public void TryShowQueuedQuestCompletionPopup()
+    {
+        questController?.TryShowQueuedCompletionPopup();
     }
 
     public void ResolveCombatDefeat(WorldTileData tile, bool returnToStartTile)
@@ -350,7 +362,8 @@ public class WorldRunManager : MonoBehaviour
 
         state.currentMana = Mathf.Max(0, state.currentMana - cost);
         RaiseManaChanged();
-        RequestAutoSaveAll();
+        // 전투 중 마나 소모는 전투 결과 확정 저장에 포함된다.
+        // 여기서 즉시 저장하면 전투는 롤백되는데 마나만 소모되는 강제 종료 문제가 생긴다.
         return true;
     }
 

@@ -16,6 +16,8 @@ public class UnitViewDefinition : ScriptableObject
     [Header("Battle")]
     [FormerlySerializedAs("bodySprite")]
     public Sprite battleSprite;
+    [Tooltip("공격/스킬 사용 중 잠깐 교체할 전신 스프라이트입니다. 비워두면 기본 battleSprite를 사용합니다.")]
+    public Sprite attackBattleSprite;
 
     [Header("Dead Battle")]
     public Sprite deadBattleSprite;
@@ -34,6 +36,13 @@ public class UnitViewDefinition : ScriptableObject
 
     public Sprite GetBattleSprite()
     {
+        return GetBattleSprite(false);
+    }
+
+    public Sprite GetAttackBattleSprite()
+    {
+        if (attackBattleSprite != null)
+            return attackBattleSprite;
         return GetBattleSprite(false);
     }
 

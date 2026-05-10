@@ -561,6 +561,7 @@ public class BattleManager : MonoBehaviour
     public void SetTurnState(TurnState state)
     {
         CurrentState = state;
+        GameCursorManager.SetBusy("BattleAction", state == TurnState.ExecutingAction);
     }
 
     public void StartManagedCoroutine(IEnumerator routine)

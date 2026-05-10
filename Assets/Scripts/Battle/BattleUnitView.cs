@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using TMPro;
 using UnityEngine;
@@ -34,6 +35,9 @@ public class BattleUnitView : MonoBehaviour
     [Range(0f, 1f)]
     [SerializeField] private float finishedTurnBodyAlpha = 0.8f;
 
+    [Header("Hit Flash")]
+    [SerializeField] private Color hitFlashColor = new Color(1f, 0f, 0f, 0.65f);
+
     [Header("Deprecated - Not Used")]
     [Tooltip("폐기 예정. 더 이상 턴 예정/완료 표시로 사용하지 않습니다.")]
     [SerializeField] private Image upcomingGrayOverlayImage;
@@ -43,6 +47,8 @@ public class BattleUnitView : MonoBehaviour
     private RectTransform rectTransform;
     private bool currentlyUsingFinishedVisual;
     private Sprite bodyOverrideSprite;
+    private Coroutine hitFlashRoutine;
+    private Color baseBodyColor = Color.white;
 
     public BattleUnit Unit { get; private set; }
     public RectTransform HoverAnchor => hoverAnchor != null ? hoverAnchor : rectTransform;
@@ -66,6 +72,8 @@ public class BattleUnitView : MonoBehaviour
     {
         Unit = unit;
         currentlyUsingFinishedVisual = false;
+        bodyOverrideSprite = null;
+        baseBodyColor = Color.white;
 
         if (labelText != null)
             labelText.text = label;
@@ -272,7 +280,9 @@ public class BattleUnitView : MonoBehaviour
 
         Color color = Color.white;
         color.a = unitBodyImage.sprite == null ? 0f : (finished ? Mathf.Clamp01(finishedTurnBodyAlpha) : 1f);
-        unitBodyImage.color = color;
+        baseBodyColor = color;
+        if (hitFlashRoutine == null)
+            unitBodyImage.color = color;
     }
 
     private void DisableDeprecatedOverlays()
@@ -337,6 +347,17 @@ public class BattleUnitView : MonoBehaviour
 
     public IEnumerator PlayAttackMove(Vector2 targetAnchoredPosition, float moveRatio, float maxDistance, float duration, Sprite temporaryBodySprite = null)
     {
+        yield return PlayAttackMoveWithImpact(targetAnchoredPosition, moveRatio, maxDistance, duration, temporaryBodySprite, null);
+    }
+
+    public IEnumerator PlayAttackMoveWithImpact(
+        Vector2 targetAnchoredPosition,
+        float moveRatio,
+        float maxDistance,
+        float duration,
+        Sprite temporaryBodySprite,
+        Func<IEnumerator> impactRoutine)
+    {
         if (rectTransform == null)
             rectTransform = GetComponent<RectTransform>();
 
@@ -364,6 +385,11 @@ public class BattleUnitView : MonoBehaviour
             yield return null;
         }
 
+        rectTransform.anchoredPosition = attackPos;
+
+        if (impactRoutine != null)
+            yield return StartCoroutine(impactRoutine());
+
         elapsed = 0f;
         while (elapsed < half)
         {
@@ -376,6 +402,39 @@ public class BattleUnitView : MonoBehaviour
 
         if (usedTemporarySprite)
             ClearBodySpriteOverride();
+    }
+
+    public void PlayHitFlash(float duration)
+    {
+        if (!gameObject.activeInHierarchy || unitBodyImage == null)
+            return;
+
+        if (hitFlashRoutine != null)
+            StopCoroutine(hitFlashRoutine);
+
+        hitFlashRoutine = StartCoroutine(HitFlashRoutine(Mathf.Max(0.01f, duration)));
+    }
+
+    private IEnumerator HitFlashRoutine(float duration)
+    {
+        if (unitBodyImage == null)
+            yield break;
+
+        Color start = baseBodyColor;
+        Color flash = hitFlashColor;
+        flash.a = Mathf.Clamp01(hitFlashColor.a);
+        unitBodyImage.color = Color.Lerp(start, flash, flash.a);
+
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            unitBodyImage.color = Color.Lerp(flash, baseBodyColor, Mathf.Clamp01(elapsed / duration));
+            yield return null;
+        }
+
+        unitBodyImage.color = baseBodyColor;
+        hitFlashRoutine = null;
     }
 
     public IEnumerator PlayAttackMove(Vector3 targetAnchoredPosition, float moveRatio, float maxDistance, float duration)

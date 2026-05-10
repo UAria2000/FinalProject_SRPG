@@ -12,6 +12,7 @@ public class BootstrapTitleFlow : MonoBehaviour
     [Header("Main Menu Buttons")]
     [SerializeField] private Button continueButton;
     [SerializeField] private Button newWorldButton;
+    [SerializeField] private Button deleteAccountButton;
     [SerializeField] private Button settingsButton;
     [SerializeField] private Button exitButton;
 
@@ -38,6 +39,7 @@ public class BootstrapTitleFlow : MonoBehaviour
 
     [Header("Confirm Popup")]
     [SerializeField] private BootstrapConfirmPopupUI overwriteWorldConfirmPopup;
+    [SerializeField] private BootstrapConfirmPopupUI deleteAccountConfirmPopup;
 
     [Header("Confirm Popup Text")]
     [TextArea(3, 8)]
@@ -51,6 +53,12 @@ public class BootstrapTitleFlow : MonoBehaviour
 
     [SerializeField] private string overwriteWorldConfirmLabel = "동의합니다";
     [SerializeField] private string overwriteWorldCancelLabel = "취소";
+
+    [Header("Delete Account Progress")]
+    [TextArea(2, 6)]
+    [SerializeField] private string deleteAccountMessage = "Delete all account progress data?\nDeleted progress data cannot be restored.";
+    [SerializeField] private string deleteAccountConfirmLabel = "Delete";
+    [SerializeField] private string deleteAccountCancelLabel = "Cancel";
 
     [Header("Scene")]
     [SerializeField] private string worldMapSceneName = "WorldMap";
@@ -94,6 +102,12 @@ public class BootstrapTitleFlow : MonoBehaviour
         {
             newWorldButton.onClick.RemoveAllListeners();
             newWorldButton.onClick.AddListener(HandleNewWorldClicked);
+        }
+
+        if (deleteAccountButton != null)
+        {
+            deleteAccountButton.onClick.RemoveAllListeners();
+            deleteAccountButton.onClick.AddListener(HandleDeleteAccountClicked);
         }
 
         if (settingsButton != null)
@@ -276,6 +290,33 @@ public class BootstrapTitleFlow : MonoBehaviour
     private void HandleNewWorldClicked()
     {
         ShowNewWorldSetup();
+    }
+
+    private void HandleDeleteAccountClicked()
+    {
+        BootstrapConfirmPopupUI popup = deleteAccountConfirmPopup != null ? deleteAccountConfirmPopup : overwriteWorldConfirmPopup;
+        if (popup != null)
+        {
+            popup.Show(
+                deleteAccountMessage,
+                deleteAccountConfirmLabel,
+                deleteAccountCancelLabel,
+                ConfirmDeleteAccountProgress,
+                null);
+        }
+        else
+        {
+            ConfirmDeleteAccountProgress();
+        }
+    }
+
+    private void ConfirmDeleteAccountProgress()
+    {
+        if (saveCoordinator == null)
+            saveCoordinator = SaveCoordinator.Instance;
+
+        saveCoordinator?.DeleteAccountProgressData();
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
     private void HandleSettingsClicked()

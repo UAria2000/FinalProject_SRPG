@@ -41,6 +41,7 @@ public class WorldBattleBridge : MonoBehaviour
     private WorldTileData pendingTile;
     private bool isBattleRunning;
     private bool subscribed;
+    private bool pendingCombatOutcomeCommitted;
 
     public bool IsBattleRunning => isBattleRunning;
 
@@ -202,6 +203,7 @@ public class WorldBattleBridge : MonoBehaviour
     private IEnumerator HandleBattleEndedRoutine(BattleResultType result)
     {
         isBattleRunning = false;
+        pendingCombatOutcomeCommitted = false;
 
         yield return StartCoroutine(ShowBattleResultRoutine(result));
 
@@ -215,14 +217,18 @@ public class WorldBattleBridge : MonoBehaviour
 
         bool openSettlementAfterReturn = result == BattleResultType.WorldFailure;
 
-        if (pendingTile != null && runManager != null)
+        if (pendingTile != null && runManager != null && !pendingCombatOutcomeCommitted)
         {
             if (result == BattleResultType.Victory)
-                runManager.ResolveCombatVictory(pendingTile);
+                runManager.ResolveCombatVictory(pendingTile, false);
             else
                 runManager.ResolveCombatDefeat(pendingTile, true);
         }
 
+        if (pendingCombatOutcomeCommitted && runManager != null)
+            runManager.TryShowQueuedQuestCompletionPopup();
+
+        pendingCombatOutcomeCommitted = false;
         pendingTile = null;
 
         if (screenFader != null)
@@ -296,6 +302,10 @@ public class WorldBattleBridge : MonoBehaviour
 
         List<BattleResultPartyMemberSnapshot> snapshots = CapturePartySnapshotsBefore(perLivingExp);
 
+        // 전투 결과 팝업이 열린 상태에서 강제 종료되더라도 같은 타일에서 보상을 다시 받을 수 없도록,
+        // 보상 지급 전에 전투 타일 결과를 먼저 확정한다. 이후 보상 저장은 이미 확정된 타일 상태와 함께 저장된다.
+        CommitPendingCombatOutcome(result);
+
         if (summary.DefeatedOrCapturedEnemyCount > 0 && questController != null)
             questController.NotifyEnemyKilled(summary.DefeatedOrCapturedEnemyCount);
 
@@ -314,6 +324,19 @@ public class WorldBattleBridge : MonoBehaviour
             data.partyMembers.Add(snapshots[i]);
 
         return data;
+    }
+
+    private void CommitPendingCombatOutcome(BattleResultType result)
+    {
+        if (pendingCombatOutcomeCommitted || pendingTile == null || runManager == null)
+            return;
+
+        if (result == BattleResultType.Victory)
+            runManager.ResolveCombatVictory(pendingTile, false);
+        else
+            runManager.ResolveCombatDefeat(pendingTile, true);
+
+        pendingCombatOutcomeCommitted = true;
     }
 
     private void ApplyRewardBonuses(BattleRewardSummary summary)

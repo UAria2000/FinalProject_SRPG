@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class BattleViewManager : MonoBehaviour
 {
@@ -8,6 +10,13 @@ public class BattleViewManager : MonoBehaviour
     [SerializeField] private RectTransform[] allyAnchors = new RectTransform[4];
     [SerializeField] private RectTransform[] enemyAnchors = new RectTransform[4];
     [SerializeField] private BattleUnitView defaultUnitViewPrefab;
+
+    [Header("Floating Feedback")]
+    [SerializeField] private BattleFloatingTextUI floatingTextPrefab;
+    [SerializeField] private RectTransform floatingTextRoot;
+    [SerializeField] private float defaultFloatingTextDuration = 1f;
+    [SerializeField] private float defaultFloatingTextRiseDistance = 40f;
+    [SerializeField] private Vector2 floatingTextOffset = new Vector2(0f, 80f);
 
     private readonly Dictionary<BattleUnit, BattleUnitView> unitViews = new Dictionary<BattleUnit, BattleUnitView>();
 
@@ -190,8 +199,56 @@ public class BattleViewManager : MonoBehaviour
         GameObject effect = Instantiate(prefab, viewRoot);
         effect.transform.position = worldPosition;
 
-        // �ڵ� �ı� (Ȥ�� ParticleSystem�� Stop Action ������ ���� ó�� ����)
         Destroy(effect, duration);
+    }
+
+    public void ShowFloatingText(BattleUnit unit, string text, Color color, float duration = -1f)
+    {
+        if (unit == null || string.IsNullOrWhiteSpace(text))
+            return;
+
+        BattleUnitView unitView = GetView(unit);
+        if (unitView == null)
+            return;
+
+        RectTransform parent = floatingTextRoot != null ? floatingTextRoot : viewRoot;
+        if (parent == null)
+            return;
+
+        BattleFloatingTextUI floating = null;
+        if (floatingTextPrefab != null)
+        {
+            floating = Instantiate(floatingTextPrefab, parent);
+        }
+        else
+        {
+            GameObject go = new GameObject("BattleFloatingText", typeof(RectTransform), typeof(CanvasGroup));
+            go.transform.SetParent(parent, false);
+            TMP_Text tmp = go.AddComponent<TextMeshProUGUI>();
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.fontSize = 28f;
+            tmp.raycastTarget = false;
+            floating = go.AddComponent<BattleFloatingTextUI>();
+            floating.Bind(tmp, go.GetComponent<CanvasGroup>());
+        }
+
+        RectTransform floatingRect = floating.GetComponent<RectTransform>();
+        RectTransform anchor = unitView.HoverAnchor;
+        if (floatingRect != null && anchor != null)
+        {
+            Vector3 world = anchor.position;
+            if (parent != null)
+            {
+                Vector3 local = parent.InverseTransformPoint(world);
+                floatingRect.anchoredPosition = new Vector2(local.x, local.y) + floatingTextOffset;
+            }
+            else
+            {
+                floatingRect.position = world;
+            }
+        }
+
+        floating.Play(text, color, duration > 0f ? duration : defaultFloatingTextDuration, defaultFloatingTextRiseDistance);
     }
 
     public void RefreshBattleVisualStates(BattleManager manager)

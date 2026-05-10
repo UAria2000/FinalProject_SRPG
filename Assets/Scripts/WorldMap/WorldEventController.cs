@@ -201,6 +201,10 @@ public class WorldEventController : MonoBehaviour
 
         popupOpen = true;
         WorldTreasureResult treasure = GetOrCreateTreasureForTile(tile);
+
+        // 보물창이 열린 뒤 강제 종료되더라도 같은 보물 타일에서 보상을 반복 획득하지 못하도록
+        // 보물 이벤트는 창을 여는 시점에 타일을 먼저 확정한다. 미수령 슬롯은 기존처럼 창을 닫으면 폐기된다.
+        ResolveTreasureTileOnOpen(tile);
         GrantTreasureSoulImmediately(treasure);
         string title = settings != null ? settings.GetEventDisplayName(tile.eventType) : tile.eventType.ToString();
         string body = BuildTreasureEventBody(tile, treasure);
@@ -217,22 +221,31 @@ public class WorldEventController : MonoBehaviour
         return true;
     }
 
+    private void ResolveTreasureTileOnOpen(WorldTileData tile)
+    {
+        if (tile == null || runManager == null)
+            return;
+
+        bool isReusable = tile.IsReusableEvent;
+        bool disableIcon = !isReusable;
+        bool markResolved = !isReusable;
+
+        if (tile.IsPlayerOwned && tile.isResolved == markResolved && tile.isIconDisabled == disableIcon)
+            return;
+
+        runManager.ResolveMapEvent(tile, true, markResolved, disableIcon);
+    }
+
     private void ConfirmTreasureEvent(WorldTileData tile)
     {
         popupOpen = false;
 
         // 보물 보상은 WorldEventPopupUI의 슬롯 상호작용에서 지급된다.
         // 슬롯을 연결하지 않은 구형 UI에서는 WorldEventPopupUI가 확인 시 자동 지급한다.
+        // 타일 점령/해결은 TryOpenTreasureEvent()에서 이미 확정한다.
 
         if (tile != null)
             pendingTreasureByTileId.Remove(tile.tileId);
-
-        bool isReusable = tile != null && tile.IsReusableEvent;
-        bool disableIcon = !isReusable;
-        bool markResolved = !isReusable;
-
-        if (runManager != null)
-            runManager.ResolveMapEvent(tile, true, markResolved, disableIcon);
     }
 
     private WorldTreasureResult GetOrCreateTreasureForTile(WorldTileData tile)
